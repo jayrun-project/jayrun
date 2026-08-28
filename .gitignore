@@ -1,0 +1,41 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+
+# Private development assets
+/examples/
+/tests/
+
+# Coverage and tool caches
+.coverage
+.coverage.*
+.hypothesis/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.tox/
+.nox/
+
+# Environments and local configuration
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Packaging output
+build/
+dist/
+*.egg-info/
+
+# Documentation output
+docs/_build/
+
+# Notebook, OS, and editor files
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

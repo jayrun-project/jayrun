@@ -1,0 +1,154 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 850px;
+                 background-color: #FFFFFF;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    <style>.vis-tooltip { white-space: pre-line !important; }</style></head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#308CCF", "fixed": false, "font": {"color": "#111827"}, "id": 0, "label": "ENTRY \u00b7 dataset", "physics": false, "shape": "dot", "size": 20, "title": "ENTRY\n  artifact: dataset\n  artifact_id: 0", "x": 0, "y": 0}, {"color": "#BACF30", "fixed": false, "font": {"color": "#111827"}, "id": 1, "label": "ENTRY \u00b7 model", "physics": false, "shape": "dot", "size": 20, "title": "ENTRY\n  artifact: model\n  artifact_id: 1", "x": 0, "y": 120}, {"color": "#97c2fc", "fixed": false, "font": {"color": "#111827"}, "id": 2, "image": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22116%22%20height%3D%2250%22%20viewBox%3D%220%200%20116%2050%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%22114%22%20height%3D%2248%22%20rx%3D%225%22%20fill%3D%22%23475569%22%20stroke%3D%22%23334155%22%20stroke-width%3D%222%22/%3E%3C/svg%3E", "label": "prepare_dataset", "physics": false, "shape": "image", "shapeProperties": {"useImageSize": true}, "size": 30, "title": "OPERATOR\n  name: prepare_dataset\n  layout position: (0, 0)\n  configs: none\n  resources: none", "x": 250, "y": 0}, {"color": "#97c2fc", "fixed": false, "font": {"color": "#111827"}, "id": 3, "image": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22116%22%20height%3D%2250%22%20viewBox%3D%220%200%20116%2050%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%22114%22%20height%3D%2248%22%20rx%3D%225%22%20fill%3D%22%23475569%22%20stroke%3D%22%23334155%22%20stroke-width%3D%222%22/%3E%3C/svg%3E", "label": "train_model", "physics": false, "shape": "image", "shapeProperties": {"useImageSize": true}, "size": 30, "title": "OPERATOR\n  name: train_model\n  layout position: (0, 1)\n  configs:\n    epochs: int\n    batch_size: int = 64\n    learning_rate: float = 0.001\n  resources: none", "x": 500, "y": 0}, {"color": "#97c2fc", "fixed": false, "font": {"color": "#111827"}, "id": 4, "image": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22116%22%20height%3D%2250%22%20viewBox%3D%220%200%20116%2050%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%22114%22%20height%3D%2248%22%20rx%3D%225%22%20fill%3D%22%23475569%22%20stroke%3D%22%23334155%22%20stroke-width%3D%222%22/%3E%3C/svg%3E", "label": "scale_model", "physics": false, "shape": "image", "shapeProperties": {"useImageSize": true}, "size": 30, "title": "OPERATOR\n  name: scale_model\n  layout position: (1, 2)\n  configs:\n    temperature: float\n  resources: none", "x": 750, "y": 120}, {"color": "#BACF30", "fixed": false, "font": {"color": "#111827"}, "id": 5, "label": "EXIT \u00b7 model", "physics": false, "shape": "dot", "size": 20, "title": "EXIT\n  artifact: model\n  artifact_id: 1", "x": 1000, "y": 120}]);
+                  edges = new vis.DataSet([{"arrows": "to", "color": "#308CCF", "dashes": false, "font": {"align": "middle", "color": "#111827", "size": 14}, "from": 0, "label": "dataset", "smooth": {"forceDirection": "horizontal", "roundness": 0.35, "type": "cubicBezier"}, "title": "ENTRY\nValidation: not available", "to": 2, "width": 5}, {"arrows": "to", "color": "#308CCF", "dashes": false, "font": {"align": "middle", "color": "#AD1F1F", "size": 14}, "from": 2, "label": "\u26a0 dataset", "smooth": {"forceDirection": "horizontal", "roundness": 0.35, "type": "cubicBezier"}, "title": "INTERMEDIATE\nValidation: MISMATCH\n  Type: MATCH\n    target: \u003cclass \u0027torch.Tensor\u0027\u003e\n    source: \u003cclass \u0027torch.Tensor\u0027\u003e\n  DType: MISMATCH\n    target: (torch.float32,)\n    source: (torch.float64,)\n    Reason: target accepts (torch.float32,), but source provides (torch.float64,).\n  Shape: MATCH\n    target: (None, 785)\n    source: (None, 785)\n  Device: MATCH\n    target: \u0027cpu\u0027\n    source: \u0027cpu\u0027\n  Backend: MATCH\n    target: \u0027torch\u0027\n    source: \u0027torch\u0027", "to": 3, "width": 6}, {"arrows": "to", "color": "#BACF30", "dashes": false, "font": {"align": "middle", "color": "#111827", "size": 14}, "from": 1, "label": "model", "smooth": {"forceDirection": "horizontal", "roundness": 0.35, "type": "cubicBezier"}, "title": "ENTRY\nValidation: not available", "to": 3, "width": 5}, {"arrows": "to", "color": "#BACF30", "dashes": false, "font": {"align": "middle", "color": "#111827", "size": 14}, "from": 3, "label": "model", "smooth": {"forceDirection": "horizontal", "roundness": 0.35, "type": "cubicBezier"}, "title": "INTERMEDIATE\nValidation: MATCH\n  Type: MATCH\n    target: \u003cclass \u0027torch.nn.modules.module.Module\u0027\u003e\n    source: \u003cclass \u0027torch.nn.modules.module.Module\u0027\u003e", "to": 4, "width": 5}, {"arrows": "to", "color": "#BACF30", "dashes": false, "font": {"align": "middle", "color": "#111827", "size": 14}, "from": 4, "label": "model", "smooth": {"forceDirection": "horizontal", "roundness": 0.35, "type": "cubicBezier"}, "title": "EXIT\nValidation: not available", "to": 5, "width": 5}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": false,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>
