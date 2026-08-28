@@ -13,7 +13,7 @@ Jayrun is useful when a workload must do one or more of the following:
 - share expensive runtime resources safely across submissions;
 - reserve CPU, GPU, or atomic multi-device capacity;
 - combine synchronous and asynchronous operators;
-- inspect, pause, resume, stop, or abort running contexts;
+- inspect, pause, resume, or abort contexts, and stop graph iteration;
 - supervise several contexts from another context;
 - retain declared results while clearing intermediate data;
 - apply retry and failure policies consistently.
