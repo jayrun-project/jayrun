@@ -1,9 +1,9 @@
 # Jayrun
 
 [![PyPI version](https://img.shields.io/pypi/v/jayrun.svg)](https://pypi.org/project/jayrun/)
-[![Python versions](https://img.shields.io/pypi/pyversions/jayrun.svg)](https://pypi.org/project/jayrun/)
-[![Documentation status](https://readthedocs.org/projects/jayrun/badge/?version=latest)](https://jayrun.readthedocs.io/en/latest/)
-[![License](https://img.shields.io/pypi/l/jayrun.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
+[![Documentation](https://github.com/jayrun-project/jayrun/actions/workflows/docs.yml/badge.svg)](https://github.com/jayrun-project/jayrun/actions/workflows/docs.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 Jayrun is an artifact-centric Python execution framework for computational graphs that need more than one-pass task scheduling. It coordinates data flow, iteration, shared resources, hardware placement, supervision, failure containment, and shutdown while keeping application components ordinary Python classes.
 
