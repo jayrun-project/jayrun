@@ -25,7 +25,6 @@ Jayrun requires Python 3.11 or later.
 ```bash
 python -m pip install jayrun
 ```
-
 Optional integrations are installed only when an application needs them:
 
 ```bash
