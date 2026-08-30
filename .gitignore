@@ -4,8 +4,8 @@ __pycache__/
 .Python
 
 # Private development assets
-/examples/
-/tests/
+/examples_private/
+/tests_private/
 
 # Coverage and tool caches
 .coverage
