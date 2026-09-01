@@ -291,17 +291,17 @@ Jayrun clears artifact payloads when they are no longer required by the active e
 - a consumed artifact is cleared after the operator completes unless the operator regenerates it;
 - non-retained payloads are cleared during context finalization;
 - failed and aborted contexts do not publish partial artifact payloads; and
-- retained exit payloads remain reachable until their completed context is deleted or pruned.
+- retained exit payloads remain reachable while an application-held `ContextRun` references them.
 
 Clearing removes the runtime payload, not its artifact declaration or lifecycle report. It only releases Jayrun's reference; payloads retained by application code remain reachable.
 
 (artifact-result)=
 ## Inspecting `ArtifactResult`
 
-A finalized {py:class}`ContextSnapshot` exposes one {py:class}`ArtifactResult` per graph artifact:
+After an executed context finalizes, {py:class}`jayrun.context.ContextRun` exposes one {py:class}`jayrun.context.ArtifactResult` per graph artifact:
 
 ```python
-artifact_result = snapshot.artifact(result_artifact)
+artifact_result = run.artifact(result_artifact)
 
 value = artifact_result.value
 placement = artifact_result.placement
@@ -309,7 +309,7 @@ data = artifact_result.data
 report = artifact_result.report
 ```
 
-`snapshot.artifact()` accepts the artifact declaration, its graph-local definition, or its graph-local integer ID. `snapshot.artifacts` maps the original artifact declarations to results.
+`run.artifact()` accepts the artifact declaration, its graph-local definition, or its graph-local integer ID. Non-retained and cleared artifacts remain inspectable with `value is None`; an unknown reference or a rejected submission without artifact execution data raises `KeyError`.
 
 | Attribute | Meaning |
 |---|---|
@@ -471,10 +471,6 @@ Associated graph iteration.
 ```{py:class} ArtifactState
 Artifact lifecycle enumeration containing `UNREGISTERED`, `REGISTERED`, `UPDATED`, and `CLEARED`.
 ```
-
-:::{versionadded} 0.1.0
-Artifact declarations, fields, graph-local definitions, flows, contexts, and retention were introduced.
-:::
 
 ## Common patterns
 

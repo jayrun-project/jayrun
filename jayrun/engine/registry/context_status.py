@@ -51,14 +51,6 @@ class ContextStatus:
     history: list[ContextHistoryEntry] = field(default_factory=list)
 
     @property
-    def is_terminal(self) -> bool:
-        return self.state.is_terminal
-
-    @property
-    def is_draining(self) -> bool:
-        return self.state.is_draining
-
-    @property
     def has_been_validated(self) -> bool:
         return self.validated_at is not None
 

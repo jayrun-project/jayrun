@@ -1,6 +1,6 @@
 from ...registry.context_instance import ContextInstance
 from ...registry.identities import BaseIdentity
-from ..runtime_message import RuntimeMessage
+from ..runtime_message import RuntimeMessage, RuntimeMessagePriority
 
 
 class ContextRegisteredEvent(RuntimeMessage):
@@ -20,3 +20,11 @@ class ContextRegisteredEvent(RuntimeMessage):
     @property
     def execute_during_shutdown(self) -> bool:
         return True
+
+    @property
+    def priority(self) -> RuntimeMessagePriority:
+        return (
+            RuntimeMessagePriority.ACTIVE
+            if self._context_instance.is_supervising
+            else RuntimeMessagePriority.SUBMISSION
+        )

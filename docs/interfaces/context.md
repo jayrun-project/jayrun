@@ -1,7 +1,7 @@
 (context-interface)=
 # Context Interface
 
-`self.context` addresses the graph submission that owns the current execution. It provides context identity, context-scoped storage, and lifecycle requests affecting that context.
+`self.context` addresses the graph submission that owns the current execution. It exposes context identity, stored values, and self-lifecycle requests.
 
 ## Context identity
 
@@ -9,107 +9,89 @@
 context_id = self.context.id
 ```
 
-This is the integer identifier returned by `Engine.submit(...)`. It can associate application logs or externally persisted data with the correct run.
+This ID matches the corresponding `ContextRun.context_id` and is useful for external logs. Control APIs do not require user code to pass it back to Jayrun.
 
-## Context-scoped values
+## Stored values
 
-Context storage is visible to later executions in the same context:
+Context records are visible across operators, repetitions, and graph iterations in the same run:
 
 ```python
-def execute(self) -> object:
+def execute(self):
     previous = self.context.get_value("best_score")
     score = evaluate(self.model.value)
 
     if previous is None or score > previous:
         self.context.store("best_score", score)
 
-    return score
+    return self.model.value
 ```
 
-Every `store()` appends a record. `get_value()` returns the latest value, while `get_values()` returns the recorded sequence.
+Available methods are:
 
-Context storage suits progress, decisions, and coordination within one submitted run. It is not artifact flow: stored values do not trigger operators, satisfy dependencies, or become retained results.
+| Method | Result |
+| --- | --- |
+| `store(key, value)` | Append a value and its provenance |
+| `has_value(key)` | Whether at least one record exists |
+| `get_value(key)` | Latest value, or `None` |
+| `get_values(key)` | All values in recording order |
+| `get_value_record(key)` | Latest `ValueRecord`, or `None` |
+| `get_value_records(key)` | All records in recording order |
 
-Context-scoped stored values are available while the execution context is active and are released when the context finalizes. They are not copied into `ContextSnapshot`; use artifacts, execution reports, or external persistence for information required after finalization.
+Stored values do not trigger operators or satisfy dependencies. Use an artifact when a value is part of declared graph data flow.
 
-## Lifecycle requests
+After finalization, the same records remain available through the caller's `ContextRun` methods.
 
-Lifecycle methods submit requests to the engine coordinator. They do not interrupt Python at the call site and do not wait until the transition is visible. After making a request, return from the component promptly and let the engine apply it at a controlled boundary.
-
-### Pause
+## Pause
 
 ```python
 self.context.pause()
 self.context.pause(duration_seconds=30)
 ```
 
-Without a duration, the context remains paused until a supervising context resumes it. With a non-negative duration, the engine schedules resumption after that interval.
+Without a duration, the pause is indefinite and another authorized `ContextRun` must call `resume()`. With a duration, Jayrun schedules automatic resumption.
 
-Pause affects context scheduling; it is not equivalent to `await`, a thread sleep, or forceful suspension of the current instruction.
+Pause takes effect at a scheduling boundary. It is not a sleep, an `await`, or forced suspension of the current Python instruction.
 
-### Abort
+## Abort
 
 ```python
 self.context.abort()
 ```
 
-Abort requests that the engine stop dispatching further work and drain the context into an aborted terminal outcome. Use it when the remaining work should be abandoned intentionally rather than reported as an uncaught operator failure.
+Abort prevents further dispatch and drains accepted work toward `ABORTED`. The current invocation is not forcefully killed, so return promptly after requesting it.
 
-The current invocation is not forcibly killed. It should return promptly after requesting abort.
-
-### Stop the current iteration
+## Stop iteration
 
 ```python
 self.context.stop()
 ```
 
-In Jayrun, **stop means stop iteration**. It requests an orderly end to the current iteration and prevents another iteration from beginning. It does not mean “stop the context immediately.”
+Stop means stop iteration. Accepted work drains, and no next graph iteration begins. Use abort when remaining work should be abandoned; use stop when an iterative graph has reached its orderly completion condition.
 
-Use `stop()` when an iterative graph has reached its stopping condition. Use `abort()` when its remaining work should be abandoned.
-
-## Choosing artifacts or context values
-
-Use an artifact when the value is part of declared graph data flow. Use context storage when the value is observational or used for lifecycle decisions without defining a dependency.
-
-For example, a produced model is an artifact; a “best validation score so far” used by a supervising decision may be a context value. If downstream operators require that score as input, declare it as an artifact instead.
-
-## API reference
-
-The common storage methods are documented under {py:class}`ScopeInterface`.
-
-```{py:class} ContextInterface
-Context identity, storage, and lifecycle requests for the graph submission that owns the current execution.
-```
+## API summary
 
 ```{py:attribute} ContextInterface.id
 :type: int
 
-Identifier assigned by `Engine.submit()` to the current context.
+Identifier of the currently executing context.
+```
+
+```{py:method} ContextInterface.store(key, value) -> None
+Append a context-scoped value record.
 ```
 
 ```{py:method} ContextInterface.pause(duration_seconds=None) -> None
-Request that the current context pause at a controlled scheduling boundary.
-
-:param duration_seconds: Non-negative pause duration, or `None` to require explicit resumption by a supervisor.
-:type duration_seconds: int | float | None
-:raises TypeError: If `duration_seconds` is not an integer, float, or `None`; booleans are rejected.
-:raises ValueError: If `duration_seconds` is negative.
+Request a pause at a scheduling boundary. `None` means indefinite.
 ```
 
 ```{py:method} ContextInterface.abort() -> None
-Request that no further work be dispatched and that the current context drain toward an aborted terminal state.
+Prevent further dispatch and drain toward an aborted terminal state.
 ```
 
 ```{py:method} ContextInterface.stop() -> None
-Request an orderly end to the current iteration and prevent a later iteration from beginning.
+Prevent another graph iteration after accepted work drains.
 ```
 
-:::{important}
-Lifecycle methods enqueue requests. They neither interrupt the current Python instruction nor wait for the requested transition.
-:::
+Lifecycle calls enqueue messages and return immediately. Use a `ContextRun` wait when another participant must observe the transition.
 
-:::{versionadded} 0.1.0
-Context identity, scoped storage, and lifecycle requests were introduced.
-:::
-
-Next, see {doc}`Runtime Interface <runtime>` for information shared across contexts and supervising control.
+Continue with {doc}`Runtime Interface <runtime>` for graph-scoped supervision.

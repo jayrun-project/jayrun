@@ -5,18 +5,18 @@
 [![Documentation](https://github.com/jayrun-project/jayrun/actions/workflows/docs.yml/badge.svg)](https://github.com/jayrun-project/jayrun/actions/workflows/docs.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-Jayrun is an artifact-centric Python execution framework for computational graphs that need more than one-pass task scheduling. It coordinates data flow, iteration, shared resources, hardware placement, supervision, failure containment, and shutdown while keeping application components ordinary Python classes.
+Jayrun is a lightweight, artifact-centric Python framework for computational graphs that need iteration, shared resources, hardware placement, supervision, and reliable lifecycle management. Components remain ordinary synchronous or asynchronous Python classes; Jayrun coordinates when they run and who owns their data.
 
-Jayrun is useful when a workload must do one or more of the following:
+Jayrun fits workloads that need to:
 
-- iterate a graph or repeat selected operators;
-- share expensive runtime resources safely across submissions;
-- reserve CPU, GPU, or atomic multi-device capacity;
-- combine synchronous and asynchronous operators;
-- inspect, pause, resume, or abort contexts, and stop graph iteration;
-- supervise several contexts from another context;
-- retain declared results while clearing intermediate data;
-- apply retry and failure policies consistently.
+- iterate an entire graph or repeat one operator;
+- share an expensive model, client, or service across submissions;
+- reserve GPU or atomic multi-device capacity;
+- combine blocking libraries with an application event loop;
+- pause, resume, abort, or stop iteration through one `ContextRun` API;
+- supervise selected graph contexts from another graph;
+- retain declared results while releasing intermediate data;
+- apply retry, failure, and shutdown policies consistently.
 
 ## Installation
 
@@ -35,7 +35,7 @@ python -m pip install "jayrun[plotting]"  # Interactive validation graphs
 
 ## A complete first graph
 
-An artifact declares data flowing through a graph. An operator declares how that data is consumed and produced. Runtime values are supplied separately for each submission.
+An artifact declares data flowing through a graph. Runtime values and configuration are supplied separately for each submission.
 
 ```python
 from jayrun import (
@@ -49,61 +49,40 @@ from jayrun import (
     Engine,
     GraphDefinition,
 )
-from jayrun.context import ContextState
 
 
 class ScaleData(BaseOperator):
-    def __init__(
-        self,
-        *,
-        data: Artifact,
-        outputs: tuple[Artifact | None, ...],
-        name: str | None = None,
-    ) -> None:
-        super().__init__(name=name)
+    def __init__(self, *, data, outputs, name=None, description=None):
+        super().__init__(name=name, description=description)
         self.data = ArtifactField(required=True)
         self.factor = ConfigField(value_type=int, required=True)
         self.outputs = (ArtifactField(required=True),)
 
-    def execute(self) -> object:
+    def execute(self):
         return self.data.value * self.factor.value
 
 
 data = Artifact(name="data")
 scale = ScaleData(data=data, outputs=(data,), name="scale_data")
-data_flow = ArtifactFlow(scale, artifact=data)
-graph = GraphDefinition(data_flow, entry_flows=(data_flow,))
+flow = ArtifactFlow(scale, artifact=data)
+graph = GraphDefinition(flow, entry_flows=(flow,))
 
 artifacts = ArtifactContext(graph=graph)
 artifacts.set({data: 7})
-
 configs = ConfigContext(graph=graph)
 configs.set({scale.factor: 3})
 
 with Engine() as engine:
-    context_id = engine.submit(artifacts, configs)
-    snapshot = engine.wait(context_id)
-
-if snapshot is None or snapshot.state is not ContextState.FINISHED:
-    raise RuntimeError("the context did not finish successfully")
-
-print(snapshot.artifact(data).value)  # 21
+    run = engine.submit(artifacts, configs)
+    run.wait(timeout=10)
+    print(run.artifact(data).value)  # 21
 ```
 
-The graph definition is reusable. Each submission receives its own artifact values, configuration, settings, records, and lifecycle state.
+`Engine.submit()` returns a stable `ContextRun`. Calling `run.wait()` waits until the context is finalized, so retained artifacts and the terminal report are ready. The same object exposes live state and lifecycle control while work is active, then stored values and retained `ArtifactResult`s after completion. Applications that need to distinguish unsuccessful terminal outcomes can inspect `run.state` and `run.report.failure` before reading an artifact.
 
-## Core ideas
+## Public API
 
-| Concept | Purpose |
-|---|---|
-| Artifact | Declares data identity and flow through a graph |
-| Operator | Transforms artifacts or performs a terminal side effect |
-| Resource | Shares a runtime-managed value or capability safely |
-| Context | Isolates one graph submission and its lifecycle |
-| Placement | Reserves execution capacity on CPU or accelerator devices |
-| Supervisor | Lets running workflows observe and control other contexts |
-
-Graph-building primitives are imported from `jayrun`:
+Graph construction and execution:
 
 ```python
 from jayrun import Artifact, ArtifactContext, ArtifactField, ArtifactFlow
@@ -111,33 +90,31 @@ from jayrun import BaseOperator, BaseResource, ConfigContext, ConfigField
 from jayrun import Data, Engine, GraphDefinition, ResourceField
 ```
 
-Focused public APIs are grouped by purpose:
+Focused APIs:
 
 ```python
-from jayrun.context import ArtifactResult, ContextSnapshot, ContextState
+from jayrun.context import ArtifactResult, ContextRun, ContextState
 from jayrun.placement import Backend, Device, Placement, PlacementGroup
 from jayrun.properties import DTypeProperty, ShapeProperty, TypeProperty
 from jayrun.settings import ArtifactPolicy, ContextSettings, EngineSettings
 from jayrun.validation import GraphValidator
 ```
 
-Internal `jayrun.core.*` and `jayrun.engine.*` modules are implementation details and are not supported import paths.
+Modules under `jayrun.core` and `jayrun.engine` are implementation details.
 
 ## Documentation
 
-Read the [documentation](https://jayrun.readthedocs.io/en/latest/) for the conceptual model, complete tutorials, operational guidance, and API reference.
+Read the [documentation](https://jayrun.readthedocs.io/en/latest/) for the conceptual model, operational guidance, and complete tutorials:
 
-Recommended starting points:
-
-- [Introduction](https://jayrun.readthedocs.io/en/latest/introduction.html)
 - [Getting Started](https://jayrun.readthedocs.io/en/latest/getting-started.html)
+- [Build and Validate a Graph](https://jayrun.readthedocs.io/en/latest/tutorials/build-and-validate-graph.html)
 - [Denoise Images with FastAPI](https://jayrun.readthedocs.io/en/latest/tutorials/denoise-images-with-fastapi.html)
 - [MNIST Inference and Supervised Training on CUDA](https://jayrun.readthedocs.io/en/latest/tutorials/mnist-inference-and-training.html)
 - [API Reference](https://jayrun.readthedocs.io/en/latest/reference/api.html)
 
 ## Project status
 
-Jayrun 0.1.0 is an alpha release. Its public APIs are documented, but compatibility may change before 1.0 when a clearer or safer contract requires it. Report bugs and request features through [GitHub Issues](https://github.com/jayrun-project/jayrun/issues).
+Jayrun is under active development. Public APIs may still be refined before 1.0 when a clearer or safer contract requires it. Report bugs and request features through [GitHub Issues](https://github.com/jayrun-project/jayrun/issues).
 
 ## License
 

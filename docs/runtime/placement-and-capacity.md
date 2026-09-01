@@ -453,8 +453,5 @@ Canonical zero-capacity CPU location used by default {py:class}`jayrun.Data`.
 Type alias for `Placement | PlacementGroup`.
 ```
 
-:::{versionadded} 0.1.0
-Single-device and grouped placement leases, capacity reconciliation, placement-aware admission, and runtime placement history were introduced.
-:::
 
 Next, read {doc}`Engine and Context Lifecycle <engine-and-context-lifecycle>` for submission, waiting, retention, and shutdown behavior. Execution limits and runtime-device declarations are configured under {doc}`Execution Settings <../settings/execution-settings>`.

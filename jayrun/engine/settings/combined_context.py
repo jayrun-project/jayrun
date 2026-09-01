@@ -20,7 +20,6 @@ class CombinedContextSettings:
     artifact_policy: ArtifactPolicy
     max_iterations: int | None
     max_repeats: int | None
-    supervising: bool
 
     @classmethod
     def from_settings(
@@ -58,7 +57,6 @@ class CombinedContextSettings:
             artifact_policy=artifact_policy,
             max_iterations=context_settings.max_iterations,
             max_repeats=context_settings.max_repeats,
-            supervising=context_settings.supervising,
         )
 
     @classmethod

@@ -90,10 +90,12 @@ class ArtifactContext(DataContext[Artifact, Data]):
 
     def clear(self) -> None:
         """Remove every value from this context."""
+        self._require_mutable()
         self._instances.clear()
 
     def clear_entries(self) -> None:
         """Remove graph-entry values from this context and its release target."""
+        self._require_mutable()
         self._clear_entries()
         if self._release_target is not None:
             self._release_target._clear_entries()

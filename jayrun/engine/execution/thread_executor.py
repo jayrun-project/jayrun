@@ -37,9 +37,7 @@ class ThreadExecutor:
             if self._max_capacity - len(self._sessions) == 0:
                 raise RuntimeError("The queue is full!")
 
-        future = self._executor.submit(
-            session.step.proxy.execute,
-        )
+        future = self._executor.submit(self._execute_session, session)
 
         with self._lock:
             self._sessions[future] = session
@@ -62,16 +60,11 @@ class ThreadExecutor:
                     )
                     session.collect(failure)
                     self._failure_reporter(failure)
+                self._report_completion(session)
             else:
-                self._collect_result(session, future.result)
+                future.result()
         except BaseException as failure:
             self._failure_reporter(failure)
-        finally:
-            if session is not None:
-                try:
-                    self._completion_reporter(session)
-                except BaseException as failure:
-                    self._failure_reporter(failure)
 
     def cancel_contexts(self, context_ids: tuple[int, ...]) -> None:
         context_id_set = set(context_ids)
@@ -114,6 +107,18 @@ class ThreadExecutor:
             return
         session.collect(result)
 
+    def _execute_session(self, session: ExecutionSession) -> None:
+        try:
+            self._collect_result(session, session.step.proxy.execute)
+        finally:
+            self._report_completion(session)
+
+    def _report_completion(self, session: ExecutionSession) -> None:
+        try:
+            self._completion_reporter(session)
+        except BaseException as failure:
+            self._failure_reporter(failure)
+
     @property
     def free(
         self,
@@ -127,3 +132,7 @@ class ThreadExecutor:
     ) -> int:
         with self._lock:
             return len(self._sessions)
+
+    @property
+    def capacity(self) -> int:
+        return self._max_capacity

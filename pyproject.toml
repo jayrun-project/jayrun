@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jayrun"
-version = "0.1.0"
+version = "0.2.0"
 description = "Artifact-centric execution for iterative graphs, shared resources, and placement-aware workloads"
 readme = {file = "README.md", content-type = "text/markdown"}
 license = "Apache-2.0"
@@ -47,7 +47,6 @@ Homepage = "https://github.com/jayrun-project/jayrun"
 Documentation = "https://jayrun.readthedocs.io/"
 Repository = "https://github.com/jayrun-project/jayrun"
 Issues = "https://github.com/jayrun-project/jayrun/issues"
-Changelog = "https://github.com/jayrun-project/jayrun/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
 include-package-data = true

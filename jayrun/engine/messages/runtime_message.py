@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import TYPE_CHECKING
 
 from ..registry.identities import BaseIdentity
 
 if TYPE_CHECKING:
     from ..runtime import EngineRuntime
+
+
+class RuntimeMessagePriority(Enum):
+    ACTIVE = "active"
+    SUBMISSION = "submission"
 
 
 class RuntimeMessage(ABC):
@@ -31,3 +37,7 @@ class RuntimeMessage(ABC):
     @property
     def execute_during_shutdown(self) -> bool:
         return False
+
+    @property
+    def priority(self) -> RuntimeMessagePriority:
+        return RuntimeMessagePriority.ACTIVE

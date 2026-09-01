@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import math
 import threading
 
 from ...core.artifact.context import ArtifactContext
 from ...core.config.context import ConfigContext
+from ...core.graph.graph_definition import GraphDefinition
 from ..base.runtime_module import RuntimeModule
 from ..context.context_outcome import ContextOutcome
 from ..context.step_reference import StepReference
-from ..interfaces.services.accesses import RuntimeAccess
-from ..interfaces.services.runtime import RuntimeService
+from ..context_run import ContextRun
+from ..interfaces.services.accesses import ContextAccess, RuntimeAccess
+from ..interfaces.services.control import ContextControlService
+from ..interfaces.services.context import ContextService
 from ..interfaces.value_record import ValueRecord
 from ..messages.commands.resume_context import ResumeContextCommand
 from ..messages.events.context_registered import ContextRegisteredEvent
@@ -20,11 +24,11 @@ from ..settings.context import ContextSettings
 from ..settings.engine import FailureMode, RuntimeMode
 from .context_id_generator import ContextIdGenerator
 from .context_instance import ContextInstance
-from .context_snapshot import ContextSnapshot
 from .context_state import ContextState
 from .identities import (
     BaseIdentity,
     ContextIdentity,
+    ContextRunIdentity,
     EngineIdentity,
     RuntimeModuleIdentity,
     StepIdentity,
@@ -37,22 +41,28 @@ class RuntimeRegistry(RuntimeModule):
         self._closed = False
         self._contexts_lock = threading.RLock()
         self._contexts: dict[int, ContextInstance] = {}
-        self._active_context_ids: set[int] = set()
+        self._context_services: dict[int, ContextService] = {}
+        self._context_runs: dict[
+            tuple[int, BaseIdentity],
+            ContextRun,
+        ] = {}
         self._placement_requests: dict[
             int,
             dict[PlacementRequest, None],
         ] = {}
         self._context_id_generator = ContextIdGenerator()
-        self._runtime_service = RuntimeService(
+        self._control_service = ContextControlService(
             runtime_messenger=self._engine_runtime.messenger,
         )
 
     def register(
         self,
         artifacts: ArtifactContext,
-        configs: ConfigContext | None = None,
+        configs: ConfigContext,
+        supervises: tuple[GraphDefinition, ...],
+        identity: BaseIdentity,
         context_settings: ContextSettings | None = None,
-    ) -> int:
+    ) -> ContextRun:
         if self._closed:
             raise RuntimeError("runtime registry is closed")
         context_id = self._context_id_generator.generate()
@@ -60,11 +70,17 @@ class RuntimeRegistry(RuntimeModule):
             context_id=context_id,
             artifacts=artifacts,
             configs=configs,
+            supervises=supervises,
             engine_settings=self._engine_runtime.engine_settings,
             context_settings=context_settings,
         )
         with self._contexts_lock:
             self._contexts[context_id] = context
+            self._context_services[context_id] = ContextService(
+                runtime_messenger=self._engine_runtime.messenger,
+            )
+
+        run = self.context_run(context_id, ContextRunIdentity(context_id))
 
         if context._validate_submission(self.identity):
             context._queue(self.identity)
@@ -75,10 +91,10 @@ class RuntimeRegistry(RuntimeModule):
                 )
             )
         else:
-            context._mark_finalized()
+            self._finalize_context(context_id)
             self._decide_on_failure(context.failure)
 
-        return context_id
+        return run
 
     def request_shutdown(
         self,
@@ -96,14 +112,9 @@ class RuntimeRegistry(RuntimeModule):
         for context_id, context in self._context_items():
             if context.is_terminal:
                 if not context.finalized:
-                    self._complete_context(
-                        context_id,
-                        was_active=context_id in self._active_context_ids,
-                    )
-                    context._mark_finalized()
+                    self._finalize_context(context_id)
                 continue
 
-            was_active = context_id in self._active_context_ids
             if forced:
                 if not context.is_draining:
                     context._request_abort(self.identity)
@@ -131,8 +142,7 @@ class RuntimeRegistry(RuntimeModule):
                 )
 
             if context.is_terminal:
-                self._complete_context(context_id, was_active=was_active)
-                context._mark_finalized()
+                self._finalize_context(context_id)
 
         if emit_idle:
             self._emit_idle_if_needed()
@@ -150,49 +160,8 @@ class RuntimeRegistry(RuntimeModule):
         with self._contexts_lock:
             return self._contexts.get(context_id)
 
-    def snapshot_context(self, context_id: int) -> ContextSnapshot | None:
-        context = self.find_context(context_id)
-        return None if context is None else context._snapshot()
-
     def context_ids(self) -> tuple[int, ...]:
         return tuple(context_id for context_id, _ in self._context_items())
-
-    def delete_context(self, context_id: int) -> bool:
-        self._validate_context_id(context_id)
-        with self._contexts_lock:
-            context = self._contexts.get(context_id)
-            if context is None:
-                return False
-            if not context.is_terminal or not context.finalized:
-                raise RuntimeError("only finalized terminal contexts can be deleted")
-            del self._contexts[context_id]
-            return True
-
-    def prune_contexts(
-        self,
-        limit: int | None = None,
-    ) -> tuple[int, ...]:
-        self._validate_prune_limit(limit)
-        with self._contexts_lock:
-            eligible = [
-                (context.finished_at, context_id)
-                for context_id, context in self._contexts.items()
-                if context.is_terminal and context.finalized
-            ]
-            eligible.sort(
-                key=lambda item: (
-                    item[0] is None,
-                    item[0],
-                    item[1],
-                )
-            )
-            context_ids = tuple(
-                context_id
-                for _, context_id in (eligible if limit is None else eligible[:limit])
-            )
-            for context_id in context_ids:
-                del self._contexts[context_id]
-            return context_ids
 
     def create_context_recorder(
         self,
@@ -202,30 +171,89 @@ class RuntimeRegistry(RuntimeModule):
         return ProductionContextRecorder()
 
     def provide_runtime_access(self, context_id: int) -> RuntimeAccess:
-        context = self.get_context(context_id)
+        self.get_context(context_id)
+        identity = SupervisorIdentity(context_id=context_id)
         return RuntimeAccess(
-            supervising=context.is_supervising,
-            store=self.store_runtime_value,
-            get_records=self._runtime_service.get_records,
-            abort=self._runtime_service.abort,
-            stop=self._runtime_service.stop,
-            pause=self._runtime_service.pause,
-            resume=self._runtime_service.resume,
-            get_context=self.snapshot_context,
-            context_ids=self.context_ids,
-            active_context_ids=self.active_contexts,
-            paused_context_ids=self.paused_contexts,
+            contexts=lambda: self.context_runs(identity),
+            active_contexts=lambda: self.context_runs(
+                identity,
+                active_only=True,
+            ),
+            paused_contexts=lambda: self.context_runs(
+                identity,
+                state=ContextState.PAUSED,
+            ),
         )
 
-    def store_runtime_value(self, record: ValueRecord) -> None:
-        self._runtime_service.store(record)
+    def provide_context_access(self, context_id: int) -> ContextAccess:
+        service = self._get_context_service(context_id)
+        return ContextAccess(
+            pause=self._control_service.pause,
+            abort=self._control_service.abort,
+            stop=self._control_service.stop,
+            get_records=service.get_records,
+            store=service.store,
+        )
+
+    def context_run(
+        self,
+        context_id: int,
+        identity: BaseIdentity,
+    ) -> ContextRun:
+        """Return the stable run authorized for one caller and context."""
+        with self._contexts_lock:
+            context = self._authorize_run_access(context_id, identity)
+            key = (context_id, identity)
+            run = self._context_runs.get(key)
+            if run is None:
+                run = ContextRun(
+                    context=context,
+                    context_service=self._context_services[context_id],
+                    control_service=self._control_service,
+                    identity=identity,
+                )
+                self._context_runs[key] = run
+            return run
+
+    def context_runs(
+        self,
+        identity: BaseIdentity,
+        *,
+        active_only: bool = False,
+        state: ContextState | None = None,
+    ) -> tuple[ContextRun, ...]:
+        """Return live runs visible to ``identity`` in submission order."""
+        if not isinstance(active_only, bool):
+            raise TypeError("active_only must be a bool")
+        if state is not None and not isinstance(state, ContextState):
+            raise TypeError("state must be a ContextState instance or None")
+        if active_only and state is not None:
+            raise ValueError("active_only and state cannot be combined")
+
+        contexts = self._visible_contexts(identity)
+        if active_only:
+            contexts = tuple(context for context in contexts if context.is_active)
+        elif state is not None:
+            contexts = tuple(context for context in contexts if context.state is state)
+
+        runs: list[ContextRun] = []
+        for context in contexts:
+            try:
+                runs.append(
+                    self.context_run(
+                        context.context_id,
+                        self._run_identity_for(identity, context),
+                    )
+                )
+            except KeyError:
+                continue
+        return tuple(runs)
 
     def start_context(self, context_id: int, identity: BaseIdentity) -> None:
-        context = self.get_context(context_id)
-        if context.is_terminal:
+        context = self.find_context(context_id)
+        if context is None or context.is_terminal:
             return
         context._start(identity)
-        self._active_context_ids.add(context_id)
 
     def reiterate_context(self, context_id: int, identity: BaseIdentity) -> bool:
         context = self.get_context(context_id)
@@ -250,11 +278,9 @@ class RuntimeRegistry(RuntimeModule):
             ContextState.PAUSED,
         }:
             return
-        was_active = context_id in self._active_context_ids
         context._request_stop(identity)
         if context.is_terminal:
-            self._complete_context(context_id, was_active=was_active)
-            context._mark_finalized()
+            self._finalize_context(context_id)
 
     def pause_context(
         self,
@@ -327,8 +353,6 @@ class RuntimeRegistry(RuntimeModule):
         context = self.get_context(request.context_id)
         if context.is_terminal or context.is_draining:
             raise RuntimeError("terminal context cannot wait for placement")
-        # Changed: requests are grouped directly by context ID, avoiding a
-        # wrapper object and making context-wide cancellation constant-time.
         requests = self._placement_requests.setdefault(request.context_id, {})
         requests.setdefault(request, None)
         if not context.is_paused:
@@ -387,7 +411,6 @@ class RuntimeRegistry(RuntimeModule):
         context = self.find_context(context_id)
         if context is None or context.is_terminal or context.is_draining:
             return
-        was_active = context_id in self._active_context_ids
         context._request_abort(identity)
 
         if context.is_aborting:
@@ -395,8 +418,19 @@ class RuntimeRegistry(RuntimeModule):
             self._engine_runtime.resource_manager.cancel_context_placements(context_id)
 
         if context.is_aborted:
-            self._complete_context(context_id, was_active=was_active)
-            context._mark_finalized()
+            self._finalize_context(context_id)
+
+    def store_context_record(
+        self,
+        record: ValueRecord,
+        identity: BaseIdentity,
+    ) -> None:
+        if not isinstance(record, ValueRecord):
+            raise TypeError("record must be a ValueRecord instance")
+        if not self._authorize_control(record.context_id, identity):
+            return
+        service = self._get_context_service(record.context_id)
+        service.record(record)
 
     def fail_context(
         self,
@@ -418,20 +452,18 @@ class RuntimeRegistry(RuntimeModule):
         context_id: int,
         outcome: ContextOutcome,
     ) -> None:
-        context = self.get_context(context_id)
+        context = self.find_context(context_id)
+        if context is None:
+            return
 
         if context.is_terminal and context.finalized:
             return
 
         if context.is_terminal:
-            self._complete_context(
-                context_id,
-                was_active=context_id in self._active_context_ids,
-            )
-            context._mark_finalized()
+            self._finalize_context(context_id)
             return
 
-        context._load_report(outcome.report)
+        context._load_executions(outcome.executions)
 
         if outcome.artifacts is not None:
             context._load_artifacts(outcome.artifacts)
@@ -450,20 +482,9 @@ class RuntimeRegistry(RuntimeModule):
             )
             context._complete_failure(outcome.actor)
 
-        self._complete_context(context_id)
-        context._mark_finalized()
+        self._finalize_context(context_id)
         if outcome.failure is not None:
             self._decide_on_failure(outcome.failure)
-
-    def active_contexts(self) -> tuple[int, ...]:
-        return tuple(
-            context_id
-            for context_id, context in self._context_items()
-            if context.is_active
-        )
-
-    def paused_contexts(self) -> tuple[int, ...]:
-        return self._contexts_by_state(ContextState.PAUSED)
 
     def draining_contexts(self) -> tuple[int, ...]:
         return tuple(
@@ -472,55 +493,139 @@ class RuntimeRegistry(RuntimeModule):
             if context.is_draining
         )
 
-    def placement_waiting_contexts(self) -> tuple[int, ...]:
-        return self._contexts_by_state(ContextState.PLACEMENT_WAITING)
-
-    def finished_contexts(self) -> tuple[int, ...]:
-        return self._contexts_by_state(ContextState.FINISHED)
-
-    def stopped_contexts(self) -> tuple[int, ...]:
-        return self._contexts_by_state(ContextState.STOPPED)
-
-    def failed_contexts(self) -> tuple[int, ...]:
-        return self._contexts_by_state(ContextState.FAILED)
-
-    def aborted_contexts(self) -> tuple[int, ...]:
-        return self._contexts_by_state(ContextState.ABORTED)
-
     def _authorize_control(
         self,
         context_id: int,
         identity: BaseIdentity,
     ) -> bool:
-        if isinstance(identity, (EngineIdentity, RuntimeModuleIdentity)):
-            return True
+        try:
+            self._authorize_run_access(context_id, identity)
+        except KeyError:
+            return False
+        except PermissionError:
+            if isinstance(identity, SupervisorIdentity):
+                return False
+            raise
+        return True
 
-        if isinstance(identity, (ContextIdentity, StepIdentity)):
+    def _authorize_run_access(
+        self,
+        context_id: int,
+        identity: BaseIdentity,
+    ) -> ContextInstance:
+        self._validate_context_id(context_id)
+        if not isinstance(identity, BaseIdentity):
+            raise TypeError("identity must be a BaseIdentity instance")
+
+        target = self.find_context(context_id)
+        if target is None:
+            raise KeyError(f"unknown context_id: {context_id!r}")
+
+        if isinstance(identity, (EngineIdentity, RuntimeModuleIdentity)):
+            return target
+
+        if isinstance(identity, (ContextIdentity, ContextRunIdentity, StepIdentity)):
             if identity.context_id == context_id:
-                return True
-            raise PermissionError("a context can only control itself")
+                return target
+            raise PermissionError("a context can only access itself")
 
         if isinstance(identity, SupervisorIdentity):
             supervisor = self.find_context(identity.context_id)
-            if supervisor is None:
-                return False
-            if supervisor.is_supervising:
-                return True
-            raise PermissionError("context is not supervising")
+            if supervisor is None or supervisor.is_terminal:
+                raise PermissionError("supervising context is no longer active")
+            if supervisor.context_id == context_id:
+                raise PermissionError("a supervising context does not supervise itself")
+            if any(
+                target.graph is graph
+                for graph in supervisor.supervised_graphs
+            ):
+                return target
+            raise PermissionError(
+                "target graph was not included in this context's supervises scope"
+            )
 
-        raise PermissionError("identity cannot control contexts")
+        raise PermissionError("identity cannot access contexts")
 
-    def _complete_context(
+    def _visible_contexts(
         self,
-        context_id: int,
-        was_active: bool = True,
-    ) -> None:
-        self._placement_requests.pop(context_id, None)
-        self._engine_runtime.resource_manager.cancel_context_placements(context_id)
-        if not was_active or context_id not in self._active_context_ids:
+        identity: BaseIdentity,
+    ) -> tuple[ContextInstance, ...]:
+        if not isinstance(identity, BaseIdentity):
+            raise TypeError("identity must be a BaseIdentity instance")
+
+        contexts = tuple(context for _, context in self._context_items())
+        if isinstance(identity, (EngineIdentity, RuntimeModuleIdentity)):
+            return contexts
+        if isinstance(identity, (ContextIdentity, ContextRunIdentity, StepIdentity)):
+            return tuple(
+                context
+                for context in contexts
+                if context.context_id == identity.context_id
+            )
+        if isinstance(identity, SupervisorIdentity):
+            supervisor = self.find_context(identity.context_id)
+            if supervisor is None or supervisor.is_terminal:
+                return ()
+            return tuple(
+                context
+                for context in contexts
+                if context.context_id != supervisor.context_id
+                and any(
+                    context.graph is graph
+                    for graph in supervisor.supervised_graphs
+                )
+            )
+        raise PermissionError("identity cannot access contexts")
+
+    @staticmethod
+    def _run_identity_for(
+        identity: BaseIdentity,
+        context: ContextInstance,
+    ) -> BaseIdentity:
+        if isinstance(identity, (EngineIdentity, RuntimeModuleIdentity)):
+            return ContextRunIdentity(context.context_id)
+        return identity
+
+    def _get_context_service(self, context_id: int) -> ContextService:
+        self.get_context(context_id)
+        with self._contexts_lock:
+            try:
+                return self._context_services[context_id]
+            except KeyError:
+                raise RuntimeError(
+                    f"context storage is unavailable for {context_id!r}"
+                ) from None
+
+    def _drop_context_runs(self, context_id: int) -> None:
+        for key in tuple(self._context_runs):
+            target_id, identity = key
+            if target_id == context_id or (
+                isinstance(identity, SupervisorIdentity)
+                and identity.context_id == context_id
+            ):
+                run = self._context_runs.pop(key, None)
+                if run is not None:
+                    run._detach_control()
+
+    def _finalize_context(self, context_id: int) -> None:
+        context = self.find_context(context_id)
+        if context is None:
             return
 
-        self._active_context_ids.remove(context_id)
+        self._placement_requests.pop(context_id, None)
+        self._engine_runtime.resource_manager.cancel_context_placements(context_id)
+        self._engine_runtime.context_scheduler.release_context(context_id)
+        context._mark_finalized()
+
+        with self._contexts_lock:
+            if self._contexts.get(context_id) is not context:
+                return
+            self._contexts.pop(context_id, None)
+            service = self._context_services.pop(context_id, None)
+            self._drop_context_runs(context_id)
+
+        if service is not None:
+            service.close()
         self._emit_idle_if_needed()
 
     def _emit_idle_if_needed(self) -> None:
@@ -538,7 +643,18 @@ class RuntimeRegistry(RuntimeModule):
             raise RuntimeError("cannot close while contexts are nonterminal")
         if self._placement_requests:
             raise RuntimeError("cannot close with pending placement requests")
+
+        for context_id, _ in self._context_items():
+            self._finalize_context(context_id)
+        for service in self._context_services.values():
+            service.close()
+        for run in self._context_runs.values():
+            run._detach_control()
+        self._context_services.clear()
+        self._context_runs.clear()
+        self._control_service.close()
         self._closed = True
+        self._engine_runtime = None
 
     def _decide_on_failure(self, failure: Exception | None) -> None:
         if failure is None:
@@ -546,24 +662,10 @@ class RuntimeRegistry(RuntimeModule):
         if self._engine_runtime.engine_settings.failure_mode is FailureMode.FAIL_FAST:
             self._engine_runtime.gateway.notify_failed_state(failure)
 
-    def _contexts_by_state(self, state: ContextState) -> tuple[int, ...]:
-        return tuple(
-            context_id
-            for context_id, context in self._context_items()
-            if context.state is state
-        )
-
     @staticmethod
     def _validate_context_id(context_id: int) -> None:
         if type(context_id) is not int:
             raise TypeError("context_id must be int")
-
-    @staticmethod
-    def _validate_prune_limit(limit: int | None) -> None:
-        if isinstance(limit, bool) or not isinstance(limit, (int, type(None))):
-            raise TypeError("limit must be an int or None")
-        if limit is not None and limit < 0:
-            raise ValueError("limit must be non-negative")
 
     def _context_items(self) -> tuple[tuple[int, ContextInstance], ...]:
         lock = getattr(self, "_contexts_lock", None)
@@ -578,8 +680,13 @@ class RuntimeRegistry(RuntimeModule):
         return any(not context.is_terminal for _, context in self._context_items())
 
     @staticmethod
-    def _validate_duration(duration: float | None) -> None:
-        if not isinstance(duration, (int, float, type(None))):
+    def _validate_duration(duration: int | float | None) -> None:
+        if isinstance(duration, bool) or not isinstance(
+            duration,
+            (int, float, type(None)),
+        ):
             raise TypeError("duration must be int, float, or None")
-        if duration is not None and duration < 0:
-            raise ValueError("duration must be non-negative")
+        if duration is not None and (
+            duration < 0 or not math.isfinite(duration)
+        ):
+            raise ValueError("duration must be finite and non-negative")

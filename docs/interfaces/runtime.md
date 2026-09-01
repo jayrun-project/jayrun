@@ -1,167 +1,125 @@
 (runtime-interface)=
 # Runtime Interface
 
-`self.runtime` addresses the engine runtime shared by all registered contexts. Its storage API is generally available to running components, while cross-context inspection and lifecycle control require supervising capability.
+`self.runtime` lets a supervising graph observe and control selected live contexts through `ContextRun` objects.
 
-## Runtime-scoped values
+## Grant supervision at submission
 
-```python
-self.runtime.store("service_generation", 4)
-generation = self.runtime.get_value("service_generation")
-```
-
-Runtime storage supports information shared across contexts. Because it is wider than context scope and remains available for the runtime's lifetime, use it deliberately:
-
-- prefer artifacts for graph data;
-- prefer context storage for per-context progress;
-- avoid retaining large context-specific objects at runtime scope.
-
-Deleting the context that created a runtime record does not remove that record. Runtime storage therefore supports genuine cross-context state, but it can also retain referenced objects until shutdown.
-
-:::{warning}
-Do not use runtime storage as an unbounded result cache. Stored payloads remain reachable until runtime shutdown.
-:::
-
-## Supervising contexts
-
-Cross-context capabilities are available only when the current context was submitted with {py:attr}`jayrun.settings.ContextSettings.supervising` enabled. This restriction lets ordinary operators use runtime records without granting them authority over unrelated work.
-
-A supervisor can inspect context lifecycle, review finalized outcomes, share progress through runtime-scoped values, and request lifecycle changes. Capability is enforced by the runtime; an operator name or class hierarchy does not grant it.
-
-## Context inspection
+Submit a supervisor like any other graph and name the exact graph objects it may supervise:
 
 ```python
-snapshot = self.runtime.get(context_id)
-
-all_ids = self.runtime.context_ids
-active_ids = self.runtime.active_context_ids
-paused_ids = self.runtime.paused_context_ids
+supervisor_run = engine.submit(
+    supervisor_artifacts,
+    supervisor_configs,
+    supervises=(training_graph,),
+)
 ```
 
-`get(context_id)` returns a structurally immutable `ContextSnapshot`, or `None` if the identifier is unavailable. Depending on lifecycle state, the snapshot can expose state, revision, history, failure information, a finalized report, and retained artifact results.
+There is no global supervising flag and no list of context IDs in the supervisor configuration. Graph-object identity defines the scope. The runtime exposes only currently registered contexts whose `run.graph is training_graph`.
 
-A snapshot is a point-in-time observation, not a live context object. Call `get()` again to observe a later revision. It does not expose another context's context-scoped key-value store. Objects contained in artifact results are referenced rather than deep-copied, so their own mutability is unchanged.
-
-The ID properties return tuples:
-
-- `context_ids` contains all registered context IDs;
-- `active_context_ids` contains contexts currently participating in runtime work;
-- `paused_context_ids` contains paused contexts.
-
-Inspection never exposes mutable registry or execution-context internals.
-
-## Supervising lifecycle requests
+## Observe authorized runs
 
 ```python
-self.runtime.pause(context_id)
-self.runtime.pause(context_id, duration_seconds=30)
-self.runtime.resume(context_id)
-self.runtime.stop(context_id)
-self.runtime.abort(context_id)
+candidates = self.runtime.contexts
+active = self.runtime.active_contexts
+paused = self.runtime.paused_contexts
 ```
 
-The terminology matches `self.context`:
+All three properties return tuples of stable {py:class}`jayrun.context.ContextRun` objects in submission order:
 
-- `pause()` requests a paused state;
-- `resume()` requests that a paused context continue;
-- `stop()` stops iteration;
-- `abort()` stops further dispatch and drains the context.
+- `contexts` contains every visible non-terminal run;
+- `active_contexts` contains visible active or draining runs;
+- `paused_contexts` contains visible runs currently paused.
 
-These methods enqueue coordinator commands. They do not block until the target reaches the requested state. Inspect a later snapshot when confirmation matters.
+A supervisor does not see itself and does not see contexts from graph objects outside its `supervises` scope.
 
-## Capability errors
+## Wait without polling
 
-Calling cross-context inspection or control from a context without {py:attr}`jayrun.settings.ContextSettings.supervising` enabled raises `RuntimeCapabilityError`. This is a capability boundary, not a recoverable absence of the target context.
-
-For a supervising context, `get()` returns `None` when a correctly typed context ID is not registered. Invalid argument types raise public input errors.
-
-## Runtime values are not durable storage
-
-Runtime records disappear with runtime cleanup. Use an operator to write important state to a database, object store, or filesystem when it must survive engine shutdown.
-
-## API reference
-
-The common storage methods are documented under {py:class}`ScopeInterface`.
-
-```{py:exception} RuntimeCapabilityError
-Raised when a context without supervising capability attempts cross-context inspection or control.
+```python
+await self.runtime.wait_async(
+    candidates,
+    ContextState.PAUSED,
+    timeout=120,
+)
 ```
 
-```{py:class} RuntimeInterface
-Runtime-scoped storage and capability-controlled cross-context operations.
+The asynchronous form suspends the supervising coroutine until every run reaches the requested non-terminal state or terminates. The synchronous `wait()` form has the same behavior, but must not be used to block the event-loop thread.
+
+Omit the state to wait for terminal finalization:
+
+```python
+await self.runtime.wait_async(candidates, timeout=120)
 ```
 
-```{py:method} RuntimeInterface.get(context_id) -> ContextSnapshot | None
-Return the current immutable snapshot for `context_id`, or `None` when it is not registered.
+## Read progress and control a run
 
-:param int context_id: Target context identifier.
-:raises RuntimeCapabilityError: If the current context is not supervising.
-:raises TypeError: If `context_id` is not exactly an integer.
+Workers publish progress into their own context:
+
+```python
+self.context.store("validation_accuracy", accuracy)
+self.context.pause()
 ```
 
-```{py:attribute} RuntimeInterface.context_ids
-:type: tuple[int, ...]
+The supervisor reads that record and acts on the same run object:
 
-Identifiers of all registered contexts.
+```python
+ranking = sorted(
+    candidates,
+    key=lambda run: run.get_value("validation_accuracy"),
+    reverse=True,
+)
 
-:raises RuntimeCapabilityError: If the current context is not supervising.
+winner, *discarded = ranking
+for run in discarded:
+    run.abort()
+
+winner.stop()
+winner.resume()
 ```
 
-```{py:attribute} RuntimeInterface.active_context_ids
-:type: tuple[int, ...]
+The operations are symmetrical with application-held runs:
 
-Identifiers of registered contexts currently participating in runtime work.
+- `run.pause()` requests a finite or indefinite pause;
+- `run.resume()` continues a paused context;
+- `run.stop()` prevents another graph iteration;
+- `run.abort()` prevents further dispatch and begins abortion cleanup.
 
-:raises RuntimeCapabilityError: If the current context is not supervising.
+Control requests cross the coordinator message boundary and return immediately. Await the run or a state transition when confirmation matters.
+
+## Authority and lifetime
+
+Each runtime-provided run carries an internal supervisor identity. Control is authorized again when the message is processed. User code never handles identities directly.
+
+When the supervising context terminates, its cross-context authority is detached. A retained supervisor-side run can still be inspected, but attempting to control an active target through it raises `RuntimeError`.
+
+Supervisors intentionally cannot submit new contexts. Application code remains responsible for originating replacement work; the supervisor reports a decision as its output artifact, and the application submits the next cohort.
+
+## API summary
+
+```{py:attribute} RuntimeInterface.contexts
+:type: tuple[jayrun.context.ContextRun, ...]
+
+Visible non-terminal runs in submission order.
 ```
 
-```{py:attribute} RuntimeInterface.paused_context_ids
-:type: tuple[int, ...]
+```{py:attribute} RuntimeInterface.active_contexts
+:type: tuple[jayrun.context.ContextRun, ...]
 
-Identifiers of paused contexts.
-
-:raises RuntimeCapabilityError: If the current context is not supervising.
+Visible active or draining runs.
 ```
 
-```{py:method} RuntimeInterface.pause(context_id, duration_seconds=None) -> None
-Request that another context pause.
+```{py:attribute} RuntimeInterface.paused_contexts
+:type: tuple[jayrun.context.ContextRun, ...]
 
-:param int context_id: Target context identifier.
-:param duration_seconds: Non-negative pause duration, or `None` for explicit resumption.
-:type duration_seconds: int | float | None
-:raises RuntimeCapabilityError: If the current context is not supervising.
-:raises TypeError: If either argument has an invalid type; booleans are not valid durations.
-:raises ValueError: If `duration_seconds` is negative.
+Visible paused runs.
 ```
 
-```{py:method} RuntimeInterface.resume(context_id) -> None
-Request that a paused context resume.
-
-:param int context_id: Target context identifier.
-:raises RuntimeCapabilityError: If the current context is not supervising.
-:raises TypeError: If `context_id` is not exactly an integer.
+```{py:method} RuntimeInterface.wait(runs, state=None, *, timeout=None)
+Synchronously wait for visible runs and return the supplied run or tuple.
 ```
 
-```{py:method} RuntimeInterface.stop(context_id) -> None
-Request that the target context end its current iteration and begin no later iteration.
-
-:param int context_id: Target context identifier.
-:raises RuntimeCapabilityError: If the current context is not supervising.
-:raises TypeError: If `context_id` is not exactly an integer.
+```{py:method} RuntimeInterface.wait_async(runs, state=None, *, timeout=None)
+Asynchronously wait for visible runs and return the supplied run or tuple.
 ```
 
-```{py:method} RuntimeInterface.abort(context_id) -> None
-Request that no further work be dispatched for the target context and that it drain toward an aborted terminal state.
-
-:param int context_id: Target context identifier.
-:raises RuntimeCapabilityError: If the current context is not supervising.
-:raises TypeError: If `context_id` is not exactly an integer.
-```
-
-:::{versionadded} 0.1.0
-Runtime-scoped storage and supervising context operations were introduced.
-:::
-
-Next, see {doc}`Placement Interface <placement>`, which requests leases from runtime-managed capacity without creating another scope.
-
-For an end-to-end control pattern, see {doc}`MNIST Inference and Supervised Training <../tutorials/mnist-inference-and-training>`.
+Continue with {doc}`Placement Interface <placement>`. For a complete selection procedure, see {doc}`MNIST Inference and Supervised Training <../tutorials/mnist-inference-and-training>`.

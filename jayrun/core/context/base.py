@@ -24,12 +24,21 @@ class DataContext(Generic[SourceT, ValueT]):
         self._name = name
         self._description = description
         self._instances: dict[SourceT, ValueT] = {}
+        self._sealed = False
 
     def _update_instances(
         self,
         instances: Mapping[SourceT, ValueT],
     ) -> None:
+        self._require_mutable()
         self._instances.update(instances)
+
+    def _seal(self) -> None:
+        self._sealed = True
+
+    def _require_mutable(self) -> None:
+        if self._sealed:
+            raise RuntimeError("submitted contexts are read-only")
 
     @property
     def name(self) -> str | None:

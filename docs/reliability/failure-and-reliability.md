@@ -5,17 +5,13 @@ Jayrun separates failures by ownership. Invalid public calls fail at the caller 
 
 This model contains failures; it does not make arbitrary computation transactional or exactly once.
 
-:::{versionadded} 0.1.0
-The failure-containment, centralized shutdown, startup-rollback, and cleanup-reporting model described here is part of Jayrun's initial public lifecycle contract.
-:::
-
 ## Failure categories
 
 | Category | Typical source | Observable result | Engine effect |
 |---|---|---|---|
 | Public input error | Invalid argument type, range, or call state | The public method raises | None |
-| Context rejection | Invalid graph values, missing required data, or unresolved context policy | Finalized `REJECTED` snapshot with `failure` | Governed by failure mode |
-| Execution failure | Operator, resource, placement, or result-contract failure | Retry, then finalized `FAILED` snapshot if exhausted | Governed by failure mode |
+| Context rejection | Invalid graph values, missing required data, or unresolved context policy | Finalized `ContextRun` in `REJECTED` with `report.failure` | Governed by failure mode |
+| Execution failure | Operator, resource, placement, or result-contract failure | Retry, then a finalized run in `FAILED` if exhausted | Governed by failure mode |
 | Runtime module failure | Coordinator, executor, registry, messaging, or resource-manager fault | Primary engine failure | Forced coordinated shutdown |
 | Cleanup failure | Module or resource teardown fault | `cleanup_failures` and possibly primary engine failure | Engine ends `FAILED` |
 | Internal invariant violation | Framework state contradicts its own lifecycle rules | Fatal engine failure | Forced coordinated shutdown |
@@ -38,7 +34,7 @@ engine = Engine()
 engine.start()
 
 try:
-    engine.submit(object())
+    engine.submit(object(), object())
 except TypeError:
     assert engine.state.value == "running"
 finally:
@@ -47,7 +43,7 @@ finally:
 
 These errors do not create a context and do not fail a running engine.
 
-Validation that requires a registered context is different. For example, missing required artifact or configuration values can produce a context ID whose finalized snapshot is `REJECTED`. Inspect {py:attr}`ContextSnapshot.failure` for the cause.
+Validation that requires a registered context is different. For example, missing required artifact or configuration values produce a `ContextRun` that finalizes in `REJECTED`. Inspect `run.report.failure` for the cause.
 
 ## Context failures
 
@@ -64,16 +60,16 @@ When execution fails, Jayrun first applies the effective {py:class}`jayrun.setti
 Output-free terminal operators are ordinary executions for failure handling. A successful external write completes the step without publishing an artifact; an exception still follows retry and context-failure policy. Because a retry may repeat the write, sink operations should be idempotent or transactional. See {ref}`terminal-operators`.
 
 ```python
-snapshot = engine.wait(context_id)
+run.wait()
 
-if snapshot.state.value in {"failed", "rejected"}:
-    print(type(snapshot.failure).__name__, snapshot.failure)
-    print(snapshot.failed_step)
+if run.state.value in {"failed", "rejected"}:
+    print(type(run.report.failure).__name__, run.report.failure)
+    print(run.report.failed_step)
 ```
 
-{py:meth}`jayrun.Engine.wait` and {py:meth}`jayrun.Engine.wait_async` return normal context failures in the snapshot; they do not raise them in the waiting application.
+`ContextRun.wait()`, `Engine.wait()`, and their asynchronous counterparts report normal context failures through the run; they do not raise them in the waiting application.
 
-Failed and aborted contexts do not retain artifact payloads. Their lifecycle history, failure, failed-step reference, and available diagnostic report remain inspectable until deletion, pruning, or engine shutdown.
+Failed and aborted contexts do not retain successful artifact payloads. Their lifecycle history, failure, failed-step reference, stored values, and diagnostic report remain inspectable through a run already held by the caller.
 
 ## `continue` behavior
 
@@ -86,7 +82,7 @@ from jayrun.settings import EngineSettings, FailureMode
 engine = Engine(EngineSettings(failure_mode=FailureMode.CONTINUE))
 ```
 
-`CONTINUE` is context-failure isolation. It does not suppress the failure: the terminal snapshot still reports it, and observability records retain the available diagnostics.
+`CONTINUE` is context-failure isolation. It does not suppress the failure: the terminal run still reports it, and observability records retain the available diagnostics.
 
 ## `fail_fast` behavior
 
@@ -132,7 +128,7 @@ See {doc}`Engine and Context Lifecycle <../runtime/engine-and-context-lifecycle>
 
 Jayrun has one internal lifecycle supervisor responsible for startup, fatal-failure recording, shutdown ownership, cleanup, and the final engine state. This prevents independent modules from running competing shutdown procedures.
 
-This internal mechanism is distinct from workflow supervision through {py:class}`RuntimeInterface`. A supervising context may inspect and control existing contexts according to its capabilities. It does not originate contexts, own the engine lifecycle, or replace the internal failure supervisor.
+This internal mechanism is distinct from workflow supervision through `self.runtime`. A supervising context may inspect and control authorized existing runs. It does not originate contexts, own the engine lifecycle, or replace the internal failure supervisor.
 
 :::{note}
 Applications originate contexts through {py:meth}`jayrun.Engine.submit`. Supervising contexts operate only on contexts that already exist.
@@ -212,7 +208,7 @@ Such failures indicate a framework defect or corrupted runtime state. Jayrun kee
 
 Public misuse is not an invariant violation. Invalid public arguments and invalid graph inputs follow their documented public-error or context-rejection paths.
 
-When reporting a suspected invariant violation, retain the primary failure, secondary and cleanup failures, engine state, affected context snapshots, debug-mode records, and the smallest reproducing graph.
+When reporting a suspected invariant violation, retain the primary failure, secondary and cleanup failures, engine state, affected context runs, debug-mode records, and the smallest reproducing graph.
 
 ## Related reference
 

@@ -7,10 +7,11 @@ from ..recorders.artifact.record import ArtifactRecord
 
 @dataclass(frozen=True, slots=True)
 class ArtifactResult:
-    """A retained artifact value and its lifecycle report.
+    """Finalized artifact data and its lifecycle report.
 
     Attributes:
-        data: Retained value and placement.
+        data: Final value and placement. Its payload is ``None`` when cleared or
+            not retained.
         report: Ordered artifact lifecycle records.
     """
 
@@ -19,10 +20,10 @@ class ArtifactResult:
 
     @property
     def value(self) -> object:
-        """Retained artifact value, or ``None`` when its payload was released."""
+        """Final artifact value, or ``None`` when its payload was released."""
         return self.data.value
 
     @property
     def placement(self) -> PlacementLocation:
-        """Placement on which the retained value resides."""
+        """Placement associated with the final data container."""
         return self.data.placement

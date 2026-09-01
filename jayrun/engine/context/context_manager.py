@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from ..base.runtime_module import RuntimeModule
 from ..execution.execution_mode import ExecutionMode
-from ..interfaces.services.accesses import ContextAccess
-from ..interfaces.services.context import ContextService
 from ..messages.commands.start_context import StartContextCommand
 from ..registry.context_instance import ContextInstance
 from ..resource.placement_request import PlacementRequest
@@ -23,6 +21,7 @@ class ContextManager(RuntimeModule):
             raise RuntimeError("context manager is closed")
         context_id = context_instance.context_id
         if context_instance.is_terminal:
+            self._engine_runtime.context_scheduler.release_context(context_id)
             return
         if context_id in self._contexts:
             raise ValueError(f"context {context_id!r} is already registered")
@@ -31,15 +30,8 @@ class ContextManager(RuntimeModule):
         runtime_access = self._engine_runtime.registry.provide_runtime_access(
             context_id
         )
-        context_service = ContextService(
-            runtime_messenger=self._engine_runtime.messenger
-        )
-        context_access = ContextAccess(
-            pause=context_service.pause,
-            abort=context_service.abort,
-            stop=context_service.stop,
-            get_records=context_service.get_records,
-            store=context_service.store,
+        context_access = self._engine_runtime.registry.provide_context_access(
+            context_id
         )
         execution_context = ExecutionContext(
             context_instance=context_instance,
@@ -60,6 +52,7 @@ class ContextManager(RuntimeModule):
             )
         except BaseException as failure:
             self._contexts.pop(context_id, None)
+            self._engine_runtime.context_scheduler.release_context(context_id)
             try:
                 execution_context._rollback_initialization()
             except BaseException as cleanup_failure:
@@ -71,31 +64,33 @@ class ContextManager(RuntimeModule):
     def acquire(
         self,
         capacities: dict[ExecutionMode, int],
+        supervision_capacities: dict[ExecutionMode, int],
     ) -> tuple[ExecutionSession, ...]:
         sessions: list[ExecutionSession] = []
-        remaining = capacities.copy()
 
         contexts = tuple(self._contexts.values())
         supervisors = tuple(context for context in contexts if context.is_supervising)
         ordinary = tuple(context for context in contexts if not context.is_supervising)
 
         try:
-            for context in (*supervisors, *ordinary):
-                context.finalize_if_drained()
-                if context.terminated:
-                    self._close_context(context)
-                    continue
+            for group, available in (
+                (supervisors, supervision_capacities),
+                (ordinary, capacities),
+            ):
+                remaining = available.copy()
+                for context in group:
+                    context.finalize_if_drained()
+                    if context.terminated:
+                        self._close_context(context)
+                        continue
 
-                for mode, capacity in tuple(remaining.items()):
-                    for _ in range(capacity):
-                        session = context.dispatch_next(mode)
-                        if session is None:
-                            break
-                        sessions.append(session)
-                        remaining[mode] -= 1
-
-                if all(capacity == 0 for capacity in remaining.values()):
-                    break
+                    for mode, capacity in tuple(remaining.items()):
+                        for _ in range(capacity):
+                            session = context.dispatch_next(mode)
+                            if session is None:
+                                break
+                            sessions.append(session)
+                            remaining[mode] -= 1
         except BaseException as failure:
             for session in reversed(sessions):
                 context = self._contexts.get(session.step.context_id)
@@ -138,8 +133,6 @@ class ContextManager(RuntimeModule):
             context = self._contexts.get(request.context_id)
             if context is None or not context.resolve_placement(request):
                 rejected.append(request)
-        # Changed: ContextManager validates the exact live session before a
-        # registry-approved placement grant can make it dispatchable again.
         return tuple(rejected)
 
     def revoke_placements(

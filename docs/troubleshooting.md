@@ -5,11 +5,10 @@ This page maps common symptoms to the first state, report, or declaration to ins
 
 ## A context remains queued
 
-Inspect the latest snapshot and runtime capacity:
+Inspect the run and runtime capacity:
 
 ```python
-snapshot = engine.get(context_id)
-print(snapshot.state if snapshot is not None else "unavailable")
+print(run.state)
 ```
 
 A `QUEUED` context has validated but has not been admitted. Common causes include executor pressure, declared CPU memory pressure, active contexts with stronger admission priority, and unresolved runtime capacity.
@@ -40,7 +39,7 @@ The artifact declaration and lifecycle report can remain visible after its paylo
 - the context failed or was aborted;
 - the value was never produced because its operator was skipped.
 
-Inspect `ArtifactResult.report` and its final {py:class}`ArtifactState`. Successful exit artifacts are retained by default in 0.1.0.
+Inspect `ArtifactResult.report` and its final artifact state. Successful exit artifacts are retained by default.
 
 See {ref}`artifact-retention` for selection and clearing rules.
 
@@ -69,7 +68,7 @@ print(engine.cleanup_failures)
 
 Under `FailureMode.FAIL_FAST`, an exhausted context failure intentionally fails the engine. Under `CONTINUE`, an engine failure normally indicates runtime infrastructure, escaped `BaseException`, startup, invariant, or cleanup failure.
 
-Create a new engine after shutdown; a failed engine cannot be restarted. Retain affected snapshots and debug reports before discarding the process.
+Create a new engine after shutdown; a failed engine cannot be restarted. Retain affected context runs and debug reports before discarding the process.
 
 See {doc}`Failure and Reliability Model <reliability/failure-and-reliability>`.
 
@@ -102,47 +101,47 @@ Confirm that the runtime declaration matches physical device IDs visible to the 
 
 For a placement group, use every member deliberately; Jayrun does not shard tensors or construct Torch distributed process groups automatically.
 
-## A supervising call raises `RuntimeCapabilityError`
+## A supervisor cannot see a target context
 
-Submit the component's context with:
+Pass the exact target graph object when submitting the supervisor:
 
 ```python
-ContextSettings(supervising=True)
+supervisor = engine.submit(
+    supervisor_artifacts,
+    supervisor_configs,
+    supervises=(training_graph,),
+)
 ```
 
-Only that context receives cross-context inspection and lifecycle capabilities. The setting does not allow the supervisor to submit contexts. Targets must already have been created by the application through `Engine.submit()`.
+Inside the supervisor, `self.runtime.contexts` contains only live contexts whose `run.graph` is one of those exact objects. An equivalent graph built as a separate Python object is intentionally a different scope. Targets that have already finalized are no longer in the live registry.
+
+The supervisor cannot submit contexts. Targets must be originated by application code through `Engine.submit()`.
 
 See {doc}`MNIST Inference and Supervised Training <tutorials/mnist-inference-and-training>` for a complete supervision workflow.
 
 ## A normal context failure was not raised by `wait()`
 
-This is expected. `wait()` and `wait_async()` return context failures in the finalized snapshot:
+This is expected. `wait()` and `wait_async()` expose normal context failures through the finalized run:
 
 ```python
-snapshot = engine.wait(context_id)
-if snapshot is not None and snapshot.failure is not None:
-    raise RuntimeError("context failed") from snapshot.failure
+run.wait()
+if run.report.failure is not None:
+    raise RuntimeError("context failed") from run.report.failure
 ```
 
 Response-deadline expiration is different: `wait(..., timeout=...)` raises `TimeoutError`, while the context continues running.
 
 ## Results accumulate in memory
 
-Successful exit artifacts are retained by default, and finalized contexts remain registered until explicitly removed.
+Successful exit artifacts are retained by default in each completed `ContextRun`. Terminal contexts are released from the engine registry automatically.
 
-Delete a result after consumption:
-
-```python
-engine.delete(context_id)
-```
-
-Or prune finalized contexts in completion order:
+Release application references after consuming or persisting their results:
 
 ```python
-engine.prune(limit=100)
+del run
 ```
 
-For fire-and-forget submissions, use `ArtifactPolicy(retain_all=False)`. Persist required results through an operator before deletion or pruning.
+For fire-and-forget submissions, use `ArtifactPolicy(retain_all=False)` and avoid collecting completed runs indefinitely. Persist required results through an operator or consume them before dropping the run.
 
 ## Reporting a framework defect
 
@@ -152,7 +151,7 @@ Include:
 - operating system and device backend versions;
 - engine and context settings;
 - primary, secondary, and cleanup failures;
-- affected context snapshots and debug reports;
+- affected context runs and debug reports;
 - the smallest graph that reproduces the problem.
 
 Remove credentials and sensitive artifact payloads before sharing diagnostics.

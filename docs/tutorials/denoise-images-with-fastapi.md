@@ -349,37 +349,27 @@ async def run_image(
     configs = ConfigContext(graph=graph)
     configs.set({route_image.denoise: denoise})
 
-    context_id = engine.submit(artifacts, configs)
+    run = engine.submit(artifacts, configs)
+    await run.wait_async(timeout=30)
 
-    try:
-        snapshot = await engine.wait_async(
-            context_id,
-            state=ContextState.FINISHED,
-            timeout=30,
+    if run.state is not ContextState.FINISHED:
+        raise HTTPException(
+            status_code=422,
+            detail=str(run.report.failure or run.state.value),
         )
 
-        if snapshot is None:
-            raise HTTPException(status_code=404)
-        if snapshot.failure is not None:
-            raise HTTPException(
-                status_code=422,
-                detail=str(snapshot.failure),
-            )
-
-        result_artifact = (
-            image_to_denoise if denoise else image_to_preserve
-        )
-        return Response(
-            content=snapshot.artifact(result_artifact).value,
-            media_type="image/png",
-        )
-    finally:
-        engine.delete(context_id)
+    result_artifact = (
+        image_to_denoise if denoise else image_to_preserve
+    )
+    return Response(
+        content=run.artifact(result_artifact).value,
+        media_type="image/png",
+    )
 ```
 
-`wait_async(..., state=ContextState.FINISHED)` expresses the target state directly. There is no polling loop and no repeated manual state check.
+`wait_async()` waits for terminal finalization without polling. The endpoint then checks the terminal state and reads the retained branch result from the same `ContextRun`.
 
-The endpoint remains one request-response operation. Waiting suspends only its coroutine while Jayrun performs network and CPU work. The response owns its bytes, so the finalized context can be deleted before FastAPI sends them.
+The endpoint remains one request-response operation. Waiting suspends only its coroutine while Jayrun performs network and CPU work. Once the helper returns, no application reference keeps the completed run or its response bytes alive.
 
 ## 9. Expose URL and upload routes
 
@@ -437,7 +427,7 @@ uvicorn app:app
 | Inactive-branch skipping | Jayrun graph execution |
 | Synchronous CPU work | `DenoiseImage` or `EncodePng` |
 | Execution and result lifecycle | Jayrun context |
-| Non-blocking application wait | `Engine.wait_async()` |
+| Non-blocking application wait | `ContextRun.wait_async()` |
 | Startup and cleanup | FastAPI lifespan and Jayrun engine |
 
 The endpoints only translate HTTP values into artifacts and configurations. The graph owns processing order and routing, while the engine owns execution and lifecycle. The same structure works for document conversion, archive inspection, audio processing, and other services that combine asynchronous input with synchronous transformations.

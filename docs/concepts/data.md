@@ -103,8 +103,5 @@ Runtime payload.
 Placement metadata associated with the payload.
 ```
 
-:::{versionadded} 0.1.0
-The common runtime data container was introduced.
-:::
 
 Next, read {doc}`Artifacts and Data Flow <artifacts-and-data-flow>` to see how runtime data is identified and moved through a graph.

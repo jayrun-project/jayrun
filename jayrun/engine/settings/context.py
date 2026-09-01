@@ -66,22 +66,16 @@ class ContextSettings:
             iteration controlled through runtime supervision.
         max_repeats: Maximum additional executions per step session, or ``None`` for
             no context-level cap.
-        supervising: Allow this context to inspect and control other contexts through
-            its runtime interface.
     """
 
     artifact_policy: ArtifactPolicy = field(default_factory=ArtifactPolicy)
     retry_policy: RetryPolicy | None = None
     max_iterations: int | None = 1
     max_repeats: int | None = None
-    supervising: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.artifact_policy, ArtifactPolicy):
             raise TypeError("artifact_policy must be an ArtifactPolicy instance")
-
-        if not isinstance(self.supervising, bool):
-            raise TypeError("supervising must be a bool")
 
         if self.retry_policy is not None and not isinstance(
             self.retry_policy,

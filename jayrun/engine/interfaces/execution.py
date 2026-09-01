@@ -1,9 +1,6 @@
-from collections.abc import Hashable
 from dataclasses import dataclass
 
 from ..recorders.execution.recorder import ExecutionRecorder
-from .base import ScopeInterface
-from .value_record import ValueRecord
 
 
 @dataclass(slots=True)
@@ -17,20 +14,12 @@ class ExecutionRequests:
         self.repeat_requested = False
 
 
-class ExecutionInterface(ScopeInterface):
-    """Observe and store data for the current step execution session."""
+class ExecutionInterface:
+    """Observe the current step execution session."""
 
     def __init__(self, recorder: ExecutionRecorder) -> None:
-        super().__init__(recorder=recorder)
-        self._records: dict[Hashable, list[ValueRecord]] = {}
+        self._recorder = recorder
         self._requests = ExecutionRequests()
-
-    def get_records(self, key: Hashable) -> tuple[ValueRecord, ...]:
-        """Return execution-scoped records for ``key`` in recording order."""
-        return tuple(self._records.get(key, ()))
-
-    def _store(self, record: ValueRecord) -> None:
-        self._records.setdefault(record.key, []).append(record)
 
     def log(self, message: str) -> None:
         """Record a text log message for the current execution."""
@@ -61,7 +50,7 @@ class OperatorExecutionInterface(ExecutionInterface):
 
     @property
     def number(self) -> int:
-        """Zero-based execution number within the current operator session."""
+        """One-based execution number within the current operator session."""
         return self._recorder.execution
 
 

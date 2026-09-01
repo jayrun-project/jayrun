@@ -32,6 +32,14 @@ source_suffix = {
 master_doc = "index"
 exclude_patterns = ["_build"]
 nitpicky = True
+# Public autodoc signatures may contain implementation-only type hints. They
+# remain useful as plain type names, but the internal modules are deliberately
+# absent from the public object inventory.
+nitpick_ignore_regex = [
+    ("py:class", r"jayrun\.core\..*"),
+    ("py:class", r"jayrun\.engine\..*"),
+    ("py:class", r"asyncio\.events\.AbstractEventLoop"),
+]
 primary_domain = "py"
 toc_object_entries = False
 

@@ -541,8 +541,5 @@ Operator, resource, and combined package requirements.
 Whether resource selection and config inspection are complete.
 ```
 
-:::{versionadded} 0.1.0
-Artifact-flow graph construction, terminal sink steps, graph-local definitions, inspection, resource binding, and compilation were introduced.
-:::
 
 Next, read {doc}`Graph Validation <graph-validation>` to validate artifact-property compatibility and inspect detailed diagnostics.

@@ -19,6 +19,7 @@ class ExecutionSession:
     step: ExecutionStep
     execution_mode: ExecutionMode
     recorder: ExecutionRecorder
+    supervising: bool = False
     state: ExecutionState = ExecutionState.IDLE
     result: tuple[object, ...] | None = None
     report: ExecutionReport | None = None

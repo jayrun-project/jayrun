@@ -13,7 +13,7 @@ from .core.resource.base import BaseResource
 from .core.resource.field import ResourceField
 from .engine.api import Engine
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = (
     "__version__",

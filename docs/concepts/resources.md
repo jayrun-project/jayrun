@@ -449,8 +449,5 @@ Immutable graph-local description of one registered resource field.
 :param str attribute_name: Attribute under which the field was declared.
 ```
 
-:::{versionadded} 0.1.0
-Runtime-managed resource declarations, configuration-sensitive sharing, automatic acquisition, safe eviction, and teardown were introduced.
-:::
 
 Next, read {doc}`Operators and Executions <../components/operators-and-executions>` to use artifact, configuration, and resource fields in reusable computation.

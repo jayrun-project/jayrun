@@ -3,22 +3,23 @@ from __future__ import annotations
 import asyncio
 import threading
 from dataclasses import dataclass, field
-from datetime import datetime
 from itertools import count
 from typing import ClassVar
 
 from ...core.artifact.base import Artifact
 from ...core.artifact.context import ArtifactContext
 from ...core.config.context import ConfigContext
+from ...core.graph.definition.artifact import ArtifactDefinition
+from ...core.graph.graph_definition import GraphDefinition
 from ..artifact.result import ArtifactResult
 from ..context.step_reference import StepReference
 from ..recorders.context.report import ContextReport
+from ..recorders.execution.records import ExecutionReport
 from ..settings.combined_context import CombinedContextSettings
 from ..settings.context import ContextSettings
 from ..settings.engine import EngineSettings
 from .context_state import ContextState
-from .context_snapshot import ContextSnapshot
-from .context_status import ContextHistoryEntry, ContextStatus
+from .context_status import ContextStatus
 from .identities import BaseIdentity
 
 
@@ -26,14 +27,13 @@ from .identities import BaseIdentity
 class _SyncStateWaiter:
     state: ContextState | None
     event: threading.Event = field(default_factory=threading.Event)
-    snapshot: ContextSnapshot | None = None
 
 
 @dataclass(slots=True)
 class _AsyncStateWaiter:
     state: ContextState | None
     loop: asyncio.AbstractEventLoop
-    future: asyncio.Future[ContextSnapshot]
+    future: asyncio.Future[None]
 
 
 class ContextInstance:
@@ -103,7 +103,8 @@ class ContextInstance:
         self,
         context_id: int,
         artifacts: ArtifactContext,
-        configs: ConfigContext | None,
+        configs: ConfigContext,
+        supervises: tuple[GraphDefinition, ...],
         engine_settings: EngineSettings,
         context_settings: ContextSettings | None,
     ) -> None:
@@ -114,15 +115,21 @@ class ContextInstance:
         self._finalized = False
         self.context_id = context_id
         self.graph = artifacts.graph
+        self.supervised_graphs = supervises
         self.artifact_context = artifacts._fork()
-        config_context = (
-            configs if configs is not None else ConfigContext(graph=self.graph)
-        )
-        self.config_context = config_context._fork()
+        self.config_context = configs._fork()
+
+        self._submitted_artifact_context = artifacts._fork()
+        self._submitted_artifact_context._release_target = None
+        self._submitted_artifact_context._seal()
+        self._submitted_config_context = configs._fork()
+        self._submitted_config_context._seal()
 
         self.status = ContextStatus()
-        self.report: ContextReport | None = None
-        self.artifacts: dict[Artifact, ArtifactResult] | None = None
+        self._published_state = ContextState.SUBMITTED
+        self._executions: tuple[ExecutionReport, ...] = ()
+        self._report: ContextReport | None = None
+        self._artifacts: dict[Artifact, ArtifactResult] = {}
         self.failure: Exception | None = None
         self.failed_step: StepReference | None = None
         self.settings: CombinedContextSettings | None = None
@@ -135,9 +142,17 @@ class ContextInstance:
             return self.status.state
 
     @property
-    def revision(self) -> int:
+    def observed_state(self) -> ContextState:
         with self._inspection_lock:
-            return self.status.revision
+            return self._published_state
+
+    @property
+    def submitted_artifact_context(self) -> ArtifactContext:
+        return self._submitted_artifact_context
+
+    @property
+    def submitted_config_context(self) -> ConfigContext:
+        return self._submitted_config_context
 
     @property
     def finalized(self) -> bool:
@@ -145,19 +160,9 @@ class ContextInstance:
             return self._finalized
 
     @property
-    def finished_at(self) -> datetime | None:
-        with self._inspection_lock:
-            return self.status.finished_at
-
-    @property
     def iteration_count(self) -> int:
         with self._inspection_lock:
             return self.status.iteration_count
-
-    @property
-    def history(self) -> tuple[ContextHistoryEntry, ...]:
-        with self._inspection_lock:
-            return tuple(self.status.history)
 
     @property
     def stop_requested(self) -> bool:
@@ -166,8 +171,6 @@ class ContextInstance:
 
     @property
     def can_dispatch(self) -> bool:
-        # Changed: placement_waiting describes the presence of blocked steps,
-        # not a globally blocked context, so independent routes may dispatch.
         return self.state in {
             ContextState.RUNNING,
             ContextState.PLACEMENT_WAITING,
@@ -192,22 +195,6 @@ class ContextInstance:
     def has_been_validated(self) -> bool:
         with self._inspection_lock:
             return self.status.has_been_validated
-
-    @property
-    def is_submitted(self) -> bool:
-        return self.state is ContextState.SUBMITTED
-
-    @property
-    def is_validating(self) -> bool:
-        return self.state is ContextState.VALIDATING
-
-    @property
-    def is_validated(self) -> bool:
-        return self.state is ContextState.VALIDATED
-
-    @property
-    def is_rejected(self) -> bool:
-        return self.state is ContextState.REJECTED
 
     @property
     def is_queued(self) -> bool:
@@ -238,18 +225,6 @@ class ContextInstance:
         return self.state.is_draining
 
     @property
-    def is_finished(self) -> bool:
-        return self.state is ContextState.FINISHED
-
-    @property
-    def is_stopped(self) -> bool:
-        return self.state is ContextState.STOPPED
-
-    @property
-    def is_failed(self) -> bool:
-        return self.state is ContextState.FAILED
-
-    @property
     def is_aborted(self) -> bool:
         return self.state is ContextState.ABORTED
 
@@ -263,7 +238,7 @@ class ContextInstance:
 
     @property
     def is_supervising(self) -> bool:
-        return self.settings.supervising
+        return bool(self.supervised_graphs)
 
     def _validate_submission(self, actor: BaseIdentity) -> bool:
         self._transition(ContextState.VALIDATING, actor)
@@ -378,13 +353,16 @@ class ContextInstance:
             )
             self._transition(next_state, actor)
 
-    def _load_report(self, report: ContextReport) -> None:
+    def _load_executions(
+        self,
+        executions: tuple[ExecutionReport, ...],
+    ) -> None:
         with self._inspection_lock:
-            self.report = report
+            self._executions = executions
 
     def _load_artifacts(self, artifacts: dict[Artifact, ArtifactResult]) -> None:
         with self._inspection_lock:
-            self.artifacts = artifacts
+            self._artifacts = dict(artifacts)
 
     def _mark_finalized(self) -> None:
         with self._inspection_lock:
@@ -392,27 +370,65 @@ class ContextInstance:
                 return
             if not self.status.state.is_terminal:
                 raise RuntimeError("cannot finalize a nonterminal context")
+            finished_at = self.status.finished_at
+            if finished_at is None:
+                raise RuntimeError("terminal context has no completion timestamp")
+            self._report = ContextReport(
+                context_id=self.context_id,
+                state=self.status.state,
+                revision=self.status.revision,
+                iteration_count=self.status.iteration_count,
+                stop_requested=self.status.stop_requested,
+                created_at=self.status.created_at,
+                updated_at=self.status.updated_at,
+                validated_at=self.status.validated_at,
+                started_at=self.status.started_at,
+                finished_at=finished_at,
+                history=tuple(self.status.history),
+                executions=self._executions,
+                failure=self.failure,
+                failed_step=self.failed_step,
+            )
+
+            # The execution-only forks can still point back to the caller's
+            # mutable submission context. Once execution is over, retain only
+            # the sealed submission views exposed by ContextRun. This keeps a
+            # completed run self-contained without unnecessarily retaining the
+            # engine's working contexts or their release targets.
+            self.artifact_context._release_target = None
+            if (
+                self.settings is not None
+                and self.settings.artifact_policy.release_entry_artifacts
+            ):
+                self._submitted_artifact_context._clear_entries()
+            self.artifact_context = self._submitted_artifact_context
+            self.config_context = self._submitted_config_context
+            self.supervised_graphs = ()
             self._finalized = True
+            self._published_state = self.status.state
             notifications = self._resolve_waiters()
         self._notify_waiters(*notifications)
 
-    def _snapshot(self) -> ContextSnapshot:
+    def _wait_ready(self, state: ContextState | None) -> bool:
         with self._inspection_lock:
-            return self._create_snapshot()
+            return self._matches_wait(
+                self.status.state,
+                state,
+                self._finalized,
+            )
 
     def _wait(
         self,
         state: ContextState | None,
         timeout: int | float | None,
-    ) -> ContextSnapshot:
+    ) -> None:
         with self._inspection_lock:
-            snapshot = self._create_snapshot()
             if self._matches_wait(
-                snapshot.state,
+                self.status.state,
                 state,
-                snapshot.finalized,
+                self._finalized,
             ):
-                return snapshot
+                return
             waiter_id = next(self._waiter_ids)
             waiter = _SyncStateWaiter(state=state)
             self._sync_waiters[waiter_id] = waiter
@@ -421,31 +437,26 @@ class ContextInstance:
 
         with self._inspection_lock:
             self._sync_waiters.pop(waiter_id, None)
-            if waiter.snapshot is not None:
-                return waiter.snapshot
 
-        if not completed:
-            raise TimeoutError(
-                f"timed out waiting for context {self.context_id!r}"
-            )
-        raise RuntimeError("context waiter completed without a snapshot")
+        if completed:
+            return
+        raise TimeoutError(f"timed out waiting for context {self.context_id!r}")
 
     async def _wait_async(
         self,
         state: ContextState | None,
         timeout: int | float | None,
-    ) -> ContextSnapshot:
+    ) -> None:
         loop = asyncio.get_running_loop()
-        future: asyncio.Future[ContextSnapshot] = loop.create_future()
+        future: asyncio.Future[None] = loop.create_future()
 
         with self._inspection_lock:
-            snapshot = self._create_snapshot()
             if self._matches_wait(
-                snapshot.state,
+                self.status.state,
                 state,
-                snapshot.finalized,
+                self._finalized,
             ):
-                return snapshot
+                return
             waiter_id = next(self._waiter_ids)
             self._async_waiters[waiter_id] = _AsyncStateWaiter(
                 state=state,
@@ -486,89 +497,66 @@ class ContextInstance:
                 f"from {self.state.value!r} to {next_state.value!r}"
             )
         self.status.apply_transition(next_state=next_state, actor=actor)
+        if not next_state.is_terminal:
+            self._published_state = next_state
 
     def _resolve_waiters(
         self,
     ) -> tuple[
         tuple[_SyncStateWaiter, ...],
-        tuple[tuple[_AsyncStateWaiter, ContextSnapshot], ...],
+        tuple[_AsyncStateWaiter, ...],
     ]:
         if not self._sync_waiters and not self._async_waiters:
             return (), ()
 
-        snapshot = self._create_snapshot()
         sync_waiters: list[_SyncStateWaiter] = []
-        async_waiters: list[tuple[_AsyncStateWaiter, ContextSnapshot]] = []
+        async_waiters: list[_AsyncStateWaiter] = []
 
         for waiter_id, waiter in tuple(self._sync_waiters.items()):
             if not self._matches_wait(
-                snapshot.state,
+                self.status.state,
                 waiter.state,
-                snapshot.finalized,
+                self._finalized,
             ):
                 continue
             self._sync_waiters.pop(waiter_id, None)
-            waiter.snapshot = snapshot
             sync_waiters.append(waiter)
 
         for waiter_id, waiter in tuple(self._async_waiters.items()):
             if not self._matches_wait(
-                snapshot.state,
+                self.status.state,
                 waiter.state,
-                snapshot.finalized,
+                self._finalized,
             ):
                 continue
             self._async_waiters.pop(waiter_id, None)
-            async_waiters.append((waiter, snapshot))
+            async_waiters.append(waiter)
 
         return tuple(sync_waiters), tuple(async_waiters)
 
     @staticmethod
     def _notify_waiters(
         sync_waiters: tuple[_SyncStateWaiter, ...],
-        async_waiters: tuple[tuple[_AsyncStateWaiter, ContextSnapshot], ...],
+        async_waiters: tuple[_AsyncStateWaiter, ...],
     ) -> None:
         for waiter in sync_waiters:
             waiter.event.set()
 
-        for waiter, snapshot in async_waiters:
+        for waiter in async_waiters:
             try:
                 waiter.loop.call_soon_threadsafe(
                     ContextInstance._complete_async_waiter,
                     waiter.future,
-                    snapshot,
                 )
             except RuntimeError:
                 pass
 
     @staticmethod
     def _complete_async_waiter(
-        future: asyncio.Future[ContextSnapshot],
-        snapshot: ContextSnapshot,
+        future: asyncio.Future[None],
     ) -> None:
         if not future.done():
-            future.set_result(snapshot)
-
-    def _create_snapshot(self) -> ContextSnapshot:
-        return ContextSnapshot(
-            context_id=self.context_id,
-            state=self.status.state,
-            finalized=self._finalized,
-            revision=self.status.revision,
-            iteration_count=self.status.iteration_count,
-            stop_requested=self.status.stop_requested,
-            created_at=self.status.created_at,
-            updated_at=self.status.updated_at,
-            validated_at=self.status.validated_at,
-            started_at=self.status.started_at,
-            finished_at=self.status.finished_at,
-            history=tuple(self.status.history),
-            report=self.report,
-            artifacts=self.artifacts or {},
-            failure=self.failure,
-            failed_step=self.failed_step,
-            _artifact_registry=self.graph._specification.artifacts,
-        )
+            future.set_result(None)
 
     @staticmethod
     def _matches_wait(
@@ -579,6 +567,54 @@ class ContextInstance:
         if current_state.is_terminal:
             return finalized
         return requested_state is not None and current_state is requested_state
+
+    def _report_value(self) -> ContextReport:
+        with self._inspection_lock:
+            if self._report is None:
+                raise RuntimeError("terminal context report is unavailable")
+            return self._report
+
+    def _artifact_result(
+        self,
+        reference: int | ArtifactDefinition | Artifact,
+    ) -> ArtifactResult:
+        artifact = self._resolve_artifact(reference)
+        with self._inspection_lock:
+            try:
+                return self._artifacts[artifact]
+            except KeyError:
+                raise KeyError(
+                    f"artifact result is unavailable for context {self.context_id!r}"
+                ) from None
+
+    def _resolve_artifact(
+        self,
+        reference: int | ArtifactDefinition | Artifact,
+    ) -> Artifact:
+        registry = self.graph._specification.artifacts
+
+        if type(reference) is int:
+            for definition in registry.definitions:
+                if definition.artifact_id == reference:
+                    return registry.source_for(definition)
+            raise KeyError(f"unknown artifact ID: {reference!r}")
+
+        if isinstance(reference, ArtifactDefinition):
+            for definition in registry.definitions:
+                if definition is reference:
+                    return registry.source_for(definition)
+            raise KeyError(
+                "ArtifactDefinition does not belong to the context graph"
+            )
+
+        if isinstance(reference, Artifact):
+            if reference not in registry.sources:
+                raise KeyError("Artifact does not belong to the context graph")
+            return reference
+
+        raise TypeError(
+            "artifact reference must be int, ArtifactDefinition, or Artifact"
+        )
 
     def _validate(self) -> None:
         if not isinstance(self.artifact_context, ArtifactContext):

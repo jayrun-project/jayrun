@@ -5,13 +5,16 @@ import asyncio
 from ..base.runtime_module import RuntimeModule
 from ..messages.runtime_message import RuntimeMessage
 from .batch_size_estimator import BatchSizeEstimator
+from .message_queue import RuntimeMessageQueue
 from .state import CoordinatorState
 from .timeout_estimator import TimeoutEstimator
 
 
 class Coordinator(RuntimeModule):
+    _shutdown_poll_interval = 10e-3
+
     def initialize(self) -> None:
-        self._queue: asyncio.Queue[RuntimeMessage] = asyncio.Queue()
+        self._queue = RuntimeMessageQueue()
 
         self._batch_estimator = BatchSizeEstimator()
         self._timeout_estimator = TimeoutEstimator()
@@ -28,6 +31,7 @@ class Coordinator(RuntimeModule):
                     continue
                 message.execute()
             await self._reconcile()
+            await asyncio.sleep(0)
             if self._state is CoordinatorState.STOPPING:
                 self._complete_shutdown_if_ready()
 
@@ -64,7 +68,16 @@ class Coordinator(RuntimeModule):
     async def _collect_batch(
         self,
     ) -> tuple[RuntimeMessage, ...]:
-        first = await self._queue.get()
+        if self._state is CoordinatorState.STOPPING:
+            try:
+                first = await asyncio.wait_for(
+                    self._queue.get(),
+                    timeout=self._shutdown_poll_interval,
+                )
+            except asyncio.TimeoutError:
+                return ()
+        else:
+            first = await self._queue.get()
 
         self._timeout_estimator.update()
 
@@ -99,7 +112,7 @@ class Coordinator(RuntimeModule):
         self,
         message: RuntimeMessage,
     ) -> None:
-        self._queue.put_nowait(message)
+        self._queue.put(message)
 
     async def _reconcile(self) -> None:
         if self._state == CoordinatorState.STOPPED:
@@ -138,6 +151,9 @@ class Coordinator(RuntimeModule):
 
         sessions = self._engine_runtime.context_manager.acquire(
             capacities=capacities,
+            supervision_capacities=(
+                self._engine_runtime.executor_manager.supervision_free
+            ),
         )
 
         self._engine_runtime.executor_manager.assign(

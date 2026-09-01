@@ -1,7 +1,7 @@
 (execution-settings)=
 # Execution Settings
 
-Execution settings control how Jayrun runs declared computation. They define runtime diagnostics, failure behavior, executor capacity, device capacity, artifact retention, iteration, repetition, and supervision. They are operational policy—not values injected through {py:class}`jayrun.ConfigField`.
+Execution settings control how Jayrun runs declared computation. They define runtime diagnostics, failure behavior, executor capacity, device capacity, artifact retention, iteration, and repetition. They are operational policy—not values injected through {py:class}`jayrun.ConfigField`.
 
 All settings objects are immutable validated values. Pass {py:class}`jayrun.settings.EngineSettings` to {py:class}`jayrun.Engine`, and pass {py:class}`jayrun.settings.ContextSettings` to {py:meth}`jayrun.Engine.submit`.
 
@@ -16,7 +16,7 @@ The boundary is the lifetime of the decision:
 
 `EngineSettings` owns decisions that require one coherent runtime: diagnostic mode, response to an exhausted context failure, executor capacity, managed devices, and the default retry policy. A context cannot change those capacities or the engine-wide failure mode.
 
-`ContextSettings` owns decisions local to one submission: artifact retention, iteration and repetition bounds, supervising capability, and an optional retry-policy override. Different contexts in the same engine may use different context settings.
+`ContextSettings` owns decisions local to one submission: artifact retention, iteration and repetition bounds, and an optional retry-policy override. Different contexts in the same engine may use different context settings.
 
 The nested policy objects follow that ownership:
 
@@ -74,10 +74,9 @@ context_settings = ContextSettings(
     retry_policy=RetryPolicy(max_attempts=2, retry_on=(TimeoutError,)),
     max_iterations=5,
     max_repeats=3,
-    supervising=False,
 )
 
-context_id = engine.submit(
+run = engine.submit(
     artifacts,
     configs,
     context_settings=context_settings,
@@ -90,11 +89,10 @@ context_id = engine.submit(
 | `retry_policy` | `None` | Context retry override; `None` inherits the engine policy |
 | `max_iterations` | `1` | Maximum graph iterations; `None` is unbounded |
 | `max_repeats` | `None` | Maximum additional executions per step session; `None` is unbounded |
-| `supervising` | `False` | Grant supervising runtime capabilities |
 
 Iteration and repetition are separate limits. `max_iterations=5` allows at most five graph iterations. `max_repeats=3` allows the initial execution plus at most three requested repetitions in each step session.
 
-The {py:attr}`jayrun.settings.ContextSettings.supervising` flag grants that context the restricted `RuntimeInterface` capabilities used to inspect and control other existing contexts. It does not allow a component to originate or submit contexts.
+Supervision is scoped separately at submission with `supervises=graph` or a tuple of graph objects. It is not a context setting.
 
 (artifact-policy-settings)=
 ## Artifact policy
@@ -236,12 +234,12 @@ engine_settings = EngineSettings(max_workers=4)
 context_settings = ContextSettings(max_iterations=2)
 
 with Engine(engine_settings) as engine:
-    context_id = engine.submit(
+    run = engine.submit(
         artifacts,
         configs,
         context_settings=context_settings,
     )
-    snapshot = engine.wait(context_id)
+    run.wait()
 ```
 
 Create a new settings object when policy changes. Do not treat a running engine's settings as mutable control state.
@@ -257,7 +255,7 @@ Settings validate their types and ranges during construction. Graph-local artifa
 The effective policy follows these rules:
 
 1. Engine settings establish runtime mode, failure mode, the default retry policy, executor limits, and managed devices.
-2. Context settings establish artifact policy, iteration and repetition limits, supervision, and an optional retry override.
+2. Context settings establish artifact policy, iteration and repetition limits, and an optional retry override.
 3. A context retry policy replaces the engine retry policy; `None` inherits it.
 4. `retain_all=True` is normalized to the submitted graph's concrete exit artifacts.
 5. Retained artifact IDs and definitions are resolved against that graph.
@@ -288,7 +286,7 @@ Configure one engine runtime.
 :raises ValueError: If limits are non-positive or device declarations conflict.
 ```
 
-```{py:class} jayrun.settings.ContextSettings(artifact_policy=ArtifactPolicy(), retry_policy=None, max_iterations=1, max_repeats=None, supervising=False)
+```{py:class} jayrun.settings.ContextSettings(artifact_policy=ArtifactPolicy(), retry_policy=None, max_iterations=1, max_repeats=None)
 Configure one submitted context.
 
 :param jayrun.settings.ArtifactPolicy artifact_policy: Artifact retention and entry-reference policy.
@@ -298,7 +296,6 @@ Configure one submitted context.
 :type max_iterations: int | None
 :param max_repeats: Positive additional-execution limit, or `None` for unbounded repetition.
 :type max_repeats: int | None
-:param bool supervising: Whether the context receives supervising runtime capabilities.
 :raises TypeError: If an option has an invalid type.
 :raises ValueError: If an iteration or repetition limit is below one.
 ```
@@ -307,14 +304,6 @@ Configure one submitted context.
 :type: int | None
 
 Maximum number of additional executions accepted for one operator step session. The initial execution is not counted. `None` permits unbounded repetition.
-```
-
-```{py:attribute} jayrun.settings.ContextSettings.supervising
-:type: bool
-
-Whether the submitted context receives capability-controlled cross-context inspection and lifecycle operations through its runtime interface.
-
-This setting does not allow the context to submit or originate other contexts.
 ```
 
 ```{py:class} jayrun.settings.ArtifactPolicy(retain_all=True, retained_artifacts=(), release_entry_artifacts=False)
@@ -358,9 +347,6 @@ Runtime recording mode with `PRODUCTION` and `DEBUG` members.
 Runtime failure policy with `CONTINUE` and `FAIL_FAST` members.
 ```
 
-:::{versionadded} 0.1.0
-Immutable engine and context settings, retention policies, retries, failure modes, runtime modes, executor limits, and managed-device declarations were introduced.
-:::
 
 Graph-scoped computational values are documented separately under {doc}`Configuration <../concepts/configuration>`.
 

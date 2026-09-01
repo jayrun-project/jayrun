@@ -197,9 +197,6 @@ Equivalent to {py:meth}`PlacementInterface.reserve_group` with `Device.GPU` and 
 Ordered placement requests issued by the current invocation. This diagnostic view also supports Jayrun's deterministic waiting and reconciliation protocol; application code normally uses the returned placements instead.
 ```
 
-:::{versionadded} 0.1.0
-Single-device and grouped placement leases were introduced.
-:::
 
 The {ref}`interface-safety` section summarizes the safety rules that apply to placement and the other operational interfaces.
 

@@ -170,7 +170,7 @@ An optional field with neither a supplied value nor a default is injected as `No
 
 See {ref}`config-field` for field declaration, {ref}`config-definition` for graph-local identity, and {py:meth}`jayrun.ConfigContext.set` for supplying values.
 
-Configuration must describe the run, not accumulate mutable execution state. Use artifacts for declared data flow and the appropriate {py:class}`ScopeInterface` store for observational state.
+Configuration must describe the run, not accumulate mutable execution state. Use artifacts for declared data flow and `self.context.store()` for observational values that later executions or a supervisor must inspect.
 
 ## Declaring resource fields
 
@@ -224,7 +224,7 @@ Jayrun dispatches coroutine functions on the runtime event loop. Await applicati
 
 See {doc}`Denoise Images with FastAPI <../tutorials/denoise-images-with-fastapi>` for one graph that combines an asynchronous HTTP operator with a synchronous NumPy operator.
 
-Operational-interface calls such as {py:meth}`ScopeInterface.store`, {py:meth}`OperatorExecutionInterface.repeat`, and {py:meth}`ContextInterface.stop` remain synchronous and must not be awaited.
+Operational-interface calls such as `self.context.store()`, `self.execution.repeat()`, and `self.context.stop()` remain synchronous and must not be awaited. See {doc}`Operational Interfaces <../interfaces/index>` for their contracts.
 
 :::{warning}
 Returning a coroutine from a synchronous `def execute()` does not make the operator asynchronous. Declare the method with `async def` so graph compilation selects event-loop execution.
@@ -293,7 +293,7 @@ The request takes effect after `execute()` returns successfully. Jayrun stores t
 
 {py:attr}`jayrun.settings.ContextSettings.max_repeats` counts additional executions after the initial one. For example, `max_repeats=2` permits at most three total executions. `None` permits unbounded repetition, so the operator must eventually stop requesting it.
 
-When the repeat limit has been reached, a further request is ignored and the latest result becomes the operator's final output. Execution-scoped stored values remain available across repetitions, while each repetition receives its own execution number and retry attempts.
+When the repeat limit has been reached, a further request is ignored and the latest result becomes the operator's final output. Context-stored values remain available across repetitions, while each repetition receives its own execution number and retry attempts.
 
 (operator-reserved-names)=
 ## Reserved runtime names
@@ -302,9 +302,9 @@ The following attributes are reserved for operational interfaces injected only o
 
 | Name | Capability |
 |---|---|
-| `self.execution` | Execution-local records, diagnostics, numbering, and repetition |
+| `self.execution` | Diagnostics, numbering, and repetition for this step session |
 | `self.context` | Context identity, records, and lifecycle requests |
-| `self.runtime` | Runtime records, inspection, and permitted supervision |
+| `self.runtime` | Authorized context runs and supervising waits |
 | `self.placement` | Accelerator-capacity requests |
 
 Operator subclasses must not declare or assign these names. Names beginning with `_runtime_` are also reserved for framework execution state. Declaring a reserved name on a subclass raises `TypeError`; assigning one to a declaration raises `AttributeError`.
@@ -338,7 +338,7 @@ Exceptions raised by synchronous or asynchronous `execute()` are captured as exe
 
 The per-context retry policy overrides the engine retry policy when supplied. `max_attempts` includes the initial attempt. If `max_attempts` is greater than one and `retry_on` is empty, Jayrun retries ordinary `Exception` subclasses. Each repeated execution receives a fresh retry budget.
 
-Retries preserve execution-scoped stored values but discard the failed attempt's outputs and placement requests. Execution reports retain the separate attempts and their failure records.
+Retries do not roll back values already stored through `self.context`, but they discard the failed attempt's outputs and placement requests. Execution reports retain the separate attempts and their failure records.
 
 :::{warning}
 Retries can repeat external side effects. Operators that write to external systems should use idempotent operations, transactional boundaries, or application-level deduplication.
@@ -424,10 +424,7 @@ Explicit operator name, or the subclass name when no name was supplied.
 
 {py:class}`jayrun.settings.RetryPolicy` is documented in {doc}`Execution Settings <../settings/execution-settings>`.
 
-:::{versionadded} 0.1.0
-Operator declarations, synchronous and asynchronous execution, optional and multiple outputs, terminal operators, repetition, and retry policies were introduced.
-:::
 
-See {doc}`Execution Interface <../interfaces/execution>` for execution-scoped storage and diagnostics, and {doc}`Context Interface <../interfaces/context>` for lifecycle requests.
+See {doc}`Execution Interface <../interfaces/execution>` for diagnostics and repetition, and {doc}`Context Interface <../interfaces/context>` for stored values and lifecycle requests.
 
 Next, read {doc}`Graph Construction <graph-construction>` to combine operator declarations, followed by {doc}`Graph Validation <graph-validation>` for artifact-contract diagnostics.

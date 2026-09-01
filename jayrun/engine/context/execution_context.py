@@ -356,6 +356,7 @@ class ExecutionContext:
                 ),
                 execution_mode=step.execution_mode,
                 recorder=recorder,
+                supervising=self.is_supervising,
             )
             session._resource_keys.extend(acquired_keys)
             return session
@@ -397,6 +398,7 @@ class ExecutionContext:
             ),
             execution_mode=step.execution_mode,
             recorder=recorder,
+            supervising=self.is_supervising,
         )
 
     def _create_execution_recorder(
@@ -444,7 +446,6 @@ class ExecutionContext:
             context_access=self._context_access,
         )
         proxy.runtime = RuntimeInterface(
-            recorder=recorder,
             runtime_access=self._runtime_access,
         )
 
@@ -777,7 +778,7 @@ class ExecutionContext:
             raise BaseExceptionGroup("context finalization failed", failures)
         self._outcome = ContextOutcome(
             actor=self._identity,
-            report=self._recorder.report,
+            executions=self._recorder.executions,
             artifacts=self._artifact_store.result,
             failure=self._context.failure,
             failed_step=self._context.failed_step,

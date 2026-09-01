@@ -26,23 +26,28 @@ class ExecutorManager(RuntimeModule):
             self._completed_sessions = {}
             self._accepting_completions = True
 
-        # Executor creation is transactional. Each successfully created
-        # executor is recorded immediately, so a later constructor failure can
-        # close it in reverse order and a failed rollback remains retryable.
+        # Supervising work receives separate capacity so a blocking synchronous
+        # wait, or a suspended async operator, cannot consume the capacity needed
+        # by the contexts it observes.
         try:
-            thread_executor = ThreadExecutor(
-                max_workers=self._engine_runtime.engine_settings.max_workers,
-                completion_reporter=self._queue_completed_session,
-                failure_reporter=self._engine_runtime.gateway.notify_failed_state,
-            )
-            self._executors[ExecutionMode.THREAD] = thread_executor
+            for supervising in (False, True):
+                thread_executor = ThreadExecutor(
+                    max_workers=self._engine_runtime.engine_settings.max_workers,
+                    completion_reporter=self._queue_completed_session,
+                    failure_reporter=self._engine_runtime.gateway.notify_failed_state,
+                )
+                self._executors[
+                    (ExecutionMode.THREAD, supervising)
+                ] = thread_executor
 
-            async_executor = AsyncExecutor(
-                max_tasks=self._engine_runtime.engine_settings.max_tasks,
-                completion_reporter=self._queue_completed_session,
-                failure_reporter=self._engine_runtime.gateway.notify_failed_state,
-            )
-            self._executors[ExecutionMode.EVENT_LOOP] = async_executor
+                async_executor = AsyncExecutor(
+                    max_tasks=self._engine_runtime.engine_settings.max_tasks,
+                    completion_reporter=self._queue_completed_session,
+                    failure_reporter=self._engine_runtime.gateway.notify_failed_state,
+                )
+                self._executors[
+                    (ExecutionMode.EVENT_LOOP, supervising)
+                ] = async_executor
         except BaseException as startup_failure:
             try:
                 self.shutdown(wait=False)
@@ -54,19 +59,32 @@ class ExecutorManager(RuntimeModule):
 
     @property
     def free(self):
-        completed = self._completed_counts()
-        return {
-            mode: max(0, executor.free - completed.get(mode, 0))
-            for mode, executor in self._executors.items()
-        }
+        return self._free_for(supervising=False)
+
+    @property
+    def supervision_free(self):
+        return self._free_for(supervising=True)
+
+    @property
+    def capacity(self) -> int:
+        return self._capacity_for(supervising=False)
+
+    @property
+    def supervision_capacity(self) -> int:
+        return self._capacity_for(supervising=True)
 
     @property
     def occupied(self):
         completed = self._completed_counts()
-        return {
-            mode: executor.occupied + completed.get(mode, 0)
-            for mode, executor in self._executors.items()
-        }
+        occupied: dict[ExecutionMode, int] = {}
+        for key, executor in self._executors.items():
+            mode, _ = key
+            occupied[mode] = (
+                occupied.get(mode, 0)
+                + executor.occupied
+                + completed.get(key, 0)
+            )
+        return occupied
 
     def assign(
         self,
@@ -75,7 +93,9 @@ class ExecutorManager(RuntimeModule):
         if self._closed:
             raise RuntimeError("executor manager is closed")
         for session in sessions:
-            executor = self._executors[session.execution_mode]
+            executor = self._executors[
+                (session.execution_mode, session.supervising)
+            ]
             try:
                 executor.submit(session)
             except BaseException as failure:
@@ -141,19 +161,21 @@ class ExecutorManager(RuntimeModule):
         with self._completed_lock:
             self._accepting_completions = False
         failures: list[BaseException] = []
-        for mode in (ExecutionMode.EVENT_LOOP, ExecutionMode.THREAD):
-            executor = self._executors.get(mode)
-            if executor is None:
-                continue
-            try:
-                if isinstance(executor, ThreadExecutor):
-                    executor.shutdown(wait=wait)
+        for supervising in (True, False):
+            for mode in (ExecutionMode.EVENT_LOOP, ExecutionMode.THREAD):
+                key = (mode, supervising)
+                executor = self._executors.get(key)
+                if executor is None:
+                    continue
+                try:
+                    if isinstance(executor, ThreadExecutor):
+                        executor.shutdown(wait=wait)
+                    else:
+                        executor.shutdown()
+                except BaseException as failure:
+                    failures.append(failure)
                 else:
-                    executor.shutdown()
-            except BaseException as failure:
-                failures.append(failure)
-            else:
-                del self._executors[mode]
+                    del self._executors[key]
         self._closed = not self._executors
         if failures:
             raise BaseExceptionGroup("executor shutdown failed", failures)
@@ -173,12 +195,30 @@ class ExecutorManager(RuntimeModule):
         except BaseException as failure:
             self._engine_runtime.gateway.notify_failed_state(failure)
 
-    def _completed_counts(self) -> dict[ExecutionMode, int]:
-        counts: dict[ExecutionMode, int] = {}
+    def _completed_counts(self) -> dict[tuple[ExecutionMode, bool], int]:
+        counts: dict[tuple[ExecutionMode, bool], int] = {}
         with self._completed_lock:
             sessions = tuple(self._completed_sessions.values())
         for session in sessions:
-            counts[session.execution_mode] = (
-                counts.get(session.execution_mode, 0) + 1
-            )
+            key = (session.execution_mode, session.supervising)
+            counts[key] = counts.get(key, 0) + 1
         return counts
+
+    def _free_for(self, supervising: bool) -> dict[ExecutionMode, int]:
+        completed = self._completed_counts()
+        return {
+            mode: max(
+                0,
+                executor.free
+                - completed.get((mode, supervising), 0),
+            )
+            for (mode, owns_supervision), executor in self._executors.items()
+            if owns_supervision is supervising
+        }
+
+    def _capacity_for(self, supervising: bool) -> int:
+        return sum(
+            executor.capacity
+            for (_, owns_supervision), executor in self._executors.items()
+            if owns_supervision is supervising
+        )

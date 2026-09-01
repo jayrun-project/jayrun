@@ -5,7 +5,6 @@ from collections import deque
 from ..artifact.recorder import ArtifactRecorder
 from ..execution.recorder import ExecutionRecorder
 from ..execution.records import ExecutionOutcome, ExecutionReport
-from .report import ContextReport
 from .state import RecorderState
 
 
@@ -20,7 +19,7 @@ class ContextRecorder:
         self._artifact_recorder_type = artifact_recorder_type
         self._records: deque[ExecutionReport] = deque()
         self._state = RecorderState.RUNNING
-        self._report: ContextReport | None = None
+        self._executions: tuple[ExecutionReport, ...] | None = None
 
     def record(self, record: ExecutionReport) -> None:
         self._require_running()
@@ -63,15 +62,15 @@ class ContextRecorder:
     def stop(self) -> None:
         if self._state is RecorderState.STOPPED:
             return
-        self._report = ContextReport(executions=tuple(self._records))
+        self._executions = tuple(self._records)
         self._records.clear()
         self._state = RecorderState.STOPPED
 
     @property
-    def report(self) -> ContextReport:
-        if self._state is not RecorderState.STOPPED or self._report is None:
+    def executions(self) -> tuple[ExecutionReport, ...]:
+        if self._state is not RecorderState.STOPPED or self._executions is None:
             raise RuntimeError("recorder has not stopped")
-        return self._report
+        return self._executions
 
     def _require_running(self) -> None:
         if self._state is not RecorderState.RUNNING:

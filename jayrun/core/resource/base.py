@@ -26,7 +26,7 @@ class BaseResource(ABC):
         description: Optional explanation of the managed resource.
     """
 
-    __version__: ClassVar[str] = "0.1.0"
+    __version__: ClassVar[str] = "0.2.0"
     requirements: ClassVar[tuple[str, ...]] = ()
 
     execution: ExecutionInterface

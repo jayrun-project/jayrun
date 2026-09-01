@@ -47,6 +47,7 @@ class ContextScheduler(RuntimeModule):
     def initialize(self) -> None:
         self._closed = False
         self._queued_contexts: dict[int, ContextInstance] = {}
+        self._admitted_contexts: dict[int, ContextInstance] = {}
         self._graph_placement_history: dict[
             int,
             set[_PlacementRequirement],
@@ -97,20 +98,31 @@ class ContextScheduler(RuntimeModule):
         self._reconciliation_scheduled = False
         self._admit_queued_contexts()
 
+    def release_context(self, context_id: int) -> None:
+        self._queued_contexts.pop(context_id, None)
+        self._admitted_contexts.pop(context_id, None)
+        coordinator = self._engine_runtime.coordinator
+        if self._closed or coordinator.is_stopping or coordinator.is_stopped:
+            return
+        if self._queued_contexts:
+            self._admit_queued_contexts()
+
     def close(self) -> None:
         if getattr(self, "_closed", False):
             return
         getattr(self, "_queued_contexts", {}).clear()
+        getattr(self, "_admitted_contexts", {}).clear()
         getattr(self, "_graph_placement_history", {}).clear()
         self._reconciliation_scheduled = False
         self._closed = True
 
     def _admit_queued_contexts(self) -> None:
-        for context_id, context in tuple(self._queued_contexts.items()):
-            if context.is_terminal:
-                del self._queued_contexts[context_id]
-
         if not self._queued_contexts:
+            return
+        ordinary_slots = self._available_slots(supervising=False)
+        supervision_slots = self._available_slots(supervising=True)
+        if ordinary_slots == 0 and supervision_slots == 0:
+            self._schedule_reconciliation()
             return
         if self._memory_pressure.sample():
             self._schedule_reconciliation()
@@ -118,18 +130,48 @@ class ContextScheduler(RuntimeModule):
 
         pending_requests = self._engine_runtime.registry.pending_placement_requests
         for context_id, context in tuple(self._queued_contexts.items()):
+            if context.is_terminal:
+                del self._queued_contexts[context_id]
+                continue
+            supervising = context.is_supervising
+            if supervising:
+                if supervision_slots == 0:
+                    continue
+            elif ordinary_slots == 0:
+                continue
             if self._has_placement_pressure(context, pending_requests):
                 continue
             del self._queued_contexts[context_id]
+            self._admitted_contexts[context_id] = context
+            if supervising:
+                supervision_slots -= 1
+            else:
+                ordinary_slots -= 1
             self._engine_runtime.messenger.submit(
                 ContextAdmittedEvent(
                     context_instance=context,
                     identity=self.identity,
                 )
             )
+            if ordinary_slots == 0 and supervision_slots == 0:
+                break
 
         if self._queued_contexts:
             self._schedule_reconciliation()
+
+    def _available_slots(self, supervising: bool) -> int:
+        capacity = (
+            self._engine_runtime.executor_manager.supervision_capacity
+            if supervising
+            else self._engine_runtime.executor_manager.capacity
+        )
+        admitted = sum(
+            context.is_supervising is supervising
+            and not context.is_paused
+            and not context.is_placement_waiting
+            for context in self._admitted_contexts.values()
+        )
+        return max(0, capacity - admitted)
 
     def _has_placement_pressure(
         self,

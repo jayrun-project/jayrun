@@ -17,6 +17,31 @@ class RuntimeMessenger(RuntimeModule):
         message._engine_runtime = self._engine_runtime
         self._engine_runtime.loop.submit(message)
 
+    def submit_control(self, message: RuntimeMessage) -> bool:
+        if not self._authorize(message):
+            raise PermissionError("runtime message requires a valid identity")
+        coordinator = self._engine_runtime.coordinator
+        if (
+            getattr(self, "_closed", False)
+            or coordinator.is_stopping
+            or coordinator.is_stopped
+            or not self._engine_runtime.loop.coordinator_available
+        ):
+            return False
+        message._engine_runtime = self._engine_runtime
+        try:
+            self._engine_runtime.loop.submit(message)
+        except RuntimeError:
+            if (
+                getattr(self, "_closed", False)
+                or coordinator.is_stopping
+                or coordinator.is_stopped
+                or not self._engine_runtime.loop.coordinator_available
+            ):
+                return False
+            raise
+        return True
+
     def submit_after(
         self,
         message: RuntimeMessage,

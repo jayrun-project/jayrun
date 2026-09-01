@@ -1,8 +1,6 @@
 from collections.abc import Hashable
 
-from ...messages.commands.abort_context import AbortContextCommand
-from ...messages.commands.pause_context import PauseContextCommand
-from ...messages.commands.stop_context import StopContextCommand
+from ...messages.commands.store_value import StoreValueCommand
 from ...messages.runtime_messenger import RuntimeMessenger
 from ...registry.identities import BaseIdentity
 from ..value_record import ValueRecord
@@ -11,35 +9,24 @@ from .storage import StoredValueRepository
 
 class ContextService:
     def __init__(self, runtime_messenger: RuntimeMessenger) -> None:
-        self._runtime_messenger = runtime_messenger
+        self._runtime_messenger: RuntimeMessenger | None = runtime_messenger
         self._values = StoredValueRepository()
 
-    def store(self, record: ValueRecord) -> None:
+    def store(self, record: ValueRecord, identity: BaseIdentity) -> None:
+        self._messenger().submit(
+            StoreValueCommand(record=record, identity=identity)
+        )
+
+    def record(self, record: ValueRecord) -> None:
         self._values.store(record)
 
     def get_records(self, key: Hashable) -> tuple[ValueRecord, ...]:
         return self._values.get_records(key)
 
-    def abort(self, context_id: int, identity: BaseIdentity) -> None:
-        self._runtime_messenger.submit(
-            AbortContextCommand(context_id=context_id, identity=identity)
-        )
+    def close(self) -> None:
+        self._runtime_messenger = None
 
-    def stop(self, context_id: int, identity: BaseIdentity) -> None:
-        self._runtime_messenger.submit(
-            StopContextCommand(context_id=context_id, identity=identity)
-        )
-
-    def pause(
-        self,
-        context_id: int,
-        identity: BaseIdentity,
-        duration_seconds: float | None = None,
-    ) -> None:
-        self._runtime_messenger.submit(
-            PauseContextCommand(
-                context_id=context_id,
-                duration=duration_seconds,
-                identity=identity,
-            )
-        )
+    def _messenger(self) -> RuntimeMessenger:
+        if self._runtime_messenger is None:
+            raise RuntimeError("context control service is closed")
+        return self._runtime_messenger

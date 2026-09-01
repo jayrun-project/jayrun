@@ -21,10 +21,10 @@ Follow the documentation in this order:
 11. {doc}`Graph Validation <components/graph-validation>` — validate artifact contracts and interpret text, programmatic, and plotted diagnostics.
 12. {doc}`Operational Interfaces <interfaces/index>` — use execution, context, runtime, and capacity capabilities safely from components.
 13. {doc}`Placement and Capacity <runtime/placement-and-capacity>` — understand device leases, contention, and admission.
-14. {doc}`Engine and Context Lifecycle <runtime/engine-and-context-lifecycle>` — submit, inspect, retain, and shut down work safely.
+14. {doc}`Engine and Context Lifecycle <runtime/engine-and-context-lifecycle>` — submit, wait for, control, and inspect context runs safely.
 15. {doc}`Execution Settings <settings/execution-settings>` — distinguish engine-wide policy from per-context policy and understand override rules.
 16. {doc}`Failure and Reliability Model <reliability/failure-and-reliability>` — understand failure containment, escalation, rollback, and cleanup guarantees.
-17. {doc}`Observability and Inspection <observability/observability-and-inspection>` — interpret snapshots, reports, diagnostics, and external telemetry boundaries.
+17. {doc}`Observability and Inspection <observability/observability-and-inspection>` — interpret context runs, reports, diagnostics, and external telemetry boundaries.
 
 After the conceptual path, use the task-oriented tutorials:
 
@@ -137,18 +137,10 @@ reference/api
 troubleshooting
 ```
 
-```{toctree}
-:hidden:
-:caption: Release Notes
-:maxdepth: 1
-
-release-notes/0.1.0
-```
-
 ## Installation
 
 ```bash
 python -m pip install jayrun
 ```
 
-Jayrun 0.1.0 requires Python 3.11 or later.
+Jayrun requires Python 3.11 or later.

@@ -17,6 +17,11 @@ class ContextIdentity(BaseIdentity):
 
 
 @dataclass(frozen=True, slots=True)
+class ContextRunIdentity(BaseIdentity):
+    context_id: int
+
+
+@dataclass(frozen=True, slots=True)
 class StepIdentity(BaseIdentity):
     context_id: int
     step_name: str

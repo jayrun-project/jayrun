@@ -17,7 +17,7 @@ The declared graph remains acyclic. At runtime, however, it can execute through 
 - Shared resources that can be loaded once, reused, evicted, and safely torn down
 - CPU, GPU, and multi-device placement with capacity-aware scheduling
 - Context inspection, lifecycle control, and in-workflow supervision
-- Scoped storage, logs, metrics, timers, and execution reports
+- Context-scoped values, logs, metrics, timers, and execution reports
 - Retry policies, failure containment, and coordinated shutdown
 
 ## When Jayrun fits

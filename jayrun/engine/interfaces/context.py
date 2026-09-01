@@ -1,3 +1,4 @@
+import math
 from collections.abc import Hashable
 
 from ..recorders.execution.recorder import ExecutionRecorder
@@ -18,12 +19,12 @@ class ContextInterface(ScopeInterface):
         super().__init__(recorder=recorder)
         self._context_access = context_access
 
-    def get_records(self, key: Hashable) -> tuple[ValueRecord, ...]:
+    def get_value_records(self, key: Hashable) -> tuple[ValueRecord, ...]:
         """Return context-scoped records for ``key`` in recording order."""
         return self._context_access.get_records(key)
 
     def _store(self, record: ValueRecord) -> None:
-        self._context_access.store(record)
+        self._context_access.store(record, self._identity())
 
     def abort(self) -> None:
         """Prevent further dispatch and drain this context toward ``ABORTED``."""
@@ -68,8 +69,10 @@ class ContextInterface(ScopeInterface):
             (int, float, type(None)),
         ):
             raise TypeError("duration_seconds must be int, float, or None")
-        if duration_seconds is not None and duration_seconds < 0:
-            raise ValueError("duration_seconds must be non-negative")
+        if duration_seconds is not None and (
+            duration_seconds < 0 or not math.isfinite(duration_seconds)
+        ):
+            raise ValueError("duration_seconds must be finite and non-negative")
 
     @property
     def id(self) -> int:

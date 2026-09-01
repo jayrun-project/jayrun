@@ -26,91 +26,125 @@ from jayrun import (
 
 See {doc}`Artifacts and Data Flow <../concepts/artifacts-and-data-flow>`, {doc}`Configuration <../concepts/configuration>`, {doc}`Resources <../concepts/resources>`, {doc}`Operators and Executions <../components/operators-and-executions>`, {doc}`Graph Construction <../components/graph-construction>`, and {doc}`Engine and Context Lifecycle <../runtime/engine-and-context-lifecycle>` for the corresponding guides.
 
-```{autoclass} jayrun.Artifact
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.Artifact
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.ArtifactField
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.ArtifactField
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.ArtifactContext
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.ArtifactContext
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.Data
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.Data
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.ConfigField
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.ConfigField
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.ConfigContext
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.ConfigContext
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.ResourceField
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.ResourceField
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.BaseResource
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.BaseResource
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.BaseOperator
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.BaseOperator
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.ArtifactFlow
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.ArtifactFlow
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.GraphDefinition
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.GraphDefinition
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.Engine
-:members:
-:special-members: __enter__, __exit__
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.Engine
+   :members:
+   :special-members: __enter__, __exit__
 ```
 
-## Context results
+## Context runs and results
 
-Import immutable context results from `jayrun.context`:
+Import lifecycle handles and terminal results from `jayrun.context`:
 
 ```python
-from jayrun.context import ArtifactResult, ContextSnapshot, ContextState
+from jayrun.context import (
+    ArtifactResult,
+    ContextNotTerminatedError,
+    ContextReport,
+    ContextRun,
+    ContextState,
+    ValueRecord,
+)
 ```
 
-```{autoclass} jayrun.context.ContextSnapshot
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.context.ContextRun
+   :members:
+   :special-members: __await__
 ```
 
-```{autoclass} jayrun.context.ContextState
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.context.ContextState
+   :members:
 ```
 
-```{autoclass} jayrun.context.ArtifactResult
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.context.ArtifactResult
+   :members:
 ```
 
-Returned reports and records are explained in {doc}`Observability and Inspection <../observability/observability-and-inspection>`.
+```{eval-rst}
+.. autoclass:: jayrun.context.ContextReport
+   :members:
+```
+
+```{eval-rst}
+.. autoclass:: jayrun.context.ValueRecord
+   :members:
+   :no-index:
+```
+
+```{eval-rst}
+.. autoexception:: jayrun.context.ContextNotTerminatedError
+```
+
+Lifecycle behavior is explained in {doc}`Engine and Context Lifecycle <../runtime/engine-and-context-lifecycle>`. Returned reports and records are explained in {doc}`Observability and Inspection <../observability/observability-and-inspection>`.
 
 ## Settings
 
@@ -130,39 +164,46 @@ from jayrun.settings import (
 
 See {doc}`Execution Settings <../settings/execution-settings>` for precedence, defaults, and operational guidance.
 
-```{autoclass} jayrun.settings.EngineSettings
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.settings.EngineSettings
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.settings.ContextSettings
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.settings.ContextSettings
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.settings.ArtifactPolicy
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.settings.ArtifactPolicy
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.settings.RetryPolicy
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.settings.RetryPolicy
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.settings.RuntimeDevice
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.settings.RuntimeDevice
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.settings.FailureMode
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.settings.FailureMode
+   :members:
+   :no-index:
 ```
 
-```{autoclass} jayrun.settings.RuntimeMode
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.settings.RuntimeMode
+   :members:
+   :no-index:
 ```
 
 ## Placement values
@@ -182,24 +223,24 @@ from jayrun.placement import (
 
 `PlacementLocation` is the public type alias `Placement | PlacementGroup`, and `CPU_PLACEMENT` is the canonical unreserved CPU placement. See {doc}`Placement and Capacity <../runtime/placement-and-capacity>` and {doc}`Placement Interface <../interfaces/placement>` for reservation behavior.
 
-```{autoclass} jayrun.placement.Device
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.placement.Device
+   :members:
 ```
 
-```{autoclass} jayrun.placement.Backend
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.placement.Backend
+   :members:
 ```
 
-```{autoclass} jayrun.placement.Placement
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.placement.Placement
+   :members:
 ```
 
-```{autoclass} jayrun.placement.PlacementGroup
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.placement.PlacementGroup
+   :members:
 ```
 
 ## Artifact properties
@@ -219,34 +260,34 @@ from jayrun.properties import (
 
 See {doc}`Graph Validation <../components/graph-validation>` for property matching rules and diagnostics.
 
-```{autoclass} jayrun.properties.ArtifactProperty
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.properties.ArtifactProperty
+   :members:
 ```
 
-```{autoclass} jayrun.properties.TypeProperty
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.properties.TypeProperty
+   :members:
 ```
 
-```{autoclass} jayrun.properties.DTypeProperty
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.properties.DTypeProperty
+   :members:
 ```
 
-```{autoclass} jayrun.properties.ShapeProperty
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.properties.ShapeProperty
+   :members:
 ```
 
-```{autoclass} jayrun.properties.DeviceProperty
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.properties.DeviceProperty
+   :members:
 ```
 
-```{autoclass} jayrun.properties.BackendProperty
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.properties.BackendProperty
+   :members:
 ```
 
 ## Graph validation
@@ -257,9 +298,10 @@ Graph validation has one public entry point:
 from jayrun.validation import GraphValidator
 ```
 
-```{autoclass} jayrun.validation.GraphValidator
-:members:
-:no-index:
+```{eval-rst}
+.. autoclass:: jayrun.validation.GraphValidator
+   :members:
+   :no-index:
 ```
 
 ## Injected operational interfaces

@@ -42,8 +42,6 @@ class RuntimeDevice:
     backends: tuple[Backend, ...] = ()
     device_id: int | None = None
     memory_limit_gb: int | float | None = None
-    # Changed: exclusive_only is a permanent device capability, while a
-    # PlacementRequest.exclusive flag applies only to one reservation.
     exclusive_only: bool = False
 
     def __post_init__(self) -> None:

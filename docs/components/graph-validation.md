@@ -361,8 +361,5 @@ Write and display the interactive graph.
 :raises RuntimeError: If PyVis is unavailable, or IPython is unavailable in notebook mode.
 ```
 
-:::{versionadded} 0.1.0
-Artifact-property reports, validation diagnostics, and PyVis plotting were introduced.
-:::
 
 Next, read {doc}`Operational Interfaces <../interfaces/index>` for the runtime capabilities injected into operators and resource setup.

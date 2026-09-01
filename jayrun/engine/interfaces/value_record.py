@@ -5,7 +5,7 @@ from datetime import datetime
 
 @dataclass(frozen=True, slots=True)
 class ValueRecord:
-    """Immutable value stored through an execution, context, or runtime scope.
+    """Immutable value stored through a context interface.
 
     Attributes:
         step_name: Operator or resource step that created the record.

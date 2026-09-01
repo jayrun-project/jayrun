@@ -7,13 +7,13 @@ from collections.abc import Coroutine
 
 from ..core.artifact.context import ArtifactContext
 from ..core.config.context import ConfigContext
+from ..core.graph.graph_definition import GraphDefinition
+from .context_run import ContextRun
 from .engine_state import EngineState, RuntimeActivity
 from .gateway.engine_gateway import EngineGateway
 from .messages.commands.shutdown_runtime import ShutdownRuntimeCommand
-from .registry.context_instance import ContextInstance
-from .registry.context_snapshot import ContextSnapshot
-from .registry.context_state import ContextState
 from .registry.identities import EngineIdentity
+from .registry.runtime_registry import RuntimeRegistry
 from .runtime import EngineRuntime
 from .settings.context import ContextSettings
 from .settings.engine import EngineSettings
@@ -31,6 +31,7 @@ class EngineSupervisor:
         self._state = EngineState.CREATED
         self._activity = RuntimeActivity.IDLE
         self._runtime: EngineRuntime | None = None
+        self._registry: RuntimeRegistry | None = None
         self._failure: BaseException | None = None
         self._secondary_failures: list[BaseException] = []
         self._cleanup_failures: list[BaseException] = []
@@ -67,6 +68,8 @@ class EngineSupervisor:
                 with self._lock:
                     self._runtime = runtime
                 runtime.initialize()
+                with self._lock:
+                    self._registry = runtime.registry
                 runtime.loop.start(loop)
             except BaseException as failure:
                 self._record_failure(failure)
@@ -99,13 +102,16 @@ class EngineSupervisor:
     def submit(
         self,
         artifacts: ArtifactContext,
-        configs: ConfigContext | None = None,
+        configs: ConfigContext,
+        *,
         context_settings: ContextSettings | None = None,
-    ) -> int:
-        self._validate_submission(
+        supervises: GraphDefinition | tuple[GraphDefinition, ...] = (),
+    ) -> ContextRun:
+        supervised_graphs = self._validate_submission(
             artifacts=artifacts,
             configs=configs,
             context_settings=context_settings,
+            supervises=supervises,
         )
         with self._lock:
             if self._state is not EngineState.RUNNING:
@@ -113,12 +119,13 @@ class EngineSupervisor:
             runtime = self._require_runtime()
             runtime.gateway.reset_idle_state()
             try:
-                context_id = runtime.registry.register(
+                run = runtime.registry.register(
                     artifacts=artifacts,
                     configs=configs,
+                    supervises=supervised_graphs,
+                    identity=self._identity,
                     context_settings=context_settings,
                 )
-                context = runtime.registry.get_context(context_id)
             except BaseException as failure:
                 # Public argument errors are rejected above. An exception after
                 # entering the registry is therefore a runtime/module failure:
@@ -128,72 +135,26 @@ class EngineSupervisor:
             if self._state is EngineState.RUNNING:
                 self._activity = (
                     RuntimeActivity.IDLE
-                    if context.is_rejected and not runtime.registry.active_contexts()
+                    if not runtime.registry.context_ids()
                     else RuntimeActivity.ACTIVE
                 )
             failure = self._failure
 
         if failure is not None:
             raise failure
-        return context_id
+        return run
 
-    def get(self, context_id: int) -> ContextSnapshot | None:
-        context, _ = self._get_context_for_inspection(context_id)
-        if context is None:
-            return None
-        return context._snapshot()
-
-    def wait(
-        self,
-        context_id: int,
-        *,
-        state: ContextState | None = None,
-        timeout: int | float | None = None,
-    ) -> ContextSnapshot | None:
-        self._validate_wait_state(state)
-        self._validate_timeout(timeout)
-        context, on_runtime_loop = self._get_context_for_inspection(context_id)
-        if context is None:
-            return None
-        snapshot = context._snapshot()
-        if context._matches_wait(snapshot.state, state, snapshot.finalized):
-            return snapshot
-        if on_runtime_loop:
-            raise RuntimeError(
-                "synchronous context waiting cannot block the runtime loop; "
-                "use wait_async instead"
-            )
-        return context._wait(state=state, timeout=timeout)
-
-    async def wait_async(
-        self,
-        context_id: int,
-        *,
-        state: ContextState | None = None,
-        timeout: int | float | None = None,
-    ) -> ContextSnapshot | None:
-        self._validate_wait_state(state)
-        self._validate_timeout(timeout)
-        context, _ = self._get_context_for_inspection(context_id)
-        if context is None:
-            return None
-        return await context._wait_async(state=state, timeout=timeout)
-
-    def delete(self, context_id: int) -> bool:
-        self._validate_context_id(context_id)
+    def contexts(self, *, active_only: bool = False) -> tuple[ContextRun, ...]:
+        if not isinstance(active_only, bool):
+            raise TypeError("active_only must be a bool")
         with self._lock:
-            runtime = self._runtime
-            if runtime is None:
-                return False
-            return runtime.registry.delete_context(context_id)
-
-    def prune(self, *, limit: int | None = None) -> tuple[int, ...]:
-        self._validate_prune_limit(limit)
-        with self._lock:
-            runtime = self._runtime
-            if runtime is None:
+            registry = self._registry
+            if registry is None:
                 return ()
-            return runtime.registry.prune_contexts(limit=limit)
+            return registry.context_runs(
+                self._identity,
+                active_only=active_only,
+            )
 
     def shutdown(
         self,
@@ -246,7 +207,8 @@ class EngineSupervisor:
             startup_complete.wait()
 
         if not owner:
-            shutdown_complete.wait()
+            if not shutdown_complete.wait(timeout):
+                raise TimeoutError("timed out waiting for concurrent shutdown")
             self._raise_failure()
             return
 
@@ -539,18 +501,6 @@ class EngineSupervisor:
             raise RuntimeError("engine runtime is unavailable")
         return self._runtime
 
-    def _get_context_for_inspection(
-        self,
-        context_id: int,
-    ) -> tuple[ContextInstance | None, bool]:
-        self._validate_context_id(context_id)
-        with self._lock:
-            runtime = self._runtime
-            if runtime is None:
-                return None, False
-            context = runtime.registry.find_context(context_id)
-            return context, runtime.loop.is_current_loop_thread
-
     def _raise_failure(self) -> None:
         with self._lock:
             failure = self._failure
@@ -573,32 +523,20 @@ class EngineSupervisor:
             raise ValueError("timeout must be finite and non-negative")
 
     @staticmethod
-    def _validate_wait_state(state: ContextState | None) -> None:
-        if state is not None and not isinstance(state, ContextState):
-            raise TypeError("state must be a ContextState instance or None")
-
-    @staticmethod
-    def _validate_context_id(context_id: int) -> None:
-        if type(context_id) is not int:
-            raise TypeError("context_id must be int")
-
-    @staticmethod
-    def _validate_prune_limit(limit: int | None) -> None:
-        if isinstance(limit, bool) or not isinstance(limit, (int, type(None))):
-            raise TypeError("limit must be an int or None")
-        if limit is not None and limit < 0:
-            raise ValueError("limit must be non-negative")
-
-    @staticmethod
     def _validate_submission(
         artifacts: ArtifactContext,
-        configs: ConfigContext | None,
+        configs: ConfigContext,
         context_settings: ContextSettings | None,
-    ) -> None:
+        supervises: GraphDefinition | tuple[GraphDefinition, ...],
+    ) -> tuple[GraphDefinition, ...]:
         if not isinstance(artifacts, ArtifactContext):
             raise TypeError("artifacts must be an ArtifactContext instance")
-        if configs is not None and not isinstance(configs, ConfigContext):
-            raise TypeError("configs must be a ConfigContext instance or None")
+        if not isinstance(configs, ConfigContext):
+            raise TypeError("configs must be a ConfigContext instance")
+        if artifacts.graph is not configs.graph:
+            raise ValueError(
+                "artifacts and configs must belong to the same graph instance"
+            )
         if context_settings is not None and not isinstance(
             context_settings,
             ContextSettings,
@@ -606,6 +544,28 @@ class EngineSupervisor:
             raise TypeError(
                 "context_settings must be a ContextSettings instance or None"
             )
+
+        if isinstance(supervises, GraphDefinition):
+            supervised_graphs = (supervises,)
+        elif isinstance(supervises, tuple):
+            supervised_graphs = supervises
+        else:
+            raise TypeError(
+                "supervises must be a GraphDefinition or tuple of GraphDefinition"
+            )
+
+        if any(
+            not isinstance(graph, GraphDefinition)
+            for graph in supervised_graphs
+        ):
+            raise TypeError("supervises must contain only GraphDefinition instances")
+        if len({id(graph) for graph in supervised_graphs}) != len(
+            supervised_graphs
+        ):
+            raise ValueError("supervises cannot contain duplicate graph instances")
+        if any(not graph.confirmed for graph in supervised_graphs):
+            raise RuntimeError("every supervised graph must be confirmed")
+        return supervised_graphs
 
     @property
     def state(self) -> EngineState:

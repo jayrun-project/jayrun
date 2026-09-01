@@ -127,3 +127,7 @@ class AsyncExecutor:
     ) -> int:
         with self._lock:
             return len(self._sessions)
+
+    @property
+    def capacity(self) -> int:
+        return self._max_capacity

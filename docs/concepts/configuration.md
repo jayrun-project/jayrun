@@ -141,7 +141,7 @@ configs.set(
     }
 )
 
-context_id = engine.submit(artifacts, configs)
+run = engine.submit(artifacts, configs)
 ```
 
 Because `set()` is additive, values may be assembled in stages before submission:
@@ -317,8 +317,5 @@ Read-only mapping from config fields to explicitly supplied {py:class}`jayrun.Da
 Graph declaration that owns the referenced config fields.
 ```
 
-:::{versionadded} 0.1.0
-Graph-scoped configuration fields, Python values, declarative inspection, and lazy YAML serialization were introduced.
-:::
 
 Next, read {doc}`Resources <resources>` to define runtime-managed data and capabilities. Execution policy is configured separately; see {doc}`Execution Settings <../settings/execution-settings>`.

@@ -42,6 +42,7 @@ class TypeProperty(ArtifactProperty[type]):
             raise TypeError("Expected a Python type.")
 
     def accepts(self, output: Self) -> bool:
+        """Return whether ``output`` declares the identical Python type."""
         return self.value is output.value
 
 
@@ -65,6 +66,7 @@ class DTypeProperty(ArtifactProperty[tuple[object, ...]]):
             raise ValueError("Expected at least one dtype.")
 
     def accepts(self, output: Self) -> bool:
+        """Return whether producer and consumer dtype sets overlap."""
         return not set(self.value).isdisjoint(output.value)
 
 
@@ -77,6 +79,7 @@ class ShapeProperty(ArtifactProperty[tuple[int | None, ...]]):
                 raise TypeError("Shape dimensions must be integers or None.")
 
     def accepts(self, output: Self) -> bool:
+        """Return whether the producer shape satisfies this consumer shape."""
         if len(self.value) != len(output.value):
             return False
 
@@ -97,6 +100,7 @@ class DeviceProperty(ArtifactProperty[str]):
             raise TypeError("Expected a device name.")
 
     def accepts(self, output: Self) -> bool:
+        """Return whether producer and consumer device names are equal."""
         return self.value == output.value
 
 
@@ -108,4 +112,5 @@ class BackendProperty(ArtifactProperty[str]):
             raise TypeError("Expected a backend name.")
 
     def accepts(self, output: Self) -> bool:
+        """Return whether producer and consumer backend names are equal."""
         return self.value == output.value
