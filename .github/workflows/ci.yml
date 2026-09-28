@@ -32,6 +32,10 @@ jobs:
         run: |
           python -m twine check --strict dist/*
           python .github/scripts/release_check.py --dist dist
+      - name: Create isolated runtime environment
+        run: |
+          python -m venv "$RUNNER_TEMP/jayrun-runtime"
+          echo "$RUNNER_TEMP/jayrun-runtime/bin" >> "$GITHUB_PATH"
       - name: Install wheel with minimum runtime dependency
         run: |
           python -m pip install "packaging==25.0"
