@@ -14,8 +14,9 @@ class ArtifactField(DeclarativeField):
     Args:
         name: Optional display name.
         description: Optional explanation of the artifact contract.
-        required: Whether the field must be connected. Input fields enforce this
-            during operator construction; output fields may still be bound to
+        required: Whether the field must be connected. Every input must be supplied
+            explicitly, with ``None`` permitted only for optional inputs. Input
+            fields enforce this during operator construction; output fields may still be bound to
             ``None`` to disable a route.
         properties: Optional tuple of artifact properties used by graph validation.
     """

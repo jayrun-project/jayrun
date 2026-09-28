@@ -7,9 +7,11 @@ from collections.abc import Callable
 class EngineGateway:
     def __init__(
         self,
+        activated: Callable[[], None],
         idled: Callable[[], None],
         failed: Callable[[BaseException], None],
     ) -> None:
+        self._activated = activated
         self._idled = idled
         self._failed = failed
         self._condition = threading.Condition()
@@ -22,6 +24,11 @@ class EngineGateway:
         with self._condition:
             self._idled_state = True
         self._idled()
+
+    def notify_active_state(self) -> None:
+        with self._condition:
+            self._idled_state = False
+        self._activated()
 
     def notify_failed_state(self, failure: BaseException) -> None:
         if not isinstance(failure, BaseException):

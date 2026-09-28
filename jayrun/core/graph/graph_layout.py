@@ -2,6 +2,8 @@ from ..operator.base import BaseOperator
 
 
 class GraphLayout:
+    __slots__ = ("_rows", "_frozen")
+
     def __init__(self, num_rows: int) -> None:
         if type(num_rows) is not int:
             raise TypeError("num_rows must be an integer")
@@ -9,12 +11,37 @@ class GraphLayout:
         if num_rows <= 0:
             raise ValueError("num_rows must be greater than zero")
 
-        self.num_rows = num_rows
-        self._rows: list[list[BaseOperator | None]] = [[] for _ in range(num_rows)]
+        self._frozen = False
+        self._rows: list[list[BaseOperator | None]] | tuple[tuple[BaseOperator | None, ...], ...] = [
+            [] for _ in range(num_rows)
+        ]
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if getattr(self, "_frozen", False):
+            raise AttributeError("Graph layout is frozen.")
+        object.__setattr__(self, name, value)
+
+    def __delattr__(self, name: str) -> None:
+        if getattr(self, "_frozen", False):
+            raise AttributeError("Graph layout is frozen.")
+        object.__delattr__(self, name)
+
+    def _freeze(self) -> None:
+        if not self._frozen:
+            self._rows = self.rows
+            self._frozen = True
+
+    @property
+    def num_rows(self) -> int:
+        """Number of artifact-flow rows in this layout."""
+        return len(self._rows)
 
     def append(
         self, column: tuple[BaseOperator | None, ...] | list[BaseOperator | None]
     ) -> None:
+        """Append a construction column; reject changes to a completed graph."""
+        if self._frozen:
+            raise RuntimeError("Graph layout is frozen.")
         if len(column) != len(self._rows):
             raise IndexError(
                 f"the matrix has {len(self._rows)} rows, the column length is {len(column)}"

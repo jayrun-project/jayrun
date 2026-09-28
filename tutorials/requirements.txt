@@ -1,0 +1,7 @@
+# Optional application/tutorial dependencies; do not replace existing PyTorch.
+packaging>=25
+numpy
+fastapi
+httpx
+Pillow
+uvicorn

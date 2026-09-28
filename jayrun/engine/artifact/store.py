@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ...core.artifact.base import Artifact
 from ...core.artifact.context import ArtifactContext
 from ...core.context.runtime_data import Data
-from ..recorders.artifact.recorder import ArtifactRecorder
 from ..settings.combined_context import CombinedContextSettings
 from .actor import ArtifactActor
 from .result import ArtifactResult
 from .state import ArtifactStoreState
+
+
+if TYPE_CHECKING:
+    from ..recorders.artifact.recorder import ArtifactRecorder
 
 
 class ExecutionArtifactStore:
@@ -19,6 +24,7 @@ class ExecutionArtifactStore:
         artifact_context: ArtifactContext,
         settings: CombinedContextSettings,
         recorder: ArtifactRecorder,
+        iteration: int = 1,
     ) -> None:
         self._artifacts = artifacts
         self._entry_artifacts = entry_artifacts
@@ -26,7 +32,9 @@ class ExecutionArtifactStore:
         self._artifact_context = artifact_context
         self._settings = settings
         self._recorder = recorder
-        self._iteration = 1
+        if type(iteration) is not int or iteration < 1:
+            raise ValueError("iteration must be a positive int")
+        self._iteration = iteration
         self._state = ArtifactStoreState.PENDING
         self._artifact_data: dict[Artifact, Data[object]] = {}
         self._entry_data: dict[Artifact, Data[object]] = {}
@@ -45,6 +53,12 @@ class ExecutionArtifactStore:
         ):
             raise RuntimeError("artifact store has not been finalized")
         return self._artifact_results
+
+    @property
+    def checkpoint(self) -> dict[Artifact, Data[object]]:
+        """Return the safe entry and feedback values for the next iteration."""
+        self._require_running()
+        return dict(self._entry_data)
 
     def get(self, artifact: Artifact) -> Data[object]:
         self._require_running()
@@ -135,7 +149,7 @@ class ExecutionArtifactStore:
         self._artifact_results = {
             artifact: ArtifactResult(
                 data=self._artifact_data[artifact],
-                report=report[artifact],
+                history=report[artifact],
             )
             for artifact in self._artifacts
         }
@@ -145,7 +159,10 @@ class ExecutionArtifactStore:
 
     def _initialize(self) -> None:
         self._state = ArtifactStoreState.RUNNING
-        self._recorder.initialize(artifacts=self._artifacts)
+        self._recorder.initialize(
+            artifacts=self._artifacts,
+            iteration=self._iteration,
+        )
         self._artifact_data = {
             artifact: Data(value=None) for artifact in self._artifacts
         }
@@ -165,7 +182,7 @@ class ExecutionArtifactStore:
             self._entry_data[artifact] = self._artifact_data[artifact]
 
         if self._settings.artifact_policy.release_entry_artifacts:
-            self._artifact_context.clear_entries()
+            self._artifact_context._clear_entries()
 
     def _restore_entry_artifacts(self) -> None:
         for artifact, data in self._entry_data.items():

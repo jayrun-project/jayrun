@@ -7,16 +7,16 @@ from ..recorders.artifact.record import ArtifactRecord
 
 @dataclass(frozen=True, slots=True)
 class ArtifactResult:
-    """Finalized artifact data and its lifecycle report.
+    """Finalized artifact data and its retained lifecycle history.
 
     Attributes:
         data: Final value and placement. Its payload is ``None`` when cleared or
             not retained.
-        report: Ordered artifact lifecycle records.
+        history: Ordered retained artifact lifecycle records; not a global timeline.
     """
 
     data: Data
-    report: tuple[ArtifactRecord, ...]
+    history: tuple[ArtifactRecord, ...]
 
     @property
     def value(self) -> object:

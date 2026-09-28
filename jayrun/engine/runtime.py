@@ -1,22 +1,37 @@
+from __future__ import annotations
+
 import asyncio
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ._history import _HistoryRecorder
 
 from .context.context_manager import ContextManager
+from ..core.graph.graph_registry import GraphRegistry
 from .coordinator.coordinator import Coordinator
 from .coordinator.runtime_loop import RuntimeLoop
 from .execution.executor_manager import ExecutorManager
 from .gateway.engine_gateway import EngineGateway
 from .messages.runtime_messenger import RuntimeMessenger
+from .observation import _ObservationHub
+from .progress_history import ProgressHistory
 from .registry.runtime_registry import RuntimeRegistry
 from .resource.resource_manager import ResourceManager
 from .scheduler.context import ContextScheduler
 from .settings.engine import EngineSettings
+from .settings._instrumentation import _InstrumentationPolicy
 
 
 @dataclass(slots=True)
 class EngineRuntime:
+    name: str
+    engine_id: str
     engine_settings: EngineSettings
+    progress_history: ProgressHistory
+    graph_registry: GraphRegistry | None
     gateway: EngineGateway
+    history_recorder: _HistoryRecorder | None = None
     context_manager: ContextManager = field(init=False)
     resource_manager: ResourceManager = field(init=False)
     executor_manager: ExecutorManager = field(init=False)
@@ -26,9 +41,13 @@ class EngineRuntime:
 
     loop: RuntimeLoop = field(init=False)
     messenger: RuntimeMessenger = field(init=False)
+    observations: _ObservationHub = field(init=False)
+    instrumentation: _InstrumentationPolicy = field(init=False)
     _initialized: bool = field(init=False, default=False)
 
     def __post_init__(self) -> None:
+        self.instrumentation = _InstrumentationPolicy.for_mode(self.engine_settings.recording_mode)
+        self.observations = _ObservationHub()
         self.registry = RuntimeRegistry(engine_runtime=self)
         self.coordinator = Coordinator(engine_runtime=self)
         self.executor_manager = ExecutorManager(engine_runtime=self)
@@ -41,8 +60,8 @@ class EngineRuntime:
     def initialize(self) -> None:
         if self._initialized:
             return
-        for module in (
-            self.messenger,
+        self.messenger.initialize()
+        modules = (
             self.registry,
             self.coordinator,
             self.executor_manager,
@@ -50,7 +69,9 @@ class EngineRuntime:
             self.context_manager,
             self.loop,
             self.context_scheduler,
-        ):
+        )
+        self.messenger.bootstrap_runtime_modules(modules)
+        for module in modules:
             module.initialize()
         self._initialized = True
 
@@ -66,7 +87,11 @@ class EngineRuntime:
                 failures.append(failure)
 
         try:
-            self.registry.request_shutdown(forced=True, emit_idle=False)
+            self.registry.request_shutdown(
+                forced=True,
+                origin=self.registry.origin,
+                emit_idle=False,
+            )
         except BaseException as failure:
             failures.append(failure)
 
@@ -77,7 +102,10 @@ class EngineRuntime:
         except BaseException as failure:
             failures.append(failure)
 
-        await asyncio.sleep(0)
+        try:
+            await self.executor_manager._drain()
+        except BaseException as failure:
+            failures.append(failure)
 
         # Completed executor sessions remain owned by ExecutorManager until the
         # coordinator acknowledges retrieval. If coordination failed, recover
@@ -121,11 +149,17 @@ class EngineRuntime:
         for close in (
             self.registry.close,
             self.messenger.close,
+            self.observations.close,
         ):
             try:
                 close()
             except BaseException as failure:
                 failures.append(failure)
+
+        try:
+            self.progress_history.flush()
+        except BaseException as failure:
+            failures.append(failure)
 
         self._initialized = False
 

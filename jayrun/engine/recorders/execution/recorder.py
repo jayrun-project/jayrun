@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from time import perf_counter
 
+from ...history_budget import _HistoryBudget
+
 from ...context.step_reference import StepReference
 from .records import (
     AttemptRecord,
@@ -31,6 +33,7 @@ class ExecutionRecorder:
         self._record_timers = record_timers
         self._record_failures = record_failures
         self._state = RecorderState.PENDING
+        self._history_budget: _HistoryBudget | None = None
         self._custom_timer_starts: dict[str, float] = {}
         self._internal_timer_starts: dict[str, float] = {}
 
@@ -63,6 +66,8 @@ class ExecutionRecorder:
         self._require_running()
         if not self._record_logs:
             return
+        if self._history_budget is not None:
+            self._history_budget.consume()
         self._current_records.append(
             LogRecord(
                 message=message,
@@ -75,6 +80,8 @@ class ExecutionRecorder:
         self._require_running()
         if not self._record_metrics:
             return
+        if self._history_budget is not None:
+            self._history_budget.consume()
         self._current_records.append(
             MetricRecord(
                 name=name,
@@ -92,6 +99,8 @@ class ExecutionRecorder:
     ) -> None:
         self._require_running()
         if self._record_failures:
+            if self._history_budget is not None:
+                self._history_budget.account()
             self._current_records.append(
                 FailureRecord(
                     exception=failure,
@@ -104,6 +113,8 @@ class ExecutionRecorder:
     def start_timer(self, name: str) -> None:
         self._require_running()
         if self._record_timers:
+            if self._history_budget is not None and name not in self._custom_timer_starts:
+                self._history_budget.consume()
             self._custom_timer_starts[name] = perf_counter()
 
     def stop_timer(self, name: str) -> None:
@@ -118,6 +129,8 @@ class ExecutionRecorder:
     def start_internal_timer(self, name: str) -> None:
         self._require_running()
         if self._record_timers:
+            if self._history_budget is not None and name not in self._internal_timer_starts:
+                self._history_budget.account()
             self._internal_timer_starts[name] = perf_counter()
 
     def stop_internal_timer(self, name: str) -> None:
@@ -144,7 +157,12 @@ class ExecutionRecorder:
         self._execution += 1
         self._attempt = 1
 
-    def stop(self, outcome: ExecutionOutcome) -> None:
+    def stop(
+        self,
+        outcome: ExecutionOutcome,
+        *,
+        duration_seconds: float = 0.0,
+    ) -> None:
         if self._state is RecorderState.STOPPED:
             return
         self._require_running()
@@ -159,6 +177,7 @@ class ExecutionRecorder:
             attempts=tuple(self._attempts),
             execution_count=self._execution,
             outcome=outcome,
+            duration_seconds=duration_seconds,
         )
         self._current_records = []
         self._attempts = []
@@ -228,6 +247,11 @@ class ExecutionRecorder:
         start_time = starts.pop(name, None)
         if start_time is None:
             return
+        if self._history_budget is not None:
+            if origin is RecordOrigin.USER:
+                self._history_budget.consume()
+            else:
+                self._history_budget.account()
         self._current_records.append(
             TimerRecord(
                 name=name,

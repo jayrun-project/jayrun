@@ -20,6 +20,8 @@ class BaseResource(ABC):
     Subclasses declare configuration fields in ``__init__`` and implement
     :meth:`setup` and :meth:`teardown`. Jayrun injects the same runtime interfaces
     available to operators. A resource instance is immutable after construction.
+    Resources must inherit directly and only from BaseResource; subclassing another
+    resource is unsupported.
 
     Args:
         name: Optional name used in graph inspection and runtime records.
@@ -68,6 +70,12 @@ class BaseResource(ABC):
         self._description = description
 
     def __init_subclass__(cls, **kwargs: object) -> None:
+        if cls.__bases__ != (BaseResource,):
+            parents = ", ".join(base.__name__ for base in cls.__bases__)
+            raise TypeError(
+                f"{cls.__name__} cannot use bases ({parents}); "
+                "resources must inherit directly and only from BaseResource."
+            )
         super().__init_subclass__(**kwargs)
 
         declared_names = set(cls.__dict__)
@@ -155,8 +163,9 @@ class BaseResource(ABC):
     def teardown(self, data: Data) -> None:
         """Release a value previously returned by :meth:`setup`.
 
-        Implementations may be regular or ``async`` methods. Teardown runs after the
-        dependent operator execution, including when that execution fails.
+        Implementations may be regular or ``async`` methods. Loaded data can remain
+        cached after a dependent operator releases it. Teardown runs when the
+        resource is safely unloaded, such as during eviction or engine shutdown.
 
         Args:
             data: Resource data created by :meth:`setup`.

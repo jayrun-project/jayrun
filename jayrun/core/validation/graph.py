@@ -70,7 +70,9 @@ class EntryNode(GraphNode):
 
     def __repr__(self) -> str:
         lines = ["ENTRY"]
+        _append_repr(lines, "node_id", self.node_id)
         _append_repr(lines, "artifact", self.artifact.name)
+        _append_repr(lines, "description", self.artifact.description)
         _append_repr(lines, "artifact_id", self.artifact_id)
         return "\n".join(lines)
 
@@ -88,11 +90,25 @@ class OperatorNode(GraphNode):
 
     def __repr__(self) -> str:
         lines = ["OPERATOR"]
+        _append_repr(lines, "node_id", self.node_id)
         _append_repr(lines, "name", self.operator.display_name)
-        if self.operator.description is not None:
-            _append_repr(lines, "description", self.operator.description)
+        _append_repr(lines, "description", self.operator.description)
 
         _append_repr(lines, "layout position", self.layout_position)
+
+        for side, fields in (
+            ("inputs", self.operator.declared_artifact_fields),
+            ("outputs", self.operator.outputs),
+        ):
+            lines.append(f"  {side}:")
+            for field in fields:
+                _append_repr(lines, "field", field.display_name, indent=2)
+                _append_repr(
+                    lines, "binding",
+                    repr(field.artifact.name) if field.artifact is not None else "UNBOUND",
+                    indent=3,
+                )
+                _append_repr(lines, "description", field.description, indent=3)
 
         if self.operator.config_fields:
             lines.append("  configs:")
@@ -108,6 +124,7 @@ class OperatorNode(GraphNode):
                     value,
                     indent=2,
                 )
+                _append_repr(lines, "description", config.description, indent=3)
         else:
             _append_repr(lines, "configs", "none")
 
@@ -115,6 +132,7 @@ class OperatorNode(GraphNode):
             lines.append("  resources:")
             for resource in self.operator.resource_fields:
                 lines.append(f"    {resource.display_name}")
+                _append_repr(lines, "description", resource.description, indent=3)
         else:
             _append_repr(lines, "resources", "none")
 
@@ -133,7 +151,9 @@ class ExitNode(GraphNode):
 
     def __repr__(self) -> str:
         lines = ["EXIT"]
+        _append_repr(lines, "node_id", self.node_id)
         _append_repr(lines, "artifact", self.artifact.name)
+        _append_repr(lines, "description", self.artifact.description)
         _append_repr(lines, "artifact_id", self.artifact_id)
         return "\n".join(lines)
 
@@ -168,6 +188,14 @@ class GraphEdge:
 
     def __repr__(self) -> str:
         lines = [self.edge_type.value.upper()]
+        _append_repr(lines, "edge", self.edge_id)
+        _append_repr(lines, "nodes", f"{self.source} -> {self.target}")
+        _append_repr(lines, "artifact", self.artifact.name)
+        _append_repr(lines, "description", self.artifact.description)
+        for side, field in (("output", self.source_field), ("input", self.target_field)):
+            if field is not None:
+                _append_repr(lines, f"{side} field", field.display_name)
+                _append_repr(lines, f"{side} description", field.description)
         if self.validation is None:
             lines.append("Validation: not available")
         else:

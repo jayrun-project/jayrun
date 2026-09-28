@@ -1,30 +1,33 @@
-from collections.abc import Hashable
+from dataclasses import replace
 
-from ...messages.commands.store_value import StoreValueCommand
+from ...messages.capability import _RuntimeCapability
+from ...messages.commands.record_context import RecordContextCommand
+from ...messages.origin import CommandOrigin
 from ...messages.runtime_messenger import RuntimeMessenger
-from ...registry.identities import BaseIdentity
-from ..value_record import ValueRecord
-from .storage import StoredValueRepository
+from ..context_record import ContextRecord
+from .storage import ContextRecordRepository
 
 
 class ContextService:
-    def __init__(self, runtime_messenger: RuntimeMessenger) -> None:
+    def __init__(self, runtime_messenger: RuntimeMessenger,
+                 records: ContextRecordRepository) -> None:
         self._runtime_messenger: RuntimeMessenger | None = runtime_messenger
-        self._values = StoredValueRepository()
+        self._records = records
 
-    def store(self, record: ValueRecord, identity: BaseIdentity) -> None:
-        self._messenger().submit(
-            StoreValueCommand(record=record, identity=identity)
-        )
+    def record(self, record: ContextRecord, capability: _RuntimeCapability,
+               origin: CommandOrigin, generation: int) -> None:
+        record = replace(record, generation=generation)
+        messenger = self._messenger()
+        self._records.enqueue(record, lambda: messenger.submit(
+            RecordContextCommand(record=record), capability, origin=origin,
+        ))
 
-    def record(self, record: ValueRecord) -> None:
-        self._values.store(record)
-
-    def get_records(self, key: Hashable) -> tuple[ValueRecord, ...]:
-        return self._values.get_records(key)
+    def records(self, key: str) -> tuple[ContextRecord, ...]:
+        return self._records.records(key)
 
     def close(self) -> None:
         self._runtime_messenger = None
+        self._records.close()
 
     def _messenger(self) -> RuntimeMessenger:
         if self._runtime_messenger is None:

@@ -2,7 +2,65 @@
 
 All notable changes to Jayrun are documented in this file.
 
-Jayrun is still pre-1.0, so public APIs may continue to evolve as the design is refined.
+Release notes describe new capabilities, compatibility changes and fixes.
+
+## [0.3.0] - 2026-09-28
+
+### Added
+
+- SQLite-backed execution/session history, bounded retention, explicit flush and
+  scoped historical readers through `jayrun.persistence`.
+- Portable configuration and ContextRecord codecs through `jayrun.serialization`.
+- Public inspection, report and lifecycle types organized into documented facades.
+- Interactive definition, registry and completed-run viewers, plus a dashboard
+  with consistent themes and an offline documentation preview.
+- A rebuilt manual, runnable examples and seven application tutorials with
+  matching Python sources and notebooks.
+
+### Changed
+
+- Graphs require explicit `graph.confirm()` after binding resources and serializers.
+  Confirmation validates and freezes preparation; invalid graphs remain inspectable.
+- Submit with `engine.submit(graph, artifacts, configs, settings=...)`. ArtifactContext
+  and ConfigContext are value builders rather than graph-bound submission wrappers.
+- One `EngineSettings.failure_mode` governs execution and owned persistence.
+  Standalone Database operations remain strict; use explicit flush to check settlement.
+- Configuration accepts bounded immutable built-in values; use a string such as
+  `"float32"` instead of a Python/library object such as `torch.float32`.
+- Settings are keyword-only. RecordingMode, engine_id, unfinished_contexts and
+  database methods with an `_async` suffix use consistent terminology.
+- `ArtifactPolicy(retained_artifacts=None)` retains eligible exits, `()` retains
+  none, and a tuple selects declared exits. Retention does not cap total process RSS.
+- Strengthened operator-output handling, failure-reference cleanup and lifecycle
+  qualification. Simplified public imports and updated all published examples.
+
+### Compatibility
+
+0.3.0 includes breaking changes from 0.2.0. For example:
+
+```python
+# 0.2: graph-bound builders, inferred graph at submission
+artifacts = ArtifactContext(graph=graph)
+configs = ConfigContext(graph=graph)
+run = engine.submit(artifacts, configs)
+
+# 0.3: prepare explicitly, then submit the graph and value builders
+# Bind required resources/serializers before confirming.
+graph.confirm()
+artifacts = ArtifactContext({source: value})
+configs = ConfigContext({operator.factor: 3})
+run = engine.submit(graph, artifacts, configs)
+```
+
+Replace `ArtifactContext.clear_entries()` with `clear()`. Builder validation occurs
+at submission; retired no-argument builder `validate()` methods and public compiled
+plan/layout access are removed. BaseOperator construction is unchanged. Component
+identity versions remain independent of the package version.
+
+History is bounded diagnostic evidence, not automatic application checkpointing or
+an exactly-once event archive. Concurrency, placement and cooperative shutdown retain
+their documented limits. See the [current manual](https://jayrun.readthedocs.io/en/latest/)
+for supported imports, complete examples and operational limits.
 
 ## [0.2.0] - 2026-09-01
 
@@ -47,3 +105,5 @@ Jayrun is still pre-1.0, so public APIs may continue to evolve as the design is 
 
 [0.2.0]: https://github.com/jayrun-project/jayrun/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/jayrun-project/jayrun/releases/tag/v0.1.0
+
+[0.3.0]: https://github.com/jayrun-project/jayrun/compare/v0.2.0...v0.3.0

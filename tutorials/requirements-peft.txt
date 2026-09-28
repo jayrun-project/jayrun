@@ -1,0 +1,3 @@
+# Optional downloaded pretrained-model integration, separate from core dependencies.
+transformers
+peft

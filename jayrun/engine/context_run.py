@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import math
-from collections.abc import Hashable
 from time import monotonic
-from typing import Self
+from typing import Self, TYPE_CHECKING
 
 from ..core.artifact.base import Artifact
 from ..core.artifact.context import ArtifactContext
@@ -14,11 +13,17 @@ from ..core.graph.graph_definition import GraphDefinition
 from .artifact.result import ArtifactResult
 from .interfaces.services.control import ContextControlService
 from .interfaces.services.context import ContextService
-from .interfaces.value_record import ValueRecord
+from .interfaces.context_record import ContextRecord
+from .progress import ProgressSnapshot
 from .recorders.context.report import ContextReport
 from .registry.context_instance import ContextInstance
 from .registry.context_state import ContextState
-from .registry.identities import BaseIdentity
+from .snapshot import ContextSnapshot
+
+
+if TYPE_CHECKING:
+    from ..visualization._facade import Plot
+    from ..reporting._completed import _RunReporter
 
 
 class ContextNotTerminatedError(RuntimeError):
@@ -40,7 +45,7 @@ class ContextRun:
         "_context",
         "_context_service",
         "_control_service",
-        "_identity",
+        "_reporter",
     )
 
     def __init__(
@@ -49,26 +54,42 @@ class ContextRun:
         context: ContextInstance,
         context_service: ContextService,
         control_service: ContextControlService,
-        identity: BaseIdentity,
     ) -> None:
         self._context = context
         self._context_service = context_service
         self._control_service: ContextControlService | None = control_service
-        self._identity = identity
+        from ..reporting._completed import _RunReporter
+        self._reporter = _RunReporter(self)
 
     @property
     def graph(self) -> GraphDefinition:
         """Exact graph object submitted for this context.
 
-        Object identity is also the supervision boundary: a supervising graph
-        sees runs only for the graph objects supplied through ``supervises``.
+        Object identity is the local boundary for a scoped
+        :class:`~jayrun.Supervisor`. When the engine has a graph registry, the
+        registered key and version form that boundary instead.
         """
         return self._context.graph
 
     @property
     def context_id(self) -> int:
-        """Engine-local context identifier."""
+        """Probabilistically unique 62-bit identity of this logical context.
+
+        The compact non-negative integer fits signed 64-bit systems. Treat it
+        as an opaque correlation value rather than deriving application data
+        from it.
+        """
         return self._context.context_id
+
+    @property
+    def engine_id(self) -> str:
+        """Unique engine incarnation currently assigned to this context.
+
+        The value combines the owning engine's human-readable name and compact
+        UUID. Jayrun treats it as an opaque routing identity, not an address or
+        security credential.
+        """
+        return self._context.engine_id
 
     @property
     def artifact_context(self) -> ArtifactContext:
@@ -93,6 +114,28 @@ class ContextRun:
     def iteration_count(self) -> int:
         """Number of graph iterations that have started."""
         return self._context.iteration_count
+
+    @property
+    def progress(self) -> ProgressSnapshot:
+        """Latest immutable factual and estimated progress snapshot.
+
+        Reading this property does not emit an event or update profiling history.
+        Live step reports refine only this run's estimate. Durable history learns
+        once at finite-context finalization or at completed iteration boundaries
+        for an unbounded context. Estimates can move backward as routing and
+        execution behavior become known.
+        """
+        return self._context.progress
+
+    def snapshot(self) -> ContextSnapshot:
+        """Capture the complete immutable state currently known for this context.
+
+        The snapshot contains no runtime capability or transport. It can be
+        serialized with an application-selected codec. Applying it to another
+        engine requires a registered graph with complete boundary serializers.
+        Capturing it emits no event and does not update progress history.
+        """
+        return self._context.snapshot
 
     @property
     def done(self) -> bool:
@@ -180,15 +223,20 @@ class ContextRun:
         """
         control_service = self._control_service_for_control()
         if control_service is not None:
-            control_service.abort(self.context_id, self._identity)
+            control_service.abort()
 
     def stop(self) -> None:
         """Prevent another graph iteration after accepted work drains.
 
         For a queued context, stopping can finalize it without starting work. For
         a running iterative context, the current iteration completes and the run
-        terminates in ``STOPPED``. Calling this method on a terminal run has no
-        effect.
+        finishes normally in ``FINISHED``; failure or abort keeps its actual
+        outcome. Acceptance records ``stop_requested`` in the snapshot/report
+        and publishes ``ContextStopRequested`` without replacing the live state.
+        Zero iterations means no execution began, even when the outcome is
+        ``FINISHED``. A paused context resumes so its accepted iteration can
+        drain; subsequent pause/resume remains possible, but cannot clear Stop
+        or begin another iteration. Terminal calls have no effect.
 
         Raises:
             RuntimeError: If this run no longer has authority to control an active
@@ -196,7 +244,7 @@ class ContextRun:
         """
         control_service = self._control_service_for_control()
         if control_service is not None:
-            control_service.stop(self.context_id, self._identity)
+            control_service.stop()
 
     def pause(
         self,
@@ -218,8 +266,6 @@ class ContextRun:
         control_service = self._control_service_for_control()
         if control_service is not None:
             control_service.pause(
-                self.context_id,
-                self._identity,
                 duration_seconds=duration_seconds,
             )
 
@@ -234,20 +280,86 @@ class ContextRun:
         """
         control_service = self._control_service_for_control()
         if control_service is not None:
-            control_service.resume(self.context_id, self._identity)
+            control_service.resume()
+
+    def transfer(self, target_engine_id: str) -> None:
+        """Assign this context to an engine incarnation.
+
+        Pass :attr:`jayrun.Engine.engine_id` externally or ``self.runtime.engine_id``
+        from a controlling context. For a context waiting in ``ROUTING``, passing
+        its current local target_engine_id admits it locally without changing ownership;
+        passing another target_engine_id assigns that owner and advances the generation.
+        An addressed queued snapshot starts automatically when applied by the
+        target engine. Authority-bearing contexts cannot be transferred. A
+        locally executing context must first reach a safe boundary; a non-local
+        context can be reassigned from its last synchronized completed-iteration
+        checkpoint.
+
+        Args:
+            target_engine_id: Unique target engine-incarnation string.
+
+        Raises:
+            TypeError: If ``target_engine_id`` is not a string.
+            ValueError: If ``target_engine_id`` is empty or the context state is unsafe.
+            RuntimeError: If control expired or the context carries authority.
+        """
+        if not isinstance(target_engine_id, str):
+            raise TypeError("target_engine_id must be a string")
+        if not target_engine_id.strip():
+            raise ValueError("target_engine_id must not be empty")
+        if target_engine_id.strip() == "self":
+            raise ValueError(
+                "target_engine_id must be an engine.engine_id value, not 'self'"
+            )
+        if self._context.is_supervising:
+            raise RuntimeError("authority-bearing contexts cannot be transferred")
+        if self.state.is_terminal:
+            raise ValueError("terminal contexts cannot be transferred")
+        if (
+            self._context.is_local
+            and target_engine_id != self.engine_id
+            and self.state not in {
+                ContextState.ROUTING,
+                ContextState.QUEUED,
+            }
+        ):
+            raise ValueError(
+                "a locally executing context cannot be transferred; "
+                "wait for a safe queued boundary"
+            )
+        if not self._context._is_local_engine(target_engine_id):
+            if not isinstance(self._context.graph_scope, tuple):
+                raise RuntimeError(
+                    "remote transfer requires a registered graph key"
+                )
+            if not self.graph._has_complete_boundary_serializers:
+                raise RuntimeError(
+                    "remote transfer requires graph boundary serializers"
+                )
+        control_service = self._control_service_for_control()
+        if control_service is not None:
+            control_service.transfer(target_engine_id)
 
     @property
-    def report(self) -> ContextReport:
-        """Terminal context report.
+    def plot(self) -> Plot:
+        """Show or save a finalized run using the shared offline graph viewer."""
+        self._require_terminated()
+        from ..visualization._facade import Plot
+        from ..visualization.adapters.completed import completed_payload
+        return Plot(lambda: completed_payload(self))
+
+    @property
+    def report(self) -> _RunReporter:
+        """Finalized formatter; ``data`` exposes the immutable ContextReport.
 
         Raises:
             ContextNotTerminatedError: If the context has not terminated.
 
         Returns:
-            The immutable terminal report for this context.
+            The sole formatter for this finalized context.
         """
         self._require_terminated()
-        return self._context._report_value()
+        return self._reporter
 
     def artifact(
         self,
@@ -272,46 +384,13 @@ class ContextRun:
         self._require_terminated()
         return self._context._artifact_result(reference)
 
-    def has_value(self, key: Hashable) -> bool:
-        """Return whether the context has stored a record under ``key``.
+    def records(self, key: str) -> tuple[ContextRecord, ...]:
+        """Return retained context records in commit order, or () for an unknown key.
 
-        Args:
-            key: Hashable key used with ``self.context.store``.
+        The immutable tuple is reused until this key changes. Its sequence numbers
+        are stable identities, not tuple indexes; history may have been pruned.
         """
-        return self.get_value_record(key) is not None
-
-    def get_value(self, key: Hashable) -> object | None:
-        """Return the latest context-stored value under ``key``, if present.
-
-        Use :meth:`has_value` or :meth:`get_value_record` to distinguish a missing
-        key from a stored value of ``None``.
-        """
-        record = self.get_value_record(key)
-        return None if record is None else record.value
-
-    def get_values(self, key: Hashable) -> tuple[object, ...]:
-        """Return all context-stored values under ``key`` in recording order."""
-        return tuple(record.value for record in self.get_value_records(key))
-
-    def get_value_record(self, key: Hashable) -> ValueRecord | None:
-        """Return the latest context-stored record under ``key``, if present."""
-        records = self.get_value_records(key)
-        return None if not records else records[-1]
-
-    def get_value_records(self, key: Hashable) -> tuple[ValueRecord, ...]:
-        """Return all context-stored records under ``key`` in recording order.
-
-        Args:
-            key: Hashable key used with ``self.context.store``.
-
-        Returns:
-            Immutable records containing values and their execution provenance.
-
-        Raises:
-            TypeError: If ``key`` is not hashable.
-        """
-        hash(key)
-        return self._context_service.get_records(key)
+        return self._context_service.records(key)
 
     def __await__(self):
         """Wait asynchronously for finalization and return this run."""

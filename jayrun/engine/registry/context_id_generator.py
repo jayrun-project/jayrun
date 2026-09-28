@@ -1,9 +1,10 @@
-from itertools import count
+from secrets import randbits
 
 
 class ContextIdGenerator:
-    def __init__(self) -> None:
-        self._counter = count(100000)
+    """Generate compact identifiers compatible with signed 64-bit systems."""
+
+    _BITS = 62
 
     def generate(self) -> int:
-        return next(self._counter)
+        return randbits(self._BITS)

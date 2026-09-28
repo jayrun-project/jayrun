@@ -1,25 +1,34 @@
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 
 from ...core.artifact.base import Artifact
 from ...core.graph.definition.artifact import ArtifactDefinition
 from ...core.graph.registry.artifact import ArtifactRegistry
 from .context import ArtifactPolicy, ContextSettings
+from ._instrumentation import _InstrumentationPolicy
 from .engine import (
     EngineSettings,
     FailureMode,
     RetryPolicy,
-    RuntimeMode,
+    RecordingMode,
 )
 
 
 @dataclass(frozen=True, slots=True)
 class CombinedContextSettings:
-    runtime_mode: RuntimeMode
+    recording_mode: RecordingMode
     failure_mode: FailureMode
     retry_policy: RetryPolicy
     artifact_policy: ArtifactPolicy
     max_iterations: int | None
     max_repeats: int | None
+    record_history_limit: int | None = 64
+    record_max_keys: int = 256
+    record_max_value_bytes: int = 65536
+    record_max_total_bytes: int = 8388608
+    instrumentation: _InstrumentationPolicy = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "instrumentation", _InstrumentationPolicy.for_mode(self.recording_mode))
 
     @classmethod
     def from_settings(
@@ -47,7 +56,7 @@ class CombinedContextSettings:
         )
 
         return cls(
-            runtime_mode=engine_settings.runtime_mode,
+            recording_mode=engine_settings.recording_mode,
             failure_mode=engine_settings.failure_mode,
             retry_policy=(
                 context_settings.retry_policy
@@ -57,6 +66,10 @@ class CombinedContextSettings:
             artifact_policy=artifact_policy,
             max_iterations=context_settings.max_iterations,
             max_repeats=context_settings.max_repeats,
+            record_history_limit=context_settings.record_history_limit,
+            record_max_keys=context_settings.record_max_keys,
+            record_max_value_bytes=context_settings.record_max_value_bytes,
+            record_max_total_bytes=context_settings.record_max_total_bytes,
         )
 
     @classmethod
@@ -65,7 +78,7 @@ class CombinedContextSettings:
         policy: ArtifactPolicy,
         registry: ArtifactRegistry,
     ) -> ArtifactPolicy:
-        if policy.retain_all:
+        if policy.retained_artifacts is None:
             retained_artifacts = tuple(
                 artifact
                 for artifact in registry.sources
@@ -84,7 +97,6 @@ class CombinedContextSettings:
 
         return replace(
             policy,
-            retain_all=False,
             retained_artifacts=retained_artifacts,
         )
 

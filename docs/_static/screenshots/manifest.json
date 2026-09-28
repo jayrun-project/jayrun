@@ -1,0 +1,17 @@
+{
+  "description": "README screenshots. Each image records its own provenance; IDs and timings describe its captured session.",
+  "images": {
+    "dashboard.png": {
+      "sha256": "bfd7b2440b066594b0dca328ef5c062cfe798bd231bba6f603c018dcd65d54f6",
+      "provenance": "User-provided dashboard image already present in the tracked baseline; preserved byte-for-byte during 0.3.0 release preparation. Capture source and session were not reproduced."
+    },
+    "split-and-join.png": {
+      "sha256": "68d70ac56d8ee4b52a2228f11495e375677b95289cb440a423dd16289ed8c5e3",
+      "source": "docs/_static/split_join.html",
+      "provenance": "Captured with Chromium from the bundled declaration viewer."
+    }
+  },
+  "sources": {
+    "docs/_static/split_join.html": "2764a3cb70787247c3a077850fa90d782f9981841c2165facb88ce15feca7e62"
+  }
+}

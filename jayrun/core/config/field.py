@@ -1,12 +1,12 @@
-from collections.abc import Hashable
 from dataclasses import dataclass
 
 from ..declaration.field import DeclarativeField
+from .values import CONFIG_TYPES, validate_config_value
 
 
 @dataclass(slots=True, frozen=True, kw_only=True, eq=False)
 class ConfigField(DeclarativeField):
-    """Declare a hashable configuration value for an operator or resource.
+    """Declare a portable immutable configuration value for an operator or resource.
 
     Args:
         name: Optional display name.
@@ -22,25 +22,13 @@ class ConfigField(DeclarativeField):
     def __post_init__(self) -> None:
         DeclarativeField.__post_init__(self)
 
-        if not isinstance(self.value_type, type):
-            raise TypeError(
-                f"'value_type' must be a type, got {type(self.value_type).__name__!r}"
-            )
-
-        if not issubclass(self.value_type, Hashable):
-            raise TypeError(
-                f"'value_type' must be hashable, got {self.value_type.__name__!r}"
-            )
+        if not any(self.value_type is allowed for allowed in CONFIG_TYPES):
+            raise TypeError("value_type must be bool, int, float, str or tuple")
 
         if self.required and self.default is not None:
             raise ValueError("A required ConfigField cannot have a default value")
 
-        if self.default is not None and not isinstance(
-            self.default,
-            self.value_type,
-        ):
-            raise TypeError(
-                f"'default' must be an instance of "
-                f"{self.value_type.__name__!r}, "
-                f"got {type(self.default).__name__!r}"
-            )
+        if self.default is not None:
+            if type(self.default) is not self.value_type:
+                raise TypeError(f"default must be an exact {self.value_type.__name__}")
+            validate_config_value(self.default, path=self.name or "default")

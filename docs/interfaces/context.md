@@ -1,97 +1,57 @@
-(context-interface)=
-# Context Interface
+# self.context
 
-`self.context` addresses the graph submission that owns the current execution. It exposes context identity, stored values, and self-lifecycle requests.
+Use self.context for the currently executing context. record means queued acceptance, records reads retained committed values; neither is durable storage. [Recording guide](../guides/evidence/records.md).
 
-## Context identity
+Read [how to use self.context](../guides/components/context.md) for hook availability and a worked explanation. This is an injected handle, not an application constructor.
 
-```python
-context_id = self.context.id
+```{py:class} ContextInterface
 ```
 
-This ID matches the corresponding `ContextRun.context_id` and is useful for external logs. Control APIs do not require user code to pass it back to Jayrun.
+```{py:method} ContextInterface.record(key, value)
 
-## Stored values
+Validate and detach a value before queueing it for context commitment.
 
-Context records are visible across operators, repetitions, and graph iterations in the same run:
-
-```python
-def execute(self):
-    previous = self.context.get_value("best_score")
-    score = evaluate(self.model.value)
-
-    if previous is None or score > previous:
-        self.context.store("best_score", score)
-
-    return self.model.value
+Return means queued acceptance, not committed visibility. An immediate
+records() call may still see the preceding snapshot. Capacity violations
+raise before queueing; shutdown or ownership transfer may discard pending
+requests. Recording does not acknowledge an application action.
 ```
 
-Available methods are:
+[Source: record](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/base.py)
 
-| Method | Result |
-| --- | --- |
-| `store(key, value)` | Append a value and its provenance |
-| `has_value(key)` | Whether at least one record exists |
-| `get_value(key)` | Latest value, or `None` |
-| `get_values(key)` | All values in recording order |
-| `get_value_record(key)` | Latest `ValueRecord`, or `None` |
-| `get_value_records(key)` | All records in recording order |
+```{py:method} ContextInterface.records(key)
 
-Stored values do not trigger operators or satisfy dependencies. Use an artifact when a value is part of declared graph data flow.
-
-After finalization, the same records remain available through the caller's `ContextRun` methods.
-
-## Pause
-
-```python
-self.context.pause()
-self.context.pause(duration_seconds=30)
+Return context-scoped records for `key` in recording order.
 ```
 
-Without a duration, the pause is indefinite and another authorized `ContextRun` must call `resume()`. With a duration, Jayrun schedules automatic resumption.
+[Source: records](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/context.py)
 
-Pause takes effect at a scheduling boundary. It is not a sleep, an `await`, or forced suspension of the current Python instruction.
+```{py:method} ContextInterface.abort()
 
-## Abort
-
-```python
-self.context.abort()
+Prevent further dispatch and drain this context toward `ABORTED`.
 ```
 
-Abort prevents further dispatch and drains accepted work toward `ABORTED`. The current invocation is not forcefully killed, so return promptly after requesting it.
+[Source: abort](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/context.py)
 
-## Stop iteration
+```{py:method} ContextInterface.stop()
 
-```python
-self.context.stop()
+Stop iteration after accepted work drains, preventing a next iteration.
 ```
 
-Stop means stop iteration. Accepted work drains, and no next graph iteration begins. Use abort when remaining work should be abandoned; use stop when an iterative graph has reached its orderly completion condition.
+[Source: stop](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/context.py)
 
-## API summary
+```{py:method} ContextInterface.pause(duration_seconds=None)
+
+Request a pause at a controlled scheduling boundary.
+
+:param duration_seconds: Non-negative automatic-resume delay, or `None` to require a supervising context to resume this context.
+```
+
+[Source: pause](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/context.py)
 
 ```{py:attribute} ContextInterface.id
-:type: int
 
-Identifier of the currently executing context.
+ID of the currently executing context.
 ```
 
-```{py:method} ContextInterface.store(key, value) -> None
-Append a context-scoped value record.
-```
-
-```{py:method} ContextInterface.pause(duration_seconds=None) -> None
-Request a pause at a scheduling boundary. `None` means indefinite.
-```
-
-```{py:method} ContextInterface.abort() -> None
-Prevent further dispatch and drain toward an aborted terminal state.
-```
-
-```{py:method} ContextInterface.stop() -> None
-Prevent another graph iteration after accepted work drains.
-```
-
-Lifecycle calls enqueue messages and return immediately. Use a `ContextRun` wait when another participant must observe the transition.
-
-Continue with {doc}`Runtime Interface <runtime>` for graph-scoped supervision.
+[Source: id](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/context.py)

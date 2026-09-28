@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 from pathlib import Path
 
 from ..resource.placement_request import capacity_bytes
@@ -27,8 +28,13 @@ class MemoryPressureMonitor:
         self._high_watermark = high_watermark
         self._low_watermark = low_watermark
         self._pressured = False
+        self._lock = threading.RLock()
 
     def sample(self) -> bool:
+        with self._lock:
+            return self._sample()
+
+    def _sample(self) -> bool:
         process_usage = self._process_usage()
         system_capacity, system_available = self._system_memory()
         process_limit = self._configured_limit or system_capacity

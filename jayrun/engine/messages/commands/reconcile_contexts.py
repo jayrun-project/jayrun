@@ -1,10 +1,8 @@
-from ...registry.identities import BaseIdentity
-from ..runtime_message import RuntimeMessage
+from dataclasses import dataclass
+
+from ..runtime_message import RuntimeCommand
 
 
-class ReconcileContextsCommand(RuntimeMessage):
-    def __init__(self, identity: BaseIdentity) -> None:
-        super().__init__(identity=identity)
-
-    def execute(self) -> None:
-        self.engine_runtime.context_scheduler.reconcile()
+@dataclass(frozen=True, slots=True)
+class ReconcileContextsCommand(RuntimeCommand):
+    pass

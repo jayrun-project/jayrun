@@ -1,0 +1,8 @@
+User: I forgot my password. Agent: Open account settings and choose reset password.
+User: My order is late. Agent: Check the tracking page and contact support with the order number.
+User: I need an invoice. Agent: Open billing history and download your invoice.
+User: How do I cancel a subscription? Agent: Open billing settings and choose cancel renewal.
+User: The app will not open. Agent: Restart the app and check for updates.
+User: I changed my email. Agent: Open profile settings and verify the new email address.
+User: Where is my receipt? Agent: Open billing history and download the receipt.
+User: How can I change my password? Agent: Open security settings and choose a new password.

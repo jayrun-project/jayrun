@@ -9,6 +9,7 @@ from ..artifact.field import ArtifactField
 from ..config.field import ConfigField
 from ..resource.base import BaseResource
 from ..resource.field import ResourceField
+from ..serializer.base import BaseSerializer
 from .definition import RequirementDefinition
 
 
@@ -46,8 +47,10 @@ class CompiledResourceStep(CompiledStep):
 
 @dataclass(slots=True, frozen=True, kw_only=True)
 class CompiledGraph:
+    version: str
     steps: tuple[CompiledStep, ...]
     entry_artifacts: tuple[Artifact, ...]
     artifacts: tuple[Artifact, ...]
+    serializers: tuple[tuple[Artifact, BaseSerializer], ...]
     initial_dependency_counts: tuple[int, ...]
     requirements: tuple[RequirementDefinition, ...]

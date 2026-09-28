@@ -4,8 +4,13 @@ __pycache__/
 .Python
 
 # Private development assets
-/examples_private/
-/tests_private/
+/_examples/
+/_tests/
+graphify-out/
+
+# Generated review outputs (local only)
+/_evidence/
+/_previews/
 
 # Coverage and tool caches
 .coverage

@@ -15,8 +15,7 @@ from .graph import (
     OperatorNode,
 )
 from .plotting import GraphPlotter
-from .reporting import ValidationReporter
-from .validator import GraphValidator
+from .validation import GraphValidation
 
 __all__ = (
     "ArtifactValidationReport",
@@ -28,10 +27,9 @@ __all__ = (
     "GraphNode",
     "GraphPlotter",
     "GraphValidationReport",
-    "GraphValidator",
+    "GraphValidation",
     "NodeType",
     "OperatorNode",
     "PropertyValidationReport",
-    "ValidationReporter",
     "ValidationStatus",
 )

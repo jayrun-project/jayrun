@@ -69,7 +69,13 @@ class AttemptRecord:
 
 @dataclass(frozen=True, slots=True)
 class ExecutionReport:
-    """Immutable outcome and observability data for one graph step session."""
+    """Immutable outcome and observability data for one graph step session.
+
+    ``duration_seconds`` is monotonic active execution time. It excludes time
+    spent waiting for placement between dispatch attempts. Progress profiling
+    consumes complete report batches at context or iteration boundaries; live
+    progress updates do not mutate durable history.
+    """
 
     step_index: int
     step_kind: str
@@ -81,3 +87,4 @@ class ExecutionReport:
     execution_count: int
     outcome: ExecutionOutcome
     skip_reason: str | None = None
+    duration_seconds: float = 0.0

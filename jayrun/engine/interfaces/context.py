@@ -1,11 +1,10 @@
 import math
-from collections.abc import Hashable
 
+from ..messages.origin import StepOrigin
 from ..recorders.execution.recorder import ExecutionRecorder
-from ..registry.identities import StepIdentity
 from .base import ScopeInterface
 from .services.accesses import ContextAccess
-from .value_record import ValueRecord
+from .context_record import ContextRecord
 
 
 class ContextInterface(ScopeInterface):
@@ -19,26 +18,20 @@ class ContextInterface(ScopeInterface):
         super().__init__(recorder=recorder)
         self._context_access = context_access
 
-    def get_value_records(self, key: Hashable) -> tuple[ValueRecord, ...]:
+    def records(self, key: str) -> tuple[ContextRecord, ...]:
         """Return context-scoped records for ``key`` in recording order."""
-        return self._context_access.get_records(key)
+        return self._context_access.records(key)
 
-    def _store(self, record: ValueRecord) -> None:
-        self._context_access.store(record, self._identity())
+    def _record(self, record: ContextRecord) -> None:
+        self._context_access.record(record, self._origin())
 
     def abort(self) -> None:
         """Prevent further dispatch and drain this context toward ``ABORTED``."""
-        self._context_access.abort(
-            context_id=self.id,
-            identity=self._identity(),
-        )
+        self._context_access.abort(self._origin())
 
     def stop(self) -> None:
         """Stop iteration after accepted work drains, preventing a next iteration."""
-        self._context_access.stop(
-            context_id=self.id,
-            identity=self._identity(),
-        )
+        self._context_access.stop(self._origin())
 
     def pause(self, duration_seconds: float | None = None) -> None:
         """Request a pause at a controlled scheduling boundary.
@@ -49,13 +42,12 @@ class ContextInterface(ScopeInterface):
         """
         self._validate_duration(duration_seconds)
         self._context_access.pause(
-            context_id=self.id,
-            identity=self._identity(),
+            self._origin(),
             duration_seconds=duration_seconds,
         )
 
-    def _identity(self) -> StepIdentity:
-        return StepIdentity(
+    def _origin(self) -> StepOrigin:
+        return StepOrigin(
             context_id=self.id,
             step_name=self._recorder.step_name,
             step_type=self._recorder.step_kind,

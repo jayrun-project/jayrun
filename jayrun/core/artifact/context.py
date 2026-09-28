@@ -5,157 +5,193 @@ from collections.abc import Mapping
 from ..context.base import DataContext
 from ..context.runtime_data import Data
 from ..graph.definition.artifact import ArtifactDefinition, ArtifactRole
-from ..graph.graph_definition import GraphDefinition
+from ..graph.registry.artifact import ArtifactRegistry
 from .base import Artifact
 
 
-class ArtifactContext(DataContext[Artifact, Data]):
-    """Hold the entry-artifact values for one graph submission.
+_ArtifactReference = int | Artifact | ArtifactDefinition
 
-    The graph must be confirmed before the context is created. Values are wrapped in
-    :class:`~jayrun.Data`; callers may address artifacts by object, inspected
-    definition, or graph-local integer ID.
+
+class ArtifactContext(DataContext[_ArtifactReference, Data[object]]):
+    """Build the artifact values for one graph submission.
+
+    Builder contexts are graph-independent. References are resolved against the
+    explicit graph during submission; before then, only exact artifact declarations
+    support lookup. Submission creates a separate, sealed context that additionally
+    supports graph-local definitions and integer IDs.
 
     Args:
-        graph: Confirmed graph whose artifacts the context accepts.
+        artifacts: Optional initial values, using the same rules as :meth:`set`.
         name: Optional name for diagnostics.
         description: Optional description for diagnostics.
-
-    Raises:
-        TypeError: If ``graph`` is not a :class:`~jayrun.GraphDefinition`.
-        RuntimeError: If the graph has not been confirmed.
     """
 
     def __init__(
         self,
+        artifacts: Mapping[_ArtifactReference, object] | None = None,
         *,
-        graph: GraphDefinition,
         name: str | None = None,
         description: str | None = None,
     ) -> None:
         super().__init__(name=name, description=description)
-
-        if not isinstance(graph, GraphDefinition):
-            raise TypeError("graph must be a GraphDefinition instance")
-        if not graph.confirmed:
-            raise RuntimeError("The graph must be confirmed.")
-
-        self._graph = graph
-        self._registry = graph._specification.artifacts
-        self._definitions_by_id = {
-            definition.artifact_id: definition
-            for definition in self._registry.definitions
-        }
-        self._release_target: ArtifactContext | None = None
+        self._registry: ArtifactRegistry | None = None
+        if artifacts is not None:
+            self.set(artifacts)
 
     def set(
         self,
-        artifacts: Mapping[int | Artifact | ArtifactDefinition, object],
+        artifacts: Mapping[_ArtifactReference, object],
     ) -> None:
         """Set or replace artifact values.
 
+        Builder keys may be exact declarations or graph-relative references. The
+        latter are retained without interpretation until submission, when the
+        explicit graph resolves them. Assignments retain call order, and the last
+        reference resolving to an artifact supplies its submitted value. Sealed
+        submission contexts cannot be mutated.
+
         Args:
-            artifacts: Mapping from artifact IDs, artifacts, or inspected artifact
-                definitions to raw values.
+            artifacts: Mapping from artifact references to raw values.
 
         Raises:
-            KeyError: If a key does not belong to this graph.
+            RuntimeError: If the context is sealed.
             TypeError: If ``artifacts`` is not a mapping or a key is unsupported.
-            ValueError: If multiple keys resolve to the same artifact.
         """
+        self._require_mutable()
         if not isinstance(artifacts, Mapping):
             raise TypeError(
                 "Expected a mapping of artifact IDs, Artifact, or "
                 "ArtifactDefinition to values."
             )
 
-        instances: dict[Artifact, Data] = {}
+        instances: dict[_ArtifactReference, Data[object]] = {}
 
         for key, value in artifacts.items():
-            artifact = self._resolve_artifact(key)
+            self._validate_reference(key)
+            instances[key] = Data(value=value)
 
-            if artifact in instances:
-                raise ValueError("Multiple artifact keys resolve to the same Artifact.")
-
-            instances[artifact] = Data(value=value)
-
-        self._update_instances(instances)
+        self._update_ordered_instances(instances)
 
     def get(
         self,
-        artifact: int | Artifact | ArtifactDefinition,
-    ) -> Data | None:
-        """Return an artifact's wrapped value, or ``None`` if it is unset."""
+        artifact: _ArtifactReference,
+    ) -> Data[object] | None:
+        """Return an artifact's wrapped value, or ``None`` if it is unset.
+
+        Before submission, ``artifact`` must be the exact declaration object used
+        with :meth:`set`. Definitions and integer IDs become available only on the
+        normalized submission context.
+        """
+        if self._registry is None:
+            if isinstance(artifact, Artifact):
+                return self._instances.get(artifact)
+            self._validate_reference(artifact)
+            self._require_registry()
         return self._instances.get(self._resolve_artifact(artifact))
 
     def clear(self) -> None:
-        """Remove every value from this context."""
+        """Remove every value from this mutable builder context."""
         self._require_mutable()
         self._instances.clear()
 
-    def clear_entries(self) -> None:
-        """Remove graph-entry values from this context and its release target."""
-        self._require_mutable()
-        self._clear_entries()
-        if self._release_target is not None:
-            self._release_target._clear_entries()
 
-    def _clear_entries(self) -> None:
-        for definition in self._registry.definitions:
-            if definition.role is ArtifactRole.ENTRY:
-                self._instances.pop(
-                    self._registry.source_for(definition),
-                    None,
-                )
+    def _validate(self) -> bool:
+        """Return whether every graph entry exists in a normalized context.
 
-    def _fork(self) -> ArtifactContext:
-        context = ArtifactContext(
-            graph=self.graph,
-            name=self.name,
-            description=self.description,
-        )
-        context._instances = dict(self._instances)
-        context._release_target = self
-        return context
+        This is available on a submitted run's context, not on a mutable builder.
+        Submission validates builder values against its explicit graph.
 
-    def validate(self) -> bool:
-        """Return whether every graph entry artifact has a value."""
+        Raises:
+            RuntimeError: If called before submission normalization.
+        """
+        registry = self._require_registry()
         return all(
-            self._registry.source_for(definition) in self._instances
-            for definition in self._registry.definitions
+            registry.source_for(definition) in self._instances
+            for definition in registry.definitions
             if definition.role is ArtifactRole.ENTRY
         )
 
+    def _clear_entries(self, registry: ArtifactRegistry | None = None) -> None:
+        if registry is None:
+            registry = self._require_registry()
+        entry_ids = {
+            id(registry.source_for(definition))
+            for definition in registry.definitions
+            if definition.role is ArtifactRole.ENTRY
+        }
+        for reference in tuple(self._instances):
+            artifact = self._resolve_with_registry(reference, registry)
+            if id(artifact) in entry_ids:
+                self._instances.pop(reference, None)
+
+    def _release(self) -> None:
+        self._instances.clear()
+
+    @classmethod
+    def _from_normalized(
+        cls,
+        source: ArtifactContext,
+        registry: ArtifactRegistry,
+        instances: Mapping[Artifact, Data[object]],
+    ) -> ArtifactContext:
+        context = cls(name=source.name, description=source.description)
+        context._registry = registry
+        context._instances = dict(instances)
+        context._seal()
+        return context
+
+    def _is_normalized_for(self, registry: ArtifactRegistry) -> bool:
+        return self._is_sealed and self._registry is registry
+
+    def _require_registry(self) -> ArtifactRegistry:
+        if self._registry is None:
+            raise RuntimeError(
+                "graph-relative artifact access is unavailable before submission "
+                "normalization"
+            )
+        return self._registry
+
     def _resolve_artifact(
         self,
-        artifact: int | Artifact | ArtifactDefinition,
+        artifact: _ArtifactReference,
     ) -> Artifact:
-        if type(artifact) is int:
-            try:
-                definition = self._definitions_by_id[artifact]
-            except KeyError:
-                raise KeyError(f"Unknown artifact ID: {artifact!r}.") from None
+        return self._resolve_with_registry(artifact, self._require_registry())
 
-            return self._registry.source_for(definition)
+    @staticmethod
+    def _resolve_with_registry(
+        artifact: _ArtifactReference,
+        registry: ArtifactRegistry,
+    ) -> Artifact:
+        if isinstance(artifact, Artifact):
+            if not any(artifact is source for source in registry.sources):
+                raise KeyError("The Artifact does not belong to this graph.")
+            return artifact
+
+        if type(artifact) is int:
+            for definition in registry.definitions:
+                if definition.artifact_id == artifact:
+                    return registry.source_for(definition)
+            raise KeyError(f"Unknown artifact ID: {artifact!r}.")
 
         if isinstance(artifact, ArtifactDefinition):
-            if artifact not in self._registry.definitions:
-                raise KeyError("The ArtifactDefinition does not belong to this graph.")
-
-            return self._registry.source_for(artifact)
-
-        if isinstance(artifact, Artifact):
-            if artifact not in self._registry.sources:
-                raise KeyError("The Artifact does not belong to this graph.")
-
-            return artifact
+            for definition in registry.definitions:
+                if artifact is definition:
+                    return registry.source_for(definition)
+            raise KeyError("The ArtifactDefinition does not belong to this graph.")
 
         raise TypeError(
             "Expected int, Artifact, or ArtifactDefinition, "
             f"got {type(artifact).__name__!r}."
         )
 
-    @property
-    def graph(self) -> GraphDefinition:
-        """The confirmed graph associated with this context."""
-        return self._graph
+    @staticmethod
+    def _validate_reference(artifact: object) -> None:
+        if (
+            type(artifact) is int
+            or isinstance(artifact, (Artifact, ArtifactDefinition))
+        ):
+            return
+        raise TypeError(
+            "Expected int, Artifact, or ArtifactDefinition, "
+            f"got {type(artifact).__name__!r}."
+        )

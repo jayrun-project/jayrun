@@ -2,6 +2,7 @@ from .artifact import ArtifactDefinition, ArtifactRole
 from .data import DataDefinition
 from .field import ConfigDefinition, FieldDefinition, ResourceDefinition
 from .requirement import RequirementDefinition
+from .serializer import SerializerDefinition
 
 __all__ = (
     "ArtifactDefinition",
@@ -10,5 +11,6 @@ __all__ = (
     "DataDefinition",
     "FieldDefinition",
     "RequirementDefinition",
+    "SerializerDefinition",
     "ArtifactRole",
 )

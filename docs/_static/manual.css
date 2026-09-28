@@ -1,0 +1,86 @@
+/* Inline standalone viewers share the page width and keep their own controls. */
+.graph-viewer {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 8 / 5;
+    box-sizing: border-box;
+    border: 1px solid var(--color-background-border, #d8dee8);
+    border-radius: 8px;
+    margin: 1.25rem 0;
+    background: #fff;
+}
+/* Keep the chapter map compact; expand only the reader's current branch. */
+.sidebar-container { width: 18rem; }
+.sidebar-drawer { min-width: 18rem; }
+.sidebar-brand-text { font-size: 1.2rem; font-weight: 700; }
+.sidebar-tree {
+    --sidebar-item-line-height: 1.4rem;
+    --sidebar-item-spacing-vertical: .45rem;
+    --sidebar-expander-width: 2.5rem;
+    padding: .4rem .75rem 1.5rem;
+}
+.manual-nav-title {
+    color: var(--color-foreground-muted);
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    margin: .5rem .65rem .75rem;
+    text-transform: uppercase;
+}
+.sidebar-tree > ul { margin: 0; }
+.sidebar-tree .toctree-l1 { margin-bottom: .4rem; }
+.sidebar-tree .reference {
+    border-radius: 6px;
+    font-size: .88rem;
+    overflow-wrap: normal;
+    padding-left: .65rem;
+}
+.sidebar-tree .toctree-l1 > .reference {
+    font-size: .92rem;
+    font-weight: 650;
+    padding-top: .65rem;
+    padding-bottom: .65rem;
+}
+.sidebar-tree li > ul {
+    border-left: 1px solid var(--color-background-border);
+    margin: .25rem 0 .5rem .75rem;
+    padding-left: .4rem;
+}
+.sidebar-tree .current-page > .reference {
+    box-shadow: inset 3px 0 var(--color-brand-primary);
+    color: var(--color-brand-primary);
+    font-weight: 700;
+}
+.sidebar-tree label { border-radius: 6px; min-height: 2.5rem; }
+.sidebar-tree .toctree-l1 > label { min-height: 2.7rem; }
+/* Furo's native switches remain usable with keyboard and assistive technology. */
+.sidebar-tree .toctree-checkbox {
+    display: block;
+    height: 2.5rem;
+    width: 2.5rem;
+    top: 0;
+    right: 0;
+    margin: 0;
+    opacity: 0;
+    z-index: 1;
+    cursor: pointer;
+}
+.sidebar-tree .toctree-checkbox:focus-visible + label,
+.sidebar-tree .reference:focus-visible {
+    outline: 2px solid var(--color-brand-primary);
+    outline-offset: 2px;
+}
+.sidebar-tree .toctree-checkbox:hover + label {
+    background: var(--color-sidebar-item-background--hover);
+}
+@media (max-width: 63em) {
+    .sidebar-drawer { left: -18rem; width: 18rem; min-width: 0; max-width: 85vw; }
+    .sidebar-container { max-width: 85vw; }
+}
+.sidebar-tree .toctree-checkbox ~ label .icon svg { transform: rotate(0deg); }
+.sidebar-tree .toctree-checkbox:checked ~ label .icon svg { transform: rotate(90deg); }
+/* Fit the wider sidebar before Furo switches to its mobile drawer. */
+@media (min-width: 63.001em) and (max-width: 67em) {
+    .content { min-width: 0; width: calc(100vw - 20rem); }
+}

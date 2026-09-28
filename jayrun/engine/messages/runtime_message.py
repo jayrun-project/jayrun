@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from ..registry.identities import BaseIdentity
-
 if TYPE_CHECKING:
-    from ..runtime import EngineRuntime
+    from .._history import _ContextCapture
+
+from .origin import CommandOrigin
 
 
 class RuntimeMessagePriority(Enum):
@@ -15,29 +15,23 @@ class RuntimeMessagePriority(Enum):
     SUBMISSION = "submission"
 
 
-class RuntimeMessage(ABC):
-    def __init__(self, identity: BaseIdentity) -> None:
-        self._identity = identity
-        self._engine_runtime: EngineRuntime | None = None
+class RuntimeMessage:
+    __slots__ = ()
 
-    @abstractmethod
-    def execute(self) -> None:
-        raise NotImplementedError
 
-    @property
-    def identity(self) -> BaseIdentity:
-        return self._identity
+class RuntimeCommand(RuntimeMessage):
+    __slots__ = ()
 
-    @property
-    def engine_runtime(self) -> EngineRuntime:
-        if self._engine_runtime is None:
-            raise RuntimeError("message has not been submitted")
-        return self._engine_runtime
 
-    @property
-    def execute_during_shutdown(self) -> bool:
-        return False
+class RuntimeEvent(RuntimeMessage):
+    __slots__ = ()
 
-    @property
-    def priority(self) -> RuntimeMessagePriority:
-        return RuntimeMessagePriority.ACTIVE
+
+@dataclass(frozen=True, slots=True)
+class _AcceptedRuntimeMessage:
+    message: RuntimeMessage
+    origin: CommandOrigin
+    priority: RuntimeMessagePriority
+    accepted_during_shutdown: bool
+    ownership_reservation: int | None = None
+    history_capture: _ContextCapture | None = None

@@ -8,30 +8,26 @@ from .engine import RetryPolicy
 ArtifactReference: TypeAlias = int | Artifact | ArtifactDefinition
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ArtifactPolicy:
     """Control which artifact values remain available after execution.
 
     Args:
-        retain_all: Retain every eligible final artifact when ``True``.
         retained_artifacts: Explicit exit-artifact IDs, declarations, or inspected
-            definitions to retain when ``retain_all`` is ``False``.
+            definitions to retain; None retains all exits and () retains none.
         release_entry_artifacts: Release submitted entry values as soon as graph
-            execution no longer needs them.
+            execution no longer needs them, then empty any remaining submitted
+            artifact context and recovery checkpoint at finalization.
     """
 
-    retain_all: bool = True
-    retained_artifacts: tuple[ArtifactReference, ...] = ()
+    retained_artifacts: tuple[ArtifactReference, ...] | None = None
     release_entry_artifacts: bool = False
 
     def __post_init__(self) -> None:
-        if not isinstance(self.retain_all, bool):
-            raise TypeError("retain_all must be a bool")
-
-        if not isinstance(self.retained_artifacts, tuple):
+        if self.retained_artifacts is not None and not isinstance(self.retained_artifacts, tuple):
             raise TypeError("retained_artifacts must be a tuple")
 
-        for reference in self.retained_artifacts:
+        for reference in self.retained_artifacts or ():
             if type(reference) is int:
                 if reference < 0:
                     raise ValueError("retained artifact IDs must be non-negative")
@@ -45,17 +41,14 @@ class ArtifactPolicy:
                 "Artifact, or ArtifactDefinition instances"
             )
 
-        if len(set(self.retained_artifacts)) != len(self.retained_artifacts):
+        if len(set(self.retained_artifacts or ())) != len(self.retained_artifacts or ()):
             raise ValueError("retained_artifacts cannot contain duplicate references")
-
-        if self.retain_all and self.retained_artifacts:
-            raise ValueError("retained_artifacts must be empty when retain_all is True")
 
         if not isinstance(self.release_entry_artifacts, bool):
             raise TypeError("release_entry_artifacts must be a bool")
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ContextSettings:
     """Configure execution behavior for one submitted context.
 
@@ -66,14 +59,32 @@ class ContextSettings:
             iteration controlled through runtime supervision.
         max_repeats: Maximum additional executions per step session, or ``None`` for
             no context-level cap.
+        record_history_limit: Retained records per key: 1 for latest, N for last N, None
+            for explicit full history. Default 64. Reads expose retained history.
+        record_max_keys: Maximum distinct retained or pending record keys.
+        record_max_value_bytes: Maximum accounted bytes per value (16 per node plus
+            UTF-8 string bytes and integer magnitude bytes).
+        record_max_total_bytes: Bound on retained and pending accounted value
+            bytes. Requests exceeding a bound fail before queueing.
     """
 
     artifact_policy: ArtifactPolicy = field(default_factory=ArtifactPolicy)
     retry_policy: RetryPolicy | None = None
     max_iterations: int | None = 1
     max_repeats: int | None = None
+    record_history_limit: int | None = 64
+    record_max_keys: int = 256
+    record_max_value_bytes: int = 65536
+    record_max_total_bytes: int = 8388608
 
     def __post_init__(self) -> None:
+        self._validate_positive_integer(self.record_history_limit, "record_history_limit")
+        for name in ("record_max_keys", "record_max_value_bytes", "record_max_total_bytes"):
+            value = getattr(self, name)
+            if type(value) is not int or value < 1:
+                raise ValueError(f"{name} must be a positive integer")
+        if self.record_max_value_bytes > 64 * 1024 * 1024:
+            raise ValueError("record_max_value_bytes cannot exceed 64 MiB")
         if not isinstance(self.artifact_policy, ArtifactPolicy):
             raise TypeError("artifact_policy must be an ArtifactPolicy instance")
 
@@ -87,10 +98,10 @@ class ContextSettings:
             self.max_iterations,
             "max_iterations",
         )
-        self._validate_positive_integer(
-            self.max_repeats,
-            "max_repeats",
-        )
+        if self.max_repeats is not None and type(self.max_repeats) is not int:
+            raise TypeError("max_repeats must be an int or None")
+        if self.max_repeats is not None and self.max_repeats < 0:
+            raise ValueError("max_repeats must be a non-negative int or None")
 
     @staticmethod
     def _validate_positive_integer(

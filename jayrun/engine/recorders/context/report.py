@@ -12,11 +12,14 @@ class ContextReport:
     """Immutable terminal report for one submitted context.
 
     Attributes:
-        context_id: Engine-local context identifier.
+        context_id: Probabilistically unique 62-bit logical context identifier.
         state: Terminal context state.
         revision: Final monotonic context revision.
         iteration_count: Number of graph iterations that started.
-        stop_requested: Whether graceful iteration stopping was requested.
+        stop_requested: Whether the owner accepted graceful iteration stopping.
+            Independent of the final state: normal drain is FINISHED, and failure
+            or abort retains its actual outcome. Zero iterations means no work
+            began, even for FINISHED.
         created_at: Submission timestamp.
         updated_at: Timestamp of the final context update.
         validated_at: Validation-completion timestamp, if reached.

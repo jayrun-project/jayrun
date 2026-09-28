@@ -6,17 +6,9 @@ from packaging.specifiers import SpecifierSet
 from packaging.utils import canonicalize_name
 
 from .definition.requirement import RequirementDefinition
+from ._specifier_compat import is_unsatisfiable, normalize_specifiers
 
 RequirementKey = tuple[str, str | None]
-
-if not hasattr(SpecifierSet, "is_unsatisfiable") or not hasattr(
-    SpecifierSet,
-    "to_range",
-):
-    raise RuntimeError(
-        "Requirement resolution requires packaging>=26.3,<27."
-    )
-
 
 class RequirementConflictError(ValueError):
     pass
@@ -42,7 +34,7 @@ def merge_requirements(
         group = groups.get(key)
 
         if group is None:
-            if requirement.specifier.is_unsatisfiable():
+            if is_unsatisfiable(requirement.specifier):
                 _raise_requirement_conflict(
                     key[0],
                     [declaration],
@@ -61,7 +53,7 @@ def merge_requirements(
         specifier = group.specifier & requirement.specifier
         combined_declarations = [*group.declarations, declaration]
 
-        if specifier.is_unsatisfiable():
+        if is_unsatisfiable(specifier):
             _raise_requirement_conflict(
                 group.name,
                 combined_declarations,
@@ -78,7 +70,7 @@ def merge_requirements(
         RequirementDefinition(
             name=group.name,
             extras=tuple(sorted(group.extras)),
-            specifier=str(group.specifier.to_range().to_specifier_set()),
+            specifier=normalize_specifiers(group.specifier),
             marker=group.marker,
         )
         for group in groups.values()

@@ -71,7 +71,15 @@ class DTypeProperty(ArtifactProperty[tuple[object, ...]]):
 
 
 class ShapeProperty(ArtifactProperty[tuple[int | None, ...]]):
-    """Require a tensor-like shape, using ``None`` as a consumer wildcard."""
+    """Require a tensor-like shape, using ``None`` as a consumer wildcard.
+
+    Tuple and list inputs are detached into an immutable tuple.
+    """
+
+    def __init__(self, value: tuple[int | None, ...] | list[int | None]) -> None:
+        if not isinstance(value, (tuple, list)):
+            raise TypeError("Shape must be a tuple or list of dimensions.")
+        super().__init__(tuple(value))
 
     def _validate_value(self, value: tuple[int | None, ...]) -> None:
         for dimension in value:

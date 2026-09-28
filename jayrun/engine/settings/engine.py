@@ -9,21 +9,36 @@ from ..resource.placement import Backend, Device
 ExceptionType: TypeAlias = type[Exception]
 
 
-class RuntimeMode(Enum):
-    """Select production or diagnostic recording behavior."""
+class RecordingMode(Enum):
+    """Select standard, diagnostic, or minimal optional recording behavior."""
 
-    PRODUCTION = "production"
-    DEBUG = "debug"
+    STANDARD = "standard"
+    DIAGNOSTIC = "diagnostic"
+    MINIMAL = "minimal"
 
 
 class FailureMode(Enum):
-    """Control whether an engine continues after a context failure."""
+    """Control whether an engine continues after execution or managed persistence failure."""
 
     FAIL_FAST = "fail_fast"
     CONTINUE = "continue"
 
 
-@dataclass(frozen=True, slots=True)
+class RoutingMode(Enum):
+    """Choose how ordinary submissions receive an execution engine_id.
+
+    ``LOCAL`` routes new work to the submitting engine immediately.
+    ``CONTROLLED`` leaves ordinary work in
+    ``ContextState.ROUTING`` until a controller assigns an
+    engine with :meth:`~jayrun.context.ContextRun.transfer`. Supervisors and
+    controllers always execute locally and bypass routing.
+    """
+
+    LOCAL = "local"
+    CONTROLLED = "controlled"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class RuntimeDevice:
     """Describe one device whose capacity Jayrun may reserve.
 
@@ -89,7 +104,7 @@ class RuntimeDevice:
             raise ValueError("managed accelerator requires memory capacity")
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class RetryPolicy:
     """Define which execution failures are retried.
 
@@ -126,35 +141,68 @@ class RetryPolicy:
         object.__setattr__(self, "retry_on", retry_on)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class EngineSettings:
     """Configure engine-wide execution, capacity, and reliability behavior.
 
     Args:
-        runtime_mode: Production or diagnostic recording mode.
-        failure_mode: Whether one failed context stops the runtime.
+        recording_mode: Standard (default), diagnostic, or minimal recording mode.
+        failure_mode: Whether execution or managed persistence failure stops the engine.
         retry_policy: Default retry policy for submitted contexts.
         max_workers: Maximum worker threads, or ``None`` for the runtime default.
         max_tasks: Maximum concurrently dispatched tasks, or ``None`` for the runtime
             default.
         runtime_devices: Managed device description or tuple of descriptions. A CPU
             device is added automatically when absent.
+        routing_mode: Whether ordinary submissions are routed locally or wait
+            for an explicit engine_id assignment.
+        context_history_admission_limit: Optional per-context history-producing admission
+            budget. Further attempts/iterations fail with ContextHistoryLimitError;
+            diagnostic/control admission raises that error. Accepted evidence,
+            explicit ContextRecords and mandatory drainage are never truncated.
+            Counts entries/admissions, not bytes or user-owned payload memory.
+            None preserves full-history unlimited admission. Received snapshots
+            exceeding the local budget are rejected before mutation; finalized
+            evidence has a receive-only cleanup allowance (64 + 16 * graph steps
+            + 4 * graph artifacts), never additional execution admission.
+        remote_context_id_limit: Optional cumulative distinct distributed context-ID
+            capacity per engine incarnation, including pending/active/retired IDs.
+            Accepted safety slots are never recycled; None preserves unbounded
+            admission. Ordinary local-only contexts do not consume a slot.
+        terminal_history_limit: Retained finalized summaries per engine incarnation.
+            Default 1024; zero disables retention, but loss remains explicit.
+        terminal_history_max_bytes: Maximum accounted JSON bytes for terminal
+            summaries, not process RSS. Full snapshots and payloads are excluded.
     """
 
-    runtime_mode: RuntimeMode = RuntimeMode.PRODUCTION
+    recording_mode: RecordingMode = RecordingMode.STANDARD
     failure_mode: FailureMode = FailureMode.CONTINUE
     retry_policy: RetryPolicy = field(default_factory=RetryPolicy)
     max_workers: int | None = None
     max_tasks: int | None = None
     runtime_devices: RuntimeDevice | tuple[RuntimeDevice, ...] = ()
+    routing_mode: RoutingMode = RoutingMode.LOCAL
+    context_history_admission_limit: int | None = None
+    remote_context_id_limit: int | None = None
+    terminal_history_limit: int = 1024
+    terminal_history_max_bytes: int = 1024 * 1024
 
     def __post_init__(self) -> None:
-        if not isinstance(self.runtime_mode, RuntimeMode):
-            raise TypeError("runtime_mode must be a RuntimeMode instance")
+        if not isinstance(self.recording_mode, RecordingMode):
+            raise TypeError("recording_mode must be a RecordingMode instance")
         if not isinstance(self.failure_mode, FailureMode):
             raise TypeError("failure_mode must be a FailureMode instance")
         if not isinstance(self.retry_policy, RetryPolicy):
             raise TypeError("retry_policy must be a RetryPolicy instance")
+        if not isinstance(self.routing_mode, RoutingMode):
+            raise TypeError("routing_mode must be a RoutingMode instance")
+        self._validate_positive_integer(self.context_history_admission_limit, "context_history_admission_limit")
+        self._validate_positive_integer(self.remote_context_id_limit, "remote_context_id_limit")
+        if type(self.terminal_history_limit) is not int or self.terminal_history_limit < 0:
+            raise ValueError("terminal_history_limit must be a nonnegative integer")
+        self._validate_positive_integer(self.terminal_history_max_bytes, "terminal_history_max_bytes")
+        if self.terminal_history_max_bytes is None:
+            raise ValueError("terminal_history_max_bytes must be a positive integer")
         self._validate_positive_integer(self.max_workers, "max_workers")
         self._validate_positive_integer(self.max_tasks, "max_tasks")
         runtime_devices = self._normalize_devices(self.runtime_devices)

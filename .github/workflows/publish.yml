@@ -16,6 +16,8 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
+      - name: Check public source and versions
+        run: python .github/scripts/release_check.py
       - name: Validate tag version
         run: |
           tag_version="${GITHUB_REF_NAME#v}"
@@ -26,18 +28,53 @@ jobs:
           python -m pip install --upgrade build twine
           python -m pip install . -r docs/requirements.txt
       - name: Build documentation
-        run: python -m sphinx -W --keep-going -b html docs docs/_build/html
+        run: python -m sphinx -a -E -W --keep-going -b html docs docs/_build/html
+      - name: Validate documentation links
+        run: python .github/scripts/check_links.py --html docs/_build/html
       - name: Build distributions
         run: python -m build
       - name: Validate distributions
-        run: python -m twine check dist/*
+        run: |
+          python -m twine check --strict dist/*
+          python .github/scripts/release_check.py --dist dist
       - uses: actions/upload-artifact@v7
         with:
           name: python-distributions
           path: dist/
+          if-no-files-found: error
+
+  verify-wheel:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: python-distributions
+          path: dist/
+      - name: Check exact publication artifacts
+        run: python .github/scripts/release_check.py --dist dist
+      - name: Install exact wheel with minimum runtime dependency
+        run: |
+          python -m pip install "packaging==25.0"
+          python -m pip install dist/*.whl
+          python -m pip check
+      - name: Verify installed wheel
+        run: python -I .github/scripts/wheel_smoke.py --source "$GITHUB_WORKSPACE"
+      - name: Verify current dependency and optional YAML
+        run: |
+          python -m pip install --upgrade packaging "PyYAML>=6.0"
+          python -I .github/scripts/wheel_smoke.py --source "$GITHUB_WORKSPACE" --yaml
 
   publish:
-    needs: build
+    needs: [build, verify-wheel]
     runs-on: ubuntu-latest
     environment:
       name: pypi

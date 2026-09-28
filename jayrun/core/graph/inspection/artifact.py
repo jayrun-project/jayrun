@@ -53,6 +53,26 @@ class ArtifactInspection:
         )
 
     @property
+    def unused(self) -> tuple[ArtifactDefinition, ...]:
+        """Produced artifacts without a consuming flow; these are also exits.
+
+        The historical name means unused within the graph. It does not mean
+        discarded at runtime; use ``exit`` and the run's retention policy.
+        """
+        return tuple(
+            definition for definition in self._definitions
+            if definition.role is ArtifactRole.UNUSED
+        )
+
+    @property
+    def boundary(self) -> tuple[ArtifactDefinition, ...]:
+        """Entry and exit artifacts in graph order, without duplicates."""
+        return tuple(
+            definition for definition in self._definitions
+            if definition.role is ArtifactRole.ENTRY or definition.is_exit
+        )
+
+    @property
     def all(self) -> tuple[ArtifactDefinition, ...]:
         """All artifact definitions in stable graph order."""
         return self._definitions

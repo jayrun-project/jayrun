@@ -1,0 +1,1525 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jayrun dashboard — landscape preview</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f3f6fb}#canvas{position:relative;width:100%;height:100%}iframe{position:absolute;left:0;top:0;width:1600px;height:1000px;border:0;transform-origin:top left}</style></head><body><div id="canvas"><iframe title="Browsable offline dashboard snapshot" srcdoc="&lt;!doctype html&gt;&lt;html lang=&quot;en&quot; data-theme=&quot;light&quot;&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width,initial-scale=1&quot;&gt;&lt;title&gt;Jayrun dashboard — static preview&lt;/title&gt;&lt;style&gt;
+:root{font:14px/1.55 &quot;Inter&quot;,-apple-system,BlinkMacSystemFont,&quot;Segoe UI Variable Text&quot;,&quot;Segoe UI&quot;,&quot;Noto Sans&quot;,system-ui,sans-serif;font-optical-sizing:auto;color-scheme:light;--bg:#f3f6fb;--surface:#fff;--surface-subtle:#f8fafc;--surface-raised:#fff;--ink:#172033;--muted:#5b6d84;--line:#d7e0ec;--line-strong:#c3cfdd;--accent:#2563eb;--accent-strong:#1d4ed8;--selected:#eaf2ff;--shadow-sm:0 1px 2px #1720330a,0 4px 14px #17203308;--shadow-md:0 18px 42px #1720331a}
+:root[data-theme=dark]{color-scheme:dark;--bg:#08121f;--surface:#101d2d;--surface-subtle:#142337;--surface-raised:#172638;--ink:#e8eef8;--muted:#9db0c8;--line:#293c52;--line-strong:#3a506a;--accent:#60a5fa;--accent-strong:#93c5fd;--selected:#183554;--shadow-sm:0 1px 2px #0005,0 8px 24px #0002;--shadow-md:0 20px 48px #0007}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink)}button,input,select{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:6px;min-height:36px;padding:6px 10px}button,a{cursor:pointer}a{color:var(--accent)}button:hover:not(:disabled){background:var(--selected)}button:disabled{opacity:.55;cursor:default}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,tr:focus-visible{outline:3px solid var(--accent);outline-offset:2px}input[type=radio]{accent-color:var(--accent);width:18px;height:18px;min-height:0;vertical-align:middle}fieldset{border:0;margin:0;padding:0;display:flex;gap:12px}legend{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
+header{height:66px;display:flex;align-items:center;gap:18px;padding:12px 24px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:20}header strong{font-size:25px;font-weight:700;letter-spacing:-.8px}header fieldset{margin-left:auto}.layout{display:grid;grid-template-columns:185px minmax(0,1fr);min-height:calc(100vh - 66px)}nav.sidebar{padding:24px 12px;border-right:1px solid var(--line);background:var(--surface);position:sticky;top:66px;height:calc(100vh - 66px)}.sidebar a{display:block;padding:12px;margin-bottom:8px;text-decoration:none;border-radius:6px;color:var(--ink)}.sidebar a[aria-current=page]{background:var(--selected);color:var(--accent);font-weight:650}.sidebar small{display:block;padding:18px 8px;color:var(--muted)}main{padding:26px;min-width:0}h1{margin:0 0 5px;font-size:28px;font-weight:650;letter-spacing:-.6px;line-height:1.25}h2{font-size:19px;font-weight:600;letter-spacing:-.25px;margin-top:0}h3{font-size:15px;font-weight:600}.muted,small{color:var(--muted)}.subhead{margin:0 0 22px;color:var(--muted)}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin:16px 0}.card,.box{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px}.card{text-align:left}.card strong{font-size:28px;font-weight:650;letter-spacing:-.6px;font-variant-numeric:tabular-nums;display:block}.columns{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px}.split{display:grid;grid-template-columns:1fr 1fr;gap:20px}.filters{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.filters label{display:flex;align-items:center;gap:6px}.filters input[type=search]{min-width:180px;flex:1}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:7px;background:var(--surface);max-height:65vh}table{width:100%;border-collapse:collapse;white-space:nowrap}th,td{text-align:left;padding:12px;border-bottom:1px solid var(--line);font-size:13px;font-variant-numeric:tabular-nums}th{font-weight:600;letter-spacing:.015em;background:var(--surface);position:sticky;top:0;z-index:1;color:var(--muted)}tr.selected{background:var(--selected)}td button.link{background:none;border:0;color:var(--accent);padding:0}.pager{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin:15px 0}.badge{display:inline-block;padding:3px 8px;background:var(--selected);border-radius:5px;font-size:12px}.state-failed,.danger{color:#e35462}.state-running,.state-finished{color:#22a777}.state-paused{color:#d7a13a}.controls{display:flex;gap:8px;flex-wrap:wrap}.reason{font-size:12px;color:var(--muted);margin-top:8px}.quick{position:sticky;top:90px;align-self:start;max-height:calc(100vh - 110px);overflow:auto}.quick h2{overflow-wrap:anywhere}.quick dl{margin:15px 0}.quick dt{color:var(--muted)}.quick dd{margin:0 0 12px;overflow-wrap:anywhere}.workspace-head{background:var(--surface);border:1px solid var(--line);padding:18px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;gap:16px;align-items:center;position:sticky;top:66px;z-index:9}.workspace-head h1{font-size:21px;overflow-wrap:anywhere}.tabs{display:flex;gap:4px;overflow:auto;background:var(--surface);border:1px solid var(--line);border-top:0;padding:8px}.tabs button{border:0;white-space:nowrap}.tabs button[aria-selected=true]{color:var(--accent);box-shadow:inset 0 -3px var(--accent)}.tab-content{padding:20px;background:var(--surface);border:1px solid var(--line);border-top:0;min-height:500px}.graph-host{height:650px;min-height:480px}.graph-host jayrun-graph{height:100%}.notice{padding:12px;border:1px solid var(--line);border-left:3px solid var(--accent);background:var(--surface);margin:12px 0;overflow-wrap:anywhere}.error{border-left-color:#d85c6a}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;max-height:70vh;overflow:auto}.tree{display:grid;grid-template-columns:minmax(100px,1fr) minmax(0,3fr);gap:7px 16px;margin:10px 0}.tree dt{color:var(--muted);overflow-wrap:anywhere}.tree dd{margin:0;overflow-wrap:anywhere}.record-layout{display:grid;grid-template-columns:210px minmax(0,1fr);gap:20px}.keys button{display:block;width:100%;text-align:left;margin-bottom:7px;overflow-wrap:anywhere}.keys button[aria-pressed=true]{background:var(--selected)}.chart{width:100%;height:250px;border:1px solid var(--line);background:var(--bg)}[hidden]{display:none!important}.inline{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.wide{width:100%;margin-top:10px}dialog{color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;max-width:500px}dialog::backdrop{background:#0008}
+.workspace-head .inline{min-width:0;max-width:100%}#work-controls{width:360px;min-width:0;max-width:100%}.record-layout&gt;div&gt;button,.record-layout&gt;div&gt;input{margin:8px 6px 8px 0}.controls{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));width:360px;max-width:100%;gap:6px}.controls button{width:100%;height:58px;display:flex;align-items:center;justify-content:center;gap:6px;padding:5px;font-size:12px;line-height:1.2}.controls svg{width:18px;height:18px;flex:none}.controls [data-action=pause]{color:#075abc}.controls [data-action=resume]{color:#167245}.controls [data-action=stop]{color:#8a5700}.controls [data-action=abort]{color:#b62437}:root[data-theme=dark] .controls [data-action=pause]{color:#79baff}:root[data-theme=dark] .controls [data-action=resume]{color:#68dda1}:root[data-theme=dark] .controls [data-action=stop]{color:#ffd074}:root[data-theme=dark] .controls [data-action=abort]{color:#ff929e}.reason{max-width:380px;min-height:36px}.record-chart{max-width:720px;margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}.chart{display:block;height:220px;min-height:0;border:0;background:none}.chart-tooltip{font-size:12px;color:var(--muted);margin:4px 0 8px}.record-chart small{display:block;font-size:11px}.chart circle{r:3px}.columns:has(.quick[hidden]){grid-template-columns:minmax(0,1fr)}.history-list table{white-space:normal}.history-list th,.history-list td{padding:10px}.history-list td:nth-child(1){white-space:nowrap}.history-list td:nth-child(4){min-width:130px}.history-list td:nth-child(6){max-width:180px}.artifact-history table{white-space:normal}.history-identity{font-variant-numeric:tabular-nums;background:none;border:0;padding:0;color:var(--ink);font-weight:600}.history-identity:hover{color:var(--accent)}.filters select{max-width:280px}.chart circle:focus{outline:none;stroke:var(--ink);stroke-width:3}.chart-tooltip{min-height:44px;overflow-wrap:anywhere}.read-status{border-left:3px solid #b62437}.keys{align-self:start}.workspace-head&gt;.inline{flex:0 1 520px}
+
+/* Context selection is an action surface; evidence tables remain selectable. */
+tr[data-context]{cursor:pointer;user-select:none;-webkit-user-select:none}tr[data-context]:hover{background:var(--selected)}
+.workspace-head{align-items:flex-start;gap:28px}.workspace-identity{flex:1;min-width:0}.workspace-actions{flex:0 0 360px;padding-top:38px}.workspace-back{display:inline-flex;align-items:center;gap:8px;background:transparent;border:0;padding:4px 0;margin:0 0 8px;color:var(--muted);min-height:30px}.workspace-back:hover{color:var(--accent);background:transparent!important}.workspace-back span:first-child{font-size:20px}.workspace-head h1{margin-bottom:6px}
+.state-summary{display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap}.stop-intent,.stop-record,.outcome-label{font-size:11px;color:var(--muted)}.stop-intent{color:#8a5700}:root[data-theme=dark] .stop-intent{color:#ffd074}
+.context-progress{max-width:520px;margin-top:12px}.context-progress small{display:block;font-size:11px}.progress-track{height:6px;border-radius:8px;background:var(--line);overflow:hidden;margin:5px 0}.progress-fill{display:block;height:100%;background:var(--accent);border-radius:8px}.progress-track.unavailable{background:repeating-linear-gradient(135deg,var(--line),var(--line) 5px,var(--surface) 5px,var(--surface) 10px)}.context-progress.compact{margin:0;min-width:180px}.context-progress.compact .progress-track{height:4px}.quick .context-progress{margin-bottom:15px}
+.quick .context-progress&gt;small:first-child{min-height:2.8em}.quick .context-progress .progress-facts{min-height:3.1em;align-items:flex-start}
+.table-stage .context-progress.compact&gt;small:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cards{grid-template-columns:repeat(5,minmax(0,1fr))}.cards[data-scope=outcomes]{grid-template-columns:repeat(4,minmax(0,1fr))}.card{min-height:98px;min-width:0;border-top:3px solid currentColor}.card-label{display:flex;align-items:center;gap:10px;text-transform:capitalize;font-weight:600;color:var(--ink)}.card-label svg{width:19px;height:19px;flex:none;color:inherit}.card strong{font-variant-numeric:tabular-nums;margin-top:5px}.state-running{color:#167245}.state-finished{color:#147c65}.state-paused,.state-stopped{color:#8a5700}.state-failed,.state-aborted,.state-rejected{color:#b62437}.state-queued{color:#075abc}.state-routing{color:#7956a8}.state-placement_waiting{color:#7e6414}
+:root[data-theme=dark] .state-running,:root[data-theme=dark] .state-finished{color:#68dda1}:root[data-theme=dark] .state-paused,:root[data-theme=dark] .state-stopped,:root[data-theme=dark] .state-placement_waiting{color:#ffd074}:root[data-theme=dark] .state-failed,:root[data-theme=dark] .state-aborted,:root[data-theme=dark] .state-rejected{color:#ff929e}:root[data-theme=dark] .state-queued{color:#79baff}:root[data-theme=dark] .state-routing{color:#c9abff}.overview-tables{margin-top:20px;align-items:start}.overview-tables&gt;.box{min-width:0}.overview-table table{white-space:normal}.overview-table small{display:block;font-size:11px;overflow-wrap:anywhere}.overview-table td{vertical-align:top}.overview-table button{padding:0;min-height:28px;background:none;border:0;color:var(--accent);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;text-align:left}.overview-table th,.overview-table td{padding:10px}.overview-table{max-height:380px}.overview-table td:has(button){min-width:150px}
+@media(max-width:1050px){.cards,.cards[data-scope=outcomes]{grid-template-columns:repeat(3,minmax(0,1fr))}.workspace-head{gap:15px}.workspace-actions{flex-basis:300px}#work-controls{width:300px}}
+@media(max-width:620px){.cards,.cards[data-scope=outcomes]{grid-template-columns:repeat(2,minmax(0,1fr))}.workspace-actions{padding-top:14px}#work-controls{width:360px}.workspace-head{padding:14px}.card{padding:12px}.context-progress{max-width:none}}
+@media(max-width:1050px){.layout{grid-template-columns:140px minmax(0,1fr)}main{padding:18px}.columns{grid-template-columns:minmax(0,1fr)}.quick{position:static;max-height:none}.split{grid-template-columns:1fr}}@media(max-width:620px){header{height:auto;min-height:66px;padding:10px;gap:8px;flex-wrap:wrap}.layout{display:block}.sidebar{display:flex;height:auto!important;position:static!important;padding:6px!important;overflow:auto}.sidebar a{padding:8px;margin:0;white-space:nowrap}.sidebar small{display:none}.workspace-head{position:static;display:block}.record-layout{grid-template-columns:1fr}.keys{display:flex;overflow:auto}.keys button{width:auto;min-width:100px}.tree{grid-template-columns:1fr}main{padding:10px}.graph-host{height:600px}.tab-content{padding:10px}}
+
+/* The graph workspace owns its header density, not the shared canvas camera. */
+.workspace-actions{padding-top:0}.workspace-head{gap:16px;align-items:center}
+.control-guidance{font-size:12px;color:var(--muted);margin-top:6px}.control-guidance summary{cursor:pointer}.control-guidance p{margin:6px 0}
+.reason:empty{visibility:hidden}.controls button{height:42px}.graph-caption{font-size:12px;margin:0 0 4px}.graph-export{display:inline-block;font-size:12px;margin:0 0 8px}
+.history-lifetime{display:block;font-size:11px}.columns&gt;div{min-width:0}.columns:not(.history-list) td:nth-child(2){white-space:normal;min-width:150px;max-width:270px;font-weight:600}
+.quick-content&gt;button:first-child{float:right;font-size:12px}.quick-content h2{clear:both;padding-top:8px}.tabs:focus-visible,.tab-content:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media(max-width:620px){
+ header{gap:6px;padding:7px 10px}header strong{font-size:21px}#engine-name{font-size:11px;max-width:130px;overflow-wrap:anywhere}#connection{font-size:11px}#received{display:none}
+ header fieldset{gap:6px}header button{font-size:12px;min-height:30px;padding:4px 6px}
+ .sidebar a{font-size:12px;padding:7px!important}.workspace-head{padding:10px}.workspace-head h1{font-size:16px;margin-bottom:4px}
+ #work-controls{width:100%;min-width:0}.workspace-actions{width:100%;max-width:100%}
+ .workspace-back{font-size:12px;min-height:26px;margin-bottom:3px}.workspace-actions{padding-top:8px}.workspace-head .controls{width:100%}.workspace-head .controls button{height:36px}
+ .workspace-head .context-progress{margin-top:6px}.workspace-head .notice{padding:7px;margin:5px 0}.workspace-head .badge{padding:2px 5px}
+ .tabs{padding:4px;gap:0}.tabs button{font-size:12px;padding:5px 8px;min-height:32px}.tab-content{padding:8px}.graph-host{height:600px;min-height:480px}
+ .filters label{max-width:100%;font-size:12px}.filters select{max-width:220px}.filters input{min-width:0;max-width:100%}.quick{max-width:100%}
+}
+/* Stage 2: stable application workspace; overlays never participate in table flow. */
+.sidebar{display:flex;flex-direction:column;overflow-y:auto;scrollbar-gutter:stable}.sidebar-footer{margin-top:auto;padding:12px 8px}.sidebar-footer button{width:100%;text-align:center}.sidebar-footer small{padding:8px 0;font-size:11px}
+#engine-name{max-width:270px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#received{width:96px;flex-shrink:0}#connection{min-width:104px}
+#about{max-width:570px;max-height:85dvh;overflow:auto;padding:24px}#about&gt;button{float:right}#about dt{font-weight:650;margin-top:10px}#about dd{margin:4px 0 12px;color:var(--muted)}
+.location-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.location-card{display:flex;flex-direction:column;gap:5px;text-align:left;padding:14px;overflow:hidden}.location-card strong{overflow-wrap:anywhere}.location-card small{font-size:11px}.observed-locations{margin:18px 0 24px}.observed-locations&gt;div&gt;small{display:block;margin-top:8px}
+.columns,.columns:has(.quick[hidden]){display:block;position:relative}.table-stage{position:relative;min-width:0}.table-stage&gt;.table-wrap{height:min(520px,65dvh);max-height:none;min-height:250px;scrollbar-gutter:stable}
+.table-stage&gt;.quick{position:absolute;inset:0 0 auto auto;z-index:5;width:min(380px,calc(100% - 16px));height:100%;max-height:none;max-width:none;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;box-shadow:-10px 0 28px #0003;border-radius:8px;padding:16px}
+.table-stage&gt;.table-wrap table{table-layout:fixed;min-width:1130px;width:100%;white-space:normal}.table-stage th:nth-child(1){width:16%}.table-stage th:nth-child(2){width:17%}.table-stage th:nth-child(3){width:15%}.table-stage th:nth-child(4){width:12%}.table-stage th:nth-child(4),.table-stage td:nth-child(4){text-align:center}.table-stage th:nth-child(5){width:12%}.table-stage th:nth-child(6){width:13%}.table-stage th:nth-child(7){width:7%}.table-stage th:nth-child(8){width:8%}
+.history-list .table-stage th:nth-child(1){width:16%}.history-list .table-stage th:nth-child(2){width:20%}.history-list .table-stage th:nth-child(3){width:16%}.history-list .table-stage th:nth-child(4){width:13%}.history-list .table-stage th:nth-child(5){width:14%}.history-list .table-stage th:nth-child(6){width:10%}.history-list .table-stage th:nth-child(7){width:11%}
+.table-stage td{height:90px;overflow:hidden;vertical-align:middle;padding:10px;overflow-wrap:anywhere}.table-stage td:nth-child(n){min-width:0;max-width:none}.table-stage .context-progress.compact{min-width:0}.table-stage .context-progress small{font-size:11px;line-height:1.4}
+.table-stage .provenance{overflow:hidden}.provenance&gt;span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.provenance small{display:block;font-size:11px}.identity-cell{min-width:0}.context-identity{font-variant-numeric:tabular-nums;user-select:text;-webkit-user-select:text;overflow-wrap:anywhere;font-weight:600;cursor:text}.history-list td:nth-child(1){white-space:normal}.history-lifetime{margin-top:5px}.table-stage .badge{font-size:11px}.table-stage button{font-size:12px}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));align-items:end;gap:10px}.filters label{display:flex;flex-direction:column;align-items:stretch;gap:5px;font-size:12px;min-width:0;max-width:none}.filters select,.filters input{width:100%;max-width:none;min-width:0!important;overflow:hidden;text-overflow:ellipsis}.filters input[type=search]{align-self:end}
+.list-coverage,.session-notice{font-size:12px;line-height:1.4;overflow:auto;margin:5px 0}.list-coverage{height:36px}.session-notice{height:20px}.session-notice:empty{visibility:hidden}
+.quick-content&gt;button:first-child{float:right}.quick-content .controls{width:100%}.quick-content .context-progress{max-width:100%}.quick-content .tree{grid-template-columns:100px minmax(0,1fr)}.quick-content h2{font-size:17px}.quick-provenance{margin:14px 0}.quick-provenance summary{font-size:12px;cursor:pointer}
+.workspace-head{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:10px 20px;position:relative;top:auto;align-items:start;padding:14px 18px}
+.workspace-identity{min-width:0}.workspace-head h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:20px;line-height:1.4;height:28px}.workspace-actions{width:330px;max-width:100%;padding:0;position:relative}.workspace-actions&gt;#work-controls{width:100%;padding-top:0}.workspace-head .controls{width:100%}.workspace-head .controls button{height:42px}
+#work-state{height:36px;overflow:auto;line-height:1.3;scrollbar-gutter:stable}#work-progress{height:104px;overflow:auto;scrollbar-gutter:stable}.workspace-head .context-progress{margin-top:4px}.workspace-back{margin-bottom:2px;min-height:26px;padding:0}.progress-facts{display:flex;align-items:baseline;gap:10px;margin-top:5px;font-size:12px}.progress-facts strong{font-weight:600}.progress-facts small{color:var(--muted)}.identity-fact{display:flex;align-items:baseline;gap:12px;min-width:0}.identity-fact strong{min-width:100px}.identity-fact code{overflow-wrap:anywhere;min-width:0}.identity-fact button{flex:none;margin-left:auto}.summary-identities{max-width:100%;overflow:hidden}.history-source{margin-left:7px}
+.workspace-head .reason{height:46px;min-height:46px;overflow:auto;scrollbar-gutter:stable;margin:7px 0 0}.workspace-head .notice{height:46px;overflow:auto;margin:7px 0 0;padding:6px;font-size:12px}
+.workspace-notice{grid-column:1/-1;height:34px;overflow:auto;scrollbar-gutter:stable;font-size:12px;line-height:1.4;color:var(--muted);margin:0}.workspace-notice:empty{visibility:hidden}
+.workspace-stack{position:relative;height:clamp(540px,calc(100dvh - 270px),780px);min-height:540px;padding:0;overflow:hidden;isolation:isolate}
+.workspace-body{position:absolute;inset:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:18px}.workspace-body.inactive{display:none!important;pointer-events:none}.workspace-body[data-view=graph]{display:flex;flex-direction:column;gap:0}.workspace-body .graph-host{height:auto;flex:1;min-height:0}.workspace-body .graph-host jayrun-graph{height:100%;display:block}.workspace-body .graph-caption{height:18px;flex:none;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.workspace-body .graph-export{height:24px;flex:none;margin-bottom:4px}.graph-error{position:absolute;top:8px;right:12px;max-width:360px;z-index:4}.workspace-body&gt;.read-status{position:sticky;top:0;z-index:6;background:var(--surface)}
+.record-layout{display:block;max-width:940px;margin:auto}.keys{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 20px;border-bottom:1px solid var(--line);padding-bottom:10px}.keys button{display:block;width:auto;max-width:100%;margin:0;font-size:12px;min-width:0;text-overflow:ellipsis;overflow:hidden}
+.record-view{width:100%;min-width:0}.record-view&gt;h2{text-align:center}.record-latest{text-align:center;margin:0 auto 14px;max-width:100%;padding:14px;max-height:180px;overflow:auto}.record-latest h3{font-size:12px;font-weight:500;margin:0 0 8px;color:var(--muted)}.record-latest&gt;div&gt;span{font-size:26px;font-variant-numeric:tabular-nums}.record-latest .tree{text-align:left}
+.record-chart{max-width:none;width:100%;margin:0 auto 14px;padding:16px;background:var(--bg)}.record-chart .chart{height:260px;width:100%}.record-chart .chart-tooltip{min-height:34px}.record-chart svg{overflow:visible}.record-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin:12px 0 20px}.record-actions button{font-size:12px}.record-view&gt;input{width:100%;margin-bottom:14px}.record-table{max-width:100%;overflow:auto}.record-table table{white-space:normal;table-layout:fixed;width:100%;min-width:520px}.record-table th:first-child{width:14%}.record-table td{overflow-wrap:anywhere;vertical-align:top}.record-table tr{user-select:text}.record-table .pager{position:sticky;left:0}
+@media(max-width:1050px){.workspace-head{grid-template-columns:minmax(0,1fr) 290px}.workspace-actions{width:290px}.quick-content .tree{grid-template-columns:1fr}.table-stage&gt;.quick{width:min(350px,calc(100% - 12px))}}
+@media(max-width:620px){
+ header{flex-wrap:wrap;gap:6px}#engine-name{max-width:140px}#connection{min-width:82px;font-size:11px}header fieldset{margin-left:auto}.layout .sidebar{flex-direction:row;align-items:center}.sidebar-footer{display:flex;align-items:center;margin:0;padding:0 4px}.sidebar-footer button{white-space:nowrap;padding:4px 7px;min-height:30px;font-size:12px}.sidebar-footer small{display:none}
+ .workspace-head{grid-template-columns:1fr;gap:4px;padding:10px}.workspace-actions{width:100%;padding-top:0}.workspace-actions&gt;#work-controls{padding-top:0}.workspace-head .controls button{height:36px}.workspace-head .reason{height:32px;min-height:32px;margin-top:4px}#work-state{height:30px}.workspace-head h1{font-size:16px;height:23px}.workspace-head #work-progress{height:90px}.workspace-head .context-progress&gt;small:last-child{display:none}.workspace-notice{height:36px;font-size:11px}.workspace-back{font-size:11px;min-height:24px}.identity-fact{flex-wrap:wrap;gap:4px}.identity-fact strong{min-width:100%}.identity-fact button{margin-left:0}
+ .workspace-stack{height:620px;min-height:620px}.workspace-body{padding:8px}.tabs button{font-size:12px;padding:5px 8px;min-height:32px}.graph-caption{font-size:11px}.filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.filters label{font-size:11px}.filters select,.filters input{max-width:100%;font-size:12px;padding:5px}.filters input[type=search]{grid-column:1/-1}
+ .record-chart{padding:8px}.record-chart .chart{height:200px}.record-latest{padding:10px}.keys{overflow:auto;flex-wrap:nowrap}.keys button{flex-shrink:0}.record-actions{gap:6px}.record-actions button{font-size:11px;padding:5px}.record-table table{min-width:480px}.location-cards{grid-template-columns:1fr}.table-stage&gt;.table-wrap{height:430px}
+}
+@media(prefers-reduced-motion:reduce){.workspace-body{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+.configuration-card,.activity-entry{overflow-wrap:anywhere}.configuration-card p,.activity-entry p{white-space:pre-wrap}.overview-refresh,.record-filter{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0}.overview-refresh-status{flex:1;min-width:180px}.record-filter[hidden]{display:none}
+.failure-detail{max-width:940px;margin:12px 0}.failure-detail h3{margin:0 0 12px}.failure-detail .tree{margin-bottom:0}.failure-message{margin:0 0 12px;white-space:pre-wrap;overflow-wrap:anywhere}
+/* Shared meanings keep existing status colors, labels and disabled reasons. */
+.copy-row{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+.copy-feedback{display:inline-block;min-width:8ch;min-height:1.5em;font-size:12px;color:var(--accent);font-weight:600}
+.copy-feedback[data-outcome=failure]{color:var(--ink);text-decoration:underline}
+.identity-fact{flex-wrap:wrap}.identity-fact&gt;small{flex-basis:100%}
+.section-heading{display:flex;align-items:center;gap:6px;min-width:0;margin:0 0 6px}.section-heading h1,.section-heading h2{margin:0;min-width:0;line-height:1.3}.section-heading&gt;.help-button{align-self:center}.history-heading{margin-top:20px;flex-wrap:wrap;gap:10px}.history-label{display:inline-flex;align-items:center;gap:6px;min-width:0}.history-label h2{margin:0;line-height:1.3}.history-refresh{margin-left:8px;border-color:var(--accent);color:var(--accent);font-weight:600;white-space:nowrap}.history-sample{font-size:12px;margin:5px 0 8px}.overview-refresh-status{font-size:12px;margin:2px 0 12px}.overview-refresh-status:empty{display:none}
+.workload-controls{grid-template-columns:repeat(3,minmax(0,1fr)) 26px;width:100%;align-items:center}.workspace-head .workload-controls&gt;.help-button,.workload-controls&gt;.help-button{box-sizing:border-box;width:26px;min-width:26px;max-width:26px;height:26px;min-height:26px;max-height:26px;aspect-ratio:1;padding:0;justify-self:center;align-self:center}.control-disabled-reason{height:32px;overflow:auto;scrollbar-gutter:stable}
+.quick-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;margin-bottom:8px}.quick-heading .section-heading{flex:1 1 auto;min-width:0;margin:0}.quick-heading h2{clear:none;padding-top:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.quick-heading&gt;button{flex:none;white-space:nowrap;font-size:12px}
+.context-progress[data-state=paused] .progress-track{border-inline-start:3px double var(--ink)}
+.context-progress[data-state=paused] .progress-facts{border-inline-start:3px solid var(--accent);padding-inline-start:6px}
+.control-disabled-reason{display:block;font-size:11px;overflow-wrap:anywhere;max-width:380px}
+
+
+.summary-identities code{user-select:text}
+summary:hover{color:var(--accent)}
+/* Graph catalog shares the dashboard table surface instead of oversized cards. */
+.graph-page-heading{margin-bottom:5px}.graph-page-heading h1{margin:0}
+.graph-catalog-summary{font-size:12px;margin:14px 0 8px}
+.graph-catalog{max-height:none}.graph-catalog:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.graph-catalog table{white-space:normal;table-layout:fixed;min-width:620px}
+.graph-catalog th:nth-child(1){width:36%}.graph-catalog th:nth-child(2){width:12%}.graph-catalog th:nth-child(3){width:20%}.graph-catalog th:nth-child(4){width:32%}
+.graph-catalog td{vertical-align:middle;padding:14px 12px;overflow-wrap:anywhere}
+.graph-catalog tbody tr:last-child td{border-bottom:0}
+.graph-catalog tbody tr:hover,.graph-catalog tbody tr:focus-within{background:var(--selected)}
+.graph-capture-reference{display:block;font-size:11px;margin-top:4px;overflow-wrap:anywhere}
+.graph-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.graph-actions button{font-size:12px;white-space:normal}
+.graph-definition-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:16px 0}
+.graph-definition-heading&gt;div{min-width:0}.graph-definition-heading h2{margin:0;overflow-wrap:anywhere}.graph-definition-heading p{margin:4px 0 0;overflow-wrap:anywhere}
+@media(max-width:620px){.graph-definition-heading{align-items:flex-start}.graph-catalog table{min-width:570px}.graph-catalog td{padding:12px 10px}}
+
+
+/* Presentation polish: shared visual hierarchy without changing layout ownership. */
+body{background:var(--bg) linear-gradient(180deg,var(--surface-subtle) 0,var(--bg) 190px)}
+header{border-bottom-color:var(--line-strong);box-shadow:0 1px 0 #fff6,var(--shadow-sm)}
+:root[data-theme=dark] header{box-shadow:0 1px 0 #ffffff08,var(--shadow-sm)}
+header strong{color:var(--ink);letter-spacing:-.035em}
+#app-version{display:none}
+#connection{font-weight:650}
+button,input,select{border-color:var(--line-strong);border-radius:8px;transition:background-color 120ms ease,border-color 120ms ease,color 120ms ease,box-shadow 120ms ease}
+button{font-weight:580;box-shadow:0 1px 1px #17203308}
+button:hover:not(:disabled){border-color:color-mix(in srgb,var(--accent) 42%,var(--line));box-shadow:var(--shadow-sm)}
+button:active:not(:disabled){box-shadow:inset 0 1px 2px #17203318}
+nav.sidebar{background:linear-gradient(180deg,var(--surface) 0,var(--surface-subtle) 100%);border-right-color:var(--line-strong)}
+.sidebar a{position:relative;color:var(--muted);font-weight:570;transition:background-color 120ms ease,color 120ms ease,box-shadow 120ms ease}
+.sidebar a:hover{color:var(--ink);background:var(--surface-raised);box-shadow:var(--shadow-sm)}
+.sidebar a[aria-current=page]{color:var(--accent-strong);background:var(--selected);box-shadow:inset 3px 0 var(--accent),var(--shadow-sm)}
+main{background:transparent}h1{font-weight:720;letter-spacing:-.035em}h2{font-weight:680;letter-spacing:-.02em}.subhead{font-size:14px}
+.card,.box,.table-wrap,.workspace-head,.tab-content{border-color:var(--line);box-shadow:var(--shadow-sm)}
+.card,.box{background:linear-gradient(180deg,var(--surface-raised),var(--surface));border-radius:10px}
+.card{border-top-width:3px}.card-label{font-size:13px;letter-spacing:.005em}.card strong{letter-spacing:-.035em}
+.workspace-head{background:linear-gradient(135deg,var(--surface-raised),var(--surface));border-radius:11px 11px 0 0}
+.tabs{background:var(--surface-subtle);border-color:var(--line);box-shadow:inset 0 -1px var(--line)}
+.tabs button{color:var(--muted);border-radius:7px;box-shadow:none}.tabs button:hover:not(:disabled){color:var(--ink);box-shadow:none}.tabs button[aria-selected=true]{color:var(--accent-strong);background:var(--surface);box-shadow:inset 0 -3px var(--accent),var(--shadow-sm);font-weight:650}
+.tab-content{background:var(--surface-raised)}
+.filters{padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:var(--shadow-sm)}
+.filters label{color:var(--muted);font-weight:620}.filters input,.filters select{color:var(--ink);background:var(--surface-raised)}
+.table-wrap{border-color:var(--line-strong);border-radius:10px;background:var(--surface)}
+th{color:var(--muted);background:var(--surface-subtle);border-bottom-color:var(--line-strong);font-size:12px;text-transform:uppercase;letter-spacing:.045em}
+td{border-bottom-color:var(--line)}tbody tr{transition:background-color 100ms ease}tbody tr:hover{background:color-mix(in srgb,var(--selected) 62%,transparent)}
+tr.selected{background:var(--selected);box-shadow:inset 3px 0 var(--accent)}
+.badge{border:1px solid color-mix(in srgb,currentColor 18%,var(--line));background:color-mix(in srgb,currentColor 8%,var(--surface));border-radius:999px;font-weight:650;letter-spacing:.015em}
+.state-summary .badge{display:inline-flex;align-items:center;justify-content:center;min-width:9.5ch;min-height:24px;padding:3px 10px;text-align:center;line-height:1.2}
+.state-summary .state-stopped{min-width:max-content}
+.notice{border-radius:8px;background:var(--surface-subtle);box-shadow:inset 0 0 0 1px var(--line)}
+.quick{background:var(--surface-raised);border-color:var(--line-strong)!important;box-shadow:var(--shadow-md)!important}
+.quick dt,.tree dt{font-size:12px;font-weight:620;letter-spacing:.015em}.quick dd,.tree dd{color:var(--ink)}
+.controls button{background:var(--surface-raised)}.controls [data-action=pause],.controls [data-action=resume],.controls [data-action=stop],.controls [data-action=abort]{border-color:color-mix(in srgb,currentColor 26%,var(--line))}
+.record-chart{background:var(--surface-subtle);border-color:var(--line);box-shadow:inset 0 1px 0 #fff6}
+:root[data-theme=dark] .record-chart{box-shadow:inset 0 1px 0 #ffffff08}
+dialog{border-color:var(--line-strong);border-radius:12px;box-shadow:var(--shadow-md)}dialog::backdrop{background:#08121fa6;backdrop-filter:blur(2px)}
+.history-context-cell{display:grid;grid-template-columns:minmax(0,1fr) 10ch;align-items:center;gap:8px}.history-identity-region{min-width:0;overflow-wrap:anywhere}.history-source-region{display:flex;align-items:center;justify-content:center;min-width:0}.history-source{margin:0;white-space:nowrap}.history-outcome{display:inline-grid;justify-items:center;gap:4px}.history-outcome .stop-record{display:block;line-height:1.25}
+.session-filter{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:6px;min-width:0}.session-filter label{min-width:0}.session-filter button{min-width:0;padding-inline:10px}
+.list-coverage:empty,.session-notice:empty{display:none}.table-wrap:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.session-inspector{width:min(720px,calc(100vw - 32px));max-width:720px;max-height:min(720px,calc(100dvh - 32px));padding:0;overflow:hidden}.session-inspector-shell{display:flex;flex-direction:column;max-height:inherit}.session-inspector-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid var(--line);background:var(--surface-subtle)}.session-inspector-heading h2{margin:0}.session-inspector-body{padding:18px 20px;overflow:auto;overscroll-behavior:contain}.session-inspector-body&gt;.notice:first-child{margin-top:0}.session-inspector-body details{padding:10px 0;border-bottom:1px solid var(--line)}.session-inspector-body summary{overflow-wrap:anywhere}.session-inspector-body pre{padding:12px;border-radius:8px;background:var(--surface-subtle)}
+:root{--danger:#b62437}:root[data-theme=dark]{--danger:#ff929e}
+#confirmation{width:min(500px,calc(100vw - 32px));max-width:500px;padding:24px 26px 26px;text-align:center;overflow:hidden}
+#confirmation h2{margin:0 auto 12px;max-width:100%;font-size:20px;line-height:1.35;overflow-wrap:anywhere}
+#confirmation #confirm-text{max-width:420px;margin:0 auto 22px;color:var(--muted);line-height:1.65;overflow-wrap:anywhere}
+#confirmation .controls{display:flex;justify-content:center;align-items:center;gap:10px;width:100%;max-width:none}
+#confirmation .controls button{flex:0 1 140px;width:auto;height:40px;min-width:110px;border-radius:9px}
+#confirmation #confirm-cancel{background:var(--surface-raised)}
+#confirmation #confirm-yes{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 42%,var(--line));background:color-mix(in srgb,var(--danger) 9%,var(--surface))}
+#confirmation #confirm-yes:hover{color:var(--surface);border-color:var(--danger);background:var(--danger)}
+/* Overview: compact section-owned surfaces with stable refresh geometry. */
+.overview-section{margin:14px 0;padding:14px 15px;background:var(--surface);border-color:var(--line-strong)}
+.overview-section&gt;.section-heading,.overview-section-header .section-heading,.pressure&gt;.overview-section-header .section-heading{margin:0}
+.overview-section-header{display:flex;align-items:center;justify-content:space-between;gap:16px;min-width:0}
+.overview-heading-actions{display:flex;align-items:center;justify-content:flex-end;gap:14px;min-width:0}.history-read,.pressure-sampled{color:var(--muted);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.overview-section .cards{gap:10px;margin:10px 0 0}.overview-section .card{height:82px;min-height:82px;padding:12px 15px;border-width:1px;background:color-mix(in srgb,currentColor 4%,var(--surface-raised));box-shadow:none}.overview-section .card:hover:not(:disabled){background:color-mix(in srgb,currentColor 8%,var(--surface));border-color:color-mix(in srgb,currentColor 28%,var(--line))}.overview-section .card-label{gap:9px}.overview-section .card-label svg{width:18px;height:18px}.overview-section .card strong{font-size:25px;line-height:1.15;margin-top:4px}.overview-section&gt;.muted:empty{display:none}
+.history-overview .overview-refresh-status{display:block;visibility:visible;height:20px;min-height:20px;margin:5px 0 0;font-size:12px;line-height:20px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.history-overview .overview-refresh-status:empty{display:block;visibility:hidden}.history-refresh{width:106px;min-width:106px;margin:0}.history-heading{margin:0}.history-label{display:contents}
+.overview-tables{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;align-items:stretch}.overview-table-card{display:flex;flex-direction:column;height:300px;min-width:0;padding:14px 15px;background:var(--surface);border-color:var(--line-strong)}.overview-table-card&gt;.section-heading{flex:none;margin-bottom:8px}.overview-table-body{display:flex;flex:1;min-height:0}.overview-table-card .overview-table{height:100%;max-height:none;width:100%;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:auto}.overview-table-card .overview-table:has(.overview-empty){overflow:hidden}.overview-table-card .overview-table table{white-space:normal;table-layout:fixed}.overview-table-card .overview-table th{top:0}.overview-table-card .overview-table td{vertical-align:top}.overview-empty{display:flex;align-items:center;justify-content:center;min-height:180px;padding:24px;color:var(--muted);text-align:center;font-size:13px}.overview-table-card .overview-table tbody:empty{display:none}
+.observed-locations{margin:12px 0 14px}.observed-locations .section-heading{margin-bottom:10px}
+.pager{color:var(--muted)}.pager button:not(:disabled){color:var(--accent-strong)}
+pre,code{font-family:&quot;SFMono-Regular&quot;,Consolas,&quot;Liberation Mono&quot;,monospace}
+*{scrollbar-color:var(--line-strong) transparent}
+@media(max-width:620px){body{background:var(--bg)}.sidebar a[aria-current=page]{box-shadow:inset 0 -3px var(--accent),var(--shadow-sm)}.filters{padding:9px}.table-wrap{border-radius:8px}#confirmation{padding:22px 18px 20px}#confirmation .controls{flex-direction:column-reverse}#confirmation .controls button{width:100%;max-width:260px;flex-basis:40px}.overview-section,.overview-table-card{padding:12px}.overview-section-header{align-items:flex-start;flex-wrap:wrap}.overview-heading-actions{width:100%;justify-content:space-between}.history-read{white-space:normal}.overview-tables{grid-template-columns:1fr}.overview-table-card{height:auto}.overview-table-card .overview-table{height:auto;min-height:150px;max-height:300px}.overview-empty{min-height:115px}}
+/* Table state owns two stable slots; annotations never participate in badge alignment. */
+.table-stage .state-cell{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;width:100%;justify-items:stretch}.state-cell .state-primary{display:flex;justify-content:center;align-items:start}.state-cell .state-secondary{display:block;block-size:2lh;line-height:1.4;font-size:11px;overflow:auto;overflow-wrap:anywhere}.state-cell .state-secondary&gt;span{display:block}
+
+/* Overview stays registry-wide. Only this fixed-size entry point reflects engine membership. */
+.overview-engines{margin-left:auto;flex:0 0 204px;width:204px;height:72px;display:grid;grid-template-columns:1fr 48px;grid-template-rows:1fr 1fr;align-items:center;text-align:left;padding:10px 14px;font-size:12px}
+.overview-heading-copy{min-width:0}.overview-heading-copy .section-heading{margin:0 0 5px}.overview-heading-copy .subhead{margin:0}
+.overview-engines strong{grid-column:2;grid-row:1/3;text-align:right;font-size:26px;font-variant-numeric:tabular-nums;overflow:hidden}
+.overview-engines small{font-size:11px;color:var(--accent-strong)}
+/* The Engines viewport depends on the viewport alone, never row count or tab. */
+.engines-view{min-width:0;max-width:100%;overflow-anchor:none}
+.engines-toolbar{grid-template-columns:minmax(180px,1.1fr) minmax(0,3fr);height:86px;margin-bottom:12px}
+.engine-filter-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:10px;min-width:0}
+.engine-tabs{display:flex;gap:4px;height:39px;align-items:stretch;border-bottom:1px solid var(--line)}
+.engine-tabs button{border:0;border-radius:0;box-shadow:none;background:transparent;padding:7px 14px;font-size:13px;white-space:nowrap}
+.engine-tabs button[aria-selected=true]{color:var(--accent);box-shadow:inset 0 -2px var(--accent)}
+.engine-gap{height:28px;line-height:28px;font-size:12px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.engines-stage{--engine-table-height:clamp(280px,calc(100dvh - 330px),650px);height:var(--engine-table-height);min-width:0;max-width:100%;overflow-anchor:none}
+.engines-stage&gt;.engine-scroll{height:100%;min-height:0;max-height:none;overflow:auto;overscroll-behavior:contain;overflow-anchor:none;scrollbar-gutter:stable}
+.engines-stage&gt;.engine-scroll table{table-layout:fixed;width:100%;min-width:1150px;white-space:normal}
+.engines-stage .engine-table th{height:48px;position:sticky;top:0;z-index:2;background:var(--surface);font-size:11px;line-height:15px}
+.engines-stage .engine-table th,.engines-stage .engine-table td{padding:9px 12px;text-align:center;font-variant-numeric:tabular-nums}
+.engines-stage .engine-table th:nth-child(n){width:auto}
+.engines-stage .engine-table th:first-child{width:205px;text-align:left}
+.engines-stage .engine-table th:nth-child(2){width:122px;text-align:left}
+.engines-stage .engine-table th:nth-child(7){width:212px;text-align:left}
+.engines-stage .engine-table th:nth-child(8){width:165px;text-align:left}
+.engines-stage .engine-table td{height:62px;font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;overflow-wrap:normal}
+.engines-stage .engine-table td:first-child,.engines-stage .pressure-table td:nth-child(2),.engines-stage .pressure-table td:nth-child(n+7){text-align:left}
+.engines-stage .engine-table time{font-size:11px;white-space:nowrap}
+.engine-identity{min-width:0;overflow:hidden}.engine-identity strong,.engine-identity small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:20px}
+.engine-identity strong{font-size:12px}.engine-identity small{height:18px;line-height:18px;font-size:11px;color:var(--muted)}
+.engines-stage .work-table{min-width:800px!important}.engines-stage .work-table th:not(:first-child){width:auto;text-align:center}
+.engine-table tr[data-engine_id]{cursor:pointer}.engine-table tr:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.engine-table .unattributed{font-style:italic}.engine-empty{padding:30px 16px;font-size:13px;color:var(--muted)}
+.engines-stage .engine-table .engine-report{white-space:normal;line-height:17px}
+.engine-report.sample-warning{color:#926115}:root[data-theme=dark] .engine-report.sample-warning{color:#e0bc70}
+.engine-details .quick-heading h2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+.engine-full-identity{display:block;overflow-wrap:anywhere;font-size:12px;user-select:text}
+.engine-details h3{font-size:13px;margin-top:20px}.engine-details .section-heading{margin-top:22px}.engine-details .section-heading h2{font-size:15px}
+.engine-facts{display:grid;grid-template-columns:minmax(100px,1fr) minmax(0,1fr);gap:9px 14px;font-size:12px}
+.engine-facts dt{color:var(--muted);text-transform:capitalize}.engine-facts dd{margin:0;text-align:right;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.engine-age-detail{display:block;font-size:11px;color:var(--muted);line-height:1.5}
+@media(max-width:850px){.engines-toolbar{grid-template-columns:1fr;height:148px}.engine-filter-slots{grid-template-columns:repeat(3,minmax(0,1fr))}.engines-stage{--engine-table-height:clamp(280px,calc(100dvh - 395px),650px)}}
+@media(max-width:620px){.overview-page-heading{display:grid;grid-template-columns:minmax(0,1fr) 168px;grid-template-areas:&quot;heading engine&quot; &quot;subtitle subtitle&quot;;gap:8px;align-items:start}.overview-heading-copy{display:contents}.overview-heading-copy&gt;.section-heading{grid-area:heading;margin:0}.overview-heading-copy&gt;.subhead{grid-area:subtitle;margin:0}.overview-page-heading&gt;.overview-engines{grid-area:engine;margin:0;width:168px;flex-basis:168px;height:68px;padding:8px 10px;grid-template-columns:1fr 36px}.overview-engines strong{font-size:24px}.engines-toolbar{height:144px;gap:8px}.engine-filter-slots{gap:6px}.engine-filter-slots label{font-size:11px}.engine-filter-slots select{font-size:11px;padding:6px}.engines-stage{--engine-table-height:clamp(280px,calc(100dvh - 405px),650px)}.engines-stage&gt;.engine-details{width:100%;max-width:100%;border-radius:8px}}
+
+/* Overview uses spare desktop height for readable recent evidence, not larger metrics. */
+@media(min-width:621px){
+ main:has(&gt;.active-overview){display:flex;flex-direction:column;gap:14px;min-height:calc(100dvh - 66px)}
+ main:has(&gt;.active-overview)&gt;*{margin:0}
+ main:has(&gt;.active-overview)&gt;.section-heading{align-items:flex-start}
+ main:has(&gt;.active-overview)&gt;.section-heading&gt;.help-button{align-self:flex-start;margin-top:5px}
+ main:has(&gt;.active-overview)&gt;:last-child:empty{display:none}
+ main:has(&gt;.active-overview)&gt;:not(.overview-tables){flex:none}
+ main:has(&gt;.active-overview)&gt;.overview-tables{flex:1;min-height:300px;grid-template-rows:minmax(0,1fr)}
+ main:has(&gt;.active-overview) .overview-table-card{height:auto;min-height:300px}
+ main:has(&gt;.active-overview) .overview-table-body{position:relative}
+ main:has(&gt;.active-overview) .overview-table{position:absolute;inset:0}
+ main:has(&gt;.active-overview) .overview-table:has(.overview-empty){display:flex;flex-direction:column}
+ main:has(&gt;.active-overview) .overview-empty{flex:1;min-height:0}
+}
+
+/* Keep navigation from shifting horizontally when a short viewport needs page scrolling. */
+html{scrollbar-gutter:stable}
+/* Sibling data views share header, two control rows, and a remaining-height table. */
+main:has(&gt;.data-view){height:calc(100dvh - 66px);min-height:640px}
+.data-view{--data-header-height:64px;--utility-height:52px;--filter-height:80px;--deck-gap:10px;display:grid;grid-template-rows:var(--data-header-height) minmax(0,1fr);gap:12px;height:100%;min-width:0;overflow-anchor:none}
+.data-header .section-heading{margin:0 0 4px;min-height:35px}.data-header h1{margin:0}.data-header .subhead{margin:0}
+.data-content{display:grid;grid-template-rows:calc(var(--utility-height) + var(--filter-height) + var(--deck-gap)) minmax(0,1fr);gap:10px;min-width:0;min-height:0;position:relative}
+.control-deck{display:grid;grid-template-rows:var(--utility-height) var(--filter-height);gap:var(--deck-gap);min-width:0}
+.data-utility{display:flex;align-items:center;gap:16px;min-width:0;overflow:hidden}
+.data-utility&gt;label{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);min-width:0}
+.data-utility .session-filter{display:flex;align-items:center;gap:8px;min-width:0}.data-utility .session-filter label{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);min-width:0}.data-utility select{width:240px;max-width:100%}
+.data-view .data-filters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:end;gap:10px;height:100%;margin:0;padding:10px 12px;min-width:0}
+.data-filters&gt;input[type=search]{min-width:0;width:100%;height:36px}.data-filters label{min-width:0}.data-filters select{min-width:0;width:100%;max-width:none;height:36px;text-overflow:ellipsis}
+.data-view .engines-toolbar{grid-template-columns:minmax(0,1.1fr) minmax(0,3fr)}.data-view .engine-filter-slots{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.data-view .graph-filters{grid-template-columns:minmax(0,2fr) repeat(2,minmax(0,1fr))}
+.data-utility .engine-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;width:100%;height:44px;padding:4px;border:1px solid var(--line);border-radius:8px;background:var(--surface-subtle)}
+.data-utility .engine-tabs button{min-height:0;height:34px;border-radius:5px;padding:4px 12px;font-weight:600;box-shadow:none}
+.data-utility .engine-tabs button[aria-selected=true]{background:var(--selected);color:var(--accent-strong);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.data-utility .dashboard-switch{margin-left:auto;color:var(--ink);gap:12px;cursor:pointer}
+.dashboard-switch input{appearance:none;position:relative;flex:none;width:42px;height:24px;min-height:24px;padding:0;margin:0;border:1px solid var(--line-strong);border-radius:20px;background:var(--surface-raised);cursor:pointer}
+.dashboard-switch input::before{content:&#x27;&#x27;;position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:transform .15s ease,background-color .15s ease}
+.dashboard-switch input:checked{background:var(--selected);border-color:var(--accent)}.dashboard-switch input:checked::before{transform:translateX(18px);background:var(--accent)}
+.data-table-shell{display:grid;grid-template-rows:minmax(0,1fr) 36px;gap:12px;min-width:0;min-height:0}
+.data-view .data-table-stage{position:relative;height:auto;min-height:0;min-width:0}
+.data-table-stage&gt;.table-wrap{position:absolute;inset:0;height:100%;min-height:0;max-height:none;overscroll-behavior:contain;scrollbar-gutter:stable}
+.data-footer{display:flex;align-items:center;justify-content:flex-end;gap:12px;min-width:0;font-size:12px;color:var(--muted)}.data-footer .pager{flex:none;margin:0}.data-footer .engine-gap{margin-right:auto;max-width:100%}
+.data-notices{min-width:0;margin-right:auto;max-height:36px;overflow:auto}.data-notices p{height:auto;margin:0;font-size:12px}.data-notices:empty{display:none}
+.data-content&gt;.read-status{position:absolute;top:0;right:0;z-index:6;max-width:100%;background:var(--surface);box-shadow:var(--shadow-sm)}
+.data-utility .graph-catalog-summary{margin:0;font-size:13px;overflow:hidden;text-overflow:ellipsis}
+.data-table-stage&gt;.graph-catalog table{min-width:850px}.graph-catalog td{height:68px}.graph-catalog th:nth-child(1){width:auto}.graph-catalog th:nth-child(2){width:100px}.graph-catalog th:nth-child(3){width:180px}.graph-catalog th:nth-child(4){width:320px;text-align:center}
+.graph-catalog td:nth-child(4){text-align:center;vertical-align:middle}.graph-catalog .graph-actions{display:grid;grid-template-columns:140px 140px;gap:8px;justify-content:center;align-items:center}.graph-catalog .graph-actions button{height:36px;min-height:36px;width:140px;padding:6px 8px;white-space:nowrap;font-size:12px}
+.graph-browser:has(&gt;.graph-host){display:flex;flex-direction:column;gap:0}.graph-browser&gt;.graph-host{flex:1;height:auto;min-height:300px}.graph-browser:has(&gt;.graph-host)&gt;:not(.graph-host){flex:none}
+@media(max-width:1050px){
+ .data-view{--filter-height:144px;--data-header-height:72px;--utility-height:88px}
+ .data-utility{flex-wrap:wrap;gap:6px;align-content:center}
+ .data-view .data-filters{grid-template-columns:repeat(3,minmax(0,1fr));align-content:end}
+ .data-view .engines-toolbar{grid-template-columns:1fr}.data-view .graph-filters{grid-template-columns:repeat(2,minmax(0,1fr));align-items:end}.graph-filters&gt;input[type=search]{grid-column:1/-1}
+ main:has(&gt;.data-view){min-height:720px}
+}
+@media(max-width:620px){
+ main:has(&gt;.data-view){height:calc(100dvh - 130px);min-height:820px}
+ .data-view{--data-header-height:82px;--utility-height:88px;--filter-height:216px;gap:10px}
+ .data-view .data-filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px;align-content:end}
+ .data-filters&gt;input[type=search]{grid-column:1/-1}.data-view .engines-toolbar{grid-template-columns:1fr}.data-view .engine-filter-slots{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.engine-filter-slots&gt;label:last-child{grid-column:1/-1}
+ .data-view .graph-filters{grid-template-columns:1fr}.data-utility{flex-wrap:wrap;gap:6px;align-content:center}.data-utility .session-filter{width:100%;justify-content:space-between}.data-utility select{width:180px}.data-utility .graph-catalog-summary{white-space:normal}
+ .data-footer .pager{gap:6px;font-size:11px}.data-footer .pager button{padding:6px}.data-notices{font-size:11px}.data-header .subhead{font-size:13px}
+}
+/* One compact table-status geometry; state colors and labels remain producer-owned. */
+:root{--dashboard-status-width:208px;--dashboard-status-height:26px}
+.table-stage .status-badge,.table-stage .state-summary .status-badge{display:block;box-sizing:border-box;width:var(--dashboard-status-width);min-width:var(--dashboard-status-width);max-width:var(--dashboard-status-width);height:var(--dashboard-status-height);min-height:var(--dashboard-status-height);padding:0 8px;line-height:24px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;margin-inline:auto}
+.contexts-view .table-stage th:nth-child(4),.history-list .table-stage th:nth-child(4),.engines-stage .pressure-table th:nth-child(8){width:232px}
+.engines-stage .pressure-table{min-width:1324px!important}.engines-stage .pressure-table th:nth-child(8){text-align:center}
+.engines-stage .status-badge.engine-report{line-height:24px;white-space:nowrap}
+/* Reserved notification track: fetch failures never move controls or table frames. */
+.data-view{grid-template-rows:var(--data-header-height) 36px minmax(0,1fr)}
+.page-notification{height:36px;min-height:36px;min-width:0;overflow:hidden}
+.stale-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;height:36px;border:1px solid var(--line-strong);border-radius:7px;padding:3px 8px 3px 12px;background:var(--surface-subtle);color:var(--muted);font-size:12px}
+.stale-banner&gt;span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.stale-banner button{flex:none;min-height:28px;height:28px;padding:2px 10px;font-size:12px}
+.initial-view-error{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;text-align:center;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--muted);font-size:13px}.initial-view-error strong{font-size:16px;color:var(--ink)}
+.active-overview{position:relative}
+main[data-disconnected] .read-status,main[data-disconnected] .overview-refresh-status{display:none}
+@media(max-width:620px){.stale-banner{font-size:11px;padding-left:8px;gap:6px}}
+
+/* Balanced catalog columns and a complete two-line producer sample timestamp. */
+.engines-stage .pressure-table time{display:block;line-height:17px}.engines-stage .pressure-table time&gt;span{display:block;white-space:nowrap}
+.data-table-stage&gt;.graph-catalog table{min-width:1324px}
+.graph-catalog th:nth-child(1){width:36%}.graph-catalog th:nth-child(2){width:16%}.graph-catalog th:nth-child(3),.graph-catalog th:nth-child(4){width:24%}
+.graph-catalog th:nth-child(2),.graph-catalog td:nth-child(2),.graph-catalog th:nth-child(3),.graph-catalog td:nth-child(3){text-align:center}
+
+/* Keep the measured value and its unit together in both run hosts. */
+.progress-facts&gt;span{white-space:nowrap}
+/* One theme control for every visualization host. */
+.theme-switch{display:flex;align-items:center;gap:12px;border:0;padding:0;margin:0;color:var(--ink);background:transparent;font:14px/1.5 system-ui,sans-serif;flex-shrink:0}
+.theme-switch legend{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
+.theme-switch label{display:inline-flex;align-items:center;gap:6px;min-height:36px;font-weight:400;white-space:nowrap;cursor:pointer}
+.theme-switch input[type=radio]{appearance:auto;width:18px;height:18px;min-height:0;margin:0;padding:0;accent-color:var(--accent);cursor:pointer}
+.theme-switch input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+&lt;/style&gt;&lt;style&gt;[data-preview-page][hidden]{display:none!important}[data-preview-page]:not([data-preview-page=run]){height:calc(100dvh - 160px);min-height:820px}&lt;/style&gt;&lt;style data-shared-theme-header&gt;/* One theme control for every visualization host. */
+.theme-switch{display:flex;align-items:center;gap:12px;border:0;padding:0;margin:0;color:var(--ink);background:transparent;font:14px/1.5 system-ui,sans-serif;flex-shrink:0}
+.theme-switch legend{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
+.theme-switch label{display:inline-flex;align-items:center;gap:6px;min-height:36px;font-weight:400;white-space:nowrap;cursor:pointer}
+.theme-switch input[type=radio]{appearance:auto;width:18px;height:18px;min-height:0;margin:0;padding:0;accent-color:var(--accent);cursor:pointer}
+.theme-switch input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+/* Hosts share the same appearance slot; content/action rows may differ. */
+.visualization-header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:12px 24px}
+.visualization-identity{min-width:0}
+.visualization-appearance{display:flex;justify-content:flex-end;align-items:center;justify-self:end;align-self:start;min-width:0}
+.visualization-appearance .theme-switch{margin:0}
+.visualization-summary{grid-column:1/-1;min-width:0}
+.visualization-header.workspace-head{grid-template-columns:minmax(0,1fr) auto}
+.visualization-header .workspace-actions.run-theme{width:auto;max-width:none;padding:0}
+.visualization-header.top .title-row{flex-wrap:wrap}
+.visualization-header.top .title-row h1{flex:0 1 auto;min-width:0}
+header.dashboard-header{height:auto;min-height:66px;grid-template-columns:minmax(0,1fr) auto auto;align-items:center}
+.dashboard-identity{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px}
+.dashboard-identity #engine-name{overflow-wrap:anywhere;min-width:0}
+.dashboard-actions{display:flex;align-items:center;padding-right:24px;border-right:1px solid var(--line-strong)}
+.dashboard-actions #owner-stop{white-space:nowrap;min-height:36px}
+.dashboard-header .visualization-appearance{align-self:center}
+@media(max-width:680px){
+ .visualization-header{gap:8px 12px}
+ header.dashboard-header{grid-template-columns:minmax(0,1fr) auto;padding:10px 12px;gap:8px 12px}
+ .dashboard-header .visualization-appearance{grid-column:2;grid-row:1;align-self:start}
+ .dashboard-identity{gap:4px 10px}
+ .dashboard-identity strong{width:100%}
+ .dashboard-identity #engine-name{max-width:none}
+ .dashboard-actions{grid-column:1/-1;justify-content:flex-end;border-right:0;border-top:1px solid var(--line);padding:8px 0 0}
+ .visualization-header.top .title-row h1{flex-basis:100%}
+}
+
+.dashboard-header~.layout{min-height:calc(100dvh - var(--dashboard-header-height,66px))}
+.dashboard-header~.layout .sidebar{top:var(--dashboard-header-height,66px);height:calc(100dvh - var(--dashboard-header-height,66px))}
+&lt;/style&gt;&lt;/head&gt;&lt;body&gt;&lt;p style=&quot;margin: 0px; padding: 12px 24px; background: rgb(255, 244, 214); color: rgb(86, 61, 0); font: 14px / 1.5 system-ui;&quot;&gt;Static dashboard preview. Captured from a completed example run. Explore all nine tabs using captured data. The five navigation pages and nine run tabs show captured views. Runtime controls and filters are inactive; displayed values do not update.&lt;/p&gt;
+&lt;header class=&quot;dashboard-header visualization-header&quot;&gt;&lt;div class=&quot;dashboard-identity visualization-identity&quot;&gt;&lt;strong&gt;Jayrun&lt;/strong&gt;&lt;span id=&quot;engine-name&quot;&gt;Local engine · self&lt;/span&gt;&lt;span id=&quot;connection&quot; role=&quot;status&quot; class=&quot;state-running&quot;&gt;Static preview · offline&lt;/span&gt;&lt;small id=&quot;received&quot;&gt;&lt;/small&gt;&lt;/div&gt;&lt;div class=&quot;dashboard-actions&quot;&gt;&lt;button id=&quot;owner-stop&quot; data-help=&quot;dashboard.stop-owner&quot; disabled=&quot;&quot;&gt;Stop dashboard&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;visualization-appearance&quot;&gt;&lt;fieldset class=&quot;theme theme-switch&quot; aria-label=&quot;Theme&quot; data-help=&quot;view.theme&quot;&gt;&lt;legend&gt;Theme&lt;/legend&gt;&lt;label&gt;&lt;input type=&quot;radio&quot; name=&quot;theme&quot; value=&quot;light&quot; aria-label=&quot;Light&quot; checked=&quot;&quot; disabled=&quot;&quot;&gt;&lt;span&gt;Light&lt;/span&gt;&lt;/label&gt;&lt;label&gt;&lt;input type=&quot;radio&quot; name=&quot;theme&quot; value=&quot;dark&quot; aria-label=&quot;Dark&quot; disabled=&quot;&quot;&gt;&lt;span&gt;Dark&lt;/span&gt;&lt;/label&gt;&lt;/fieldset&gt;&lt;/div&gt;&lt;/header&gt;
+&lt;div class=&quot;layout&quot;&gt;&lt;nav class=&quot;sidebar&quot; aria-label=&quot;Main&quot;&gt;&lt;a aria-current=&quot;false&quot; aria-disabled=&quot;true&quot;&gt;⌂ Overview&lt;/a&gt;&lt;a aria-current=&quot;false&quot; aria-disabled=&quot;true&quot;&gt;▦ Engines&lt;/a&gt;&lt;a aria-current=&quot;false&quot; aria-disabled=&quot;true&quot;&gt;▤ Contexts&lt;/a&gt;&lt;a aria-current=&quot;false&quot; aria-disabled=&quot;true&quot;&gt;◇ Graphs&lt;/a&gt;&lt;a aria-current=&quot;false&quot; aria-disabled=&quot;true&quot;&gt;◷ History&lt;/a&gt;&lt;small&gt;Current engine&lt;br&gt;&lt;span id=&quot;owner-id&quot;&gt;Controller 3571174985996562445&lt;/span&gt;&lt;/small&gt;&lt;div class=&quot;sidebar-footer&quot;&gt;&lt;button id=&quot;about-open&quot; disabled=&quot;&quot;&gt;Help / About&lt;/button&gt;&lt;small id=&quot;app-version&quot;&gt;Version 0.2.0&lt;/small&gt;&lt;/div&gt;&lt;/nav&gt;&lt;main id=&quot;main&quot;&gt;&lt;section data-preview-page=&quot;run&quot;&gt;&lt;section class=&quot;workspace-head&quot;&gt;&lt;div class=&quot;workspace-identity&quot;&gt;&lt;button class=&quot;workspace-back&quot; aria-label=&quot;Back to contexts&quot; disabled=&quot;&quot;&gt;&lt;span aria-hidden=&quot;true&quot;&gt;←&lt;/span&gt;&lt;span&gt;Back to contexts&lt;/span&gt;&lt;/button&gt;&lt;h1&gt;Context C-a7421f66b159&lt;/h1&gt;&lt;div id=&quot;work-state&quot;&gt;&lt;span class=&quot;state-summary&quot;&gt;&lt;span class=&quot;badge state-finished&quot;&gt;FINISHED&lt;/span&gt;&lt;span class=&quot;outcome-label&quot;&gt;Finalized&lt;/span&gt;&lt;/span&gt;&lt;span&gt; 83598e73626c · v1&lt;/span&gt;&lt;/div&gt;&lt;div id=&quot;work-progress&quot;&gt;&lt;div class=&quot;context-progress&quot; data-state=&quot;finished&quot;&gt;&lt;small&gt;Execution ended · 100.0%&lt;/small&gt;&lt;div class=&quot;progress-track&quot; role=&quot;progressbar&quot; aria-label=&quot;Whole context progress&quot; aria-valuemin=&quot;0&quot; aria-valuemax=&quot;100&quot; aria-valuetext=&quot;Execution ended · 100.0%&quot; aria-valuenow=&quot;100&quot;&gt;&lt;span class=&quot;progress-fill&quot; style=&quot;width: 100%;&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;small&gt;Iteration 2 / 2 · Execution ended; percentage is not success&lt;/small&gt;&lt;div class=&quot;progress-facts&quot;&gt;&lt;strong&gt;Elapsed:&lt;/strong&gt;&lt;span&gt;14.4 ms&lt;/span&gt;&lt;small&gt;Includes pauses and waits&lt;/small&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;workspace-actions&quot;&gt;&lt;div id=&quot;work-controls&quot;&gt;&lt;div&gt;&lt;div class=&quot;controls workload-controls&quot;&gt;&lt;button data-action=&quot;pause&quot; data-help=&quot;dashboard.pause&quot; aria-label=&quot;Pause&quot; disabled=&quot;&quot;&gt;&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M6 4h4v16H6zM14 4h4v16h-4z&quot; fill=&quot;currentColor&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;span&gt;Pause&lt;/span&gt;&lt;/button&gt;&lt;button data-action=&quot;stop&quot; data-help=&quot;dashboard.stop&quot; aria-label=&quot;Stop&quot; disabled=&quot;&quot;&gt;&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M4 4h16v16H4z&quot; fill=&quot;currentColor&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;span&gt;Stop&lt;/span&gt;&lt;/button&gt;&lt;button data-action=&quot;abort&quot; data-help=&quot;dashboard.abort&quot; aria-label=&quot;Abort&quot; disabled=&quot;&quot;&gt;&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M12 2 1 22h22L12 2zm-1 7h2v6h-2zm0 8h2v2h-2z&quot; fill=&quot;currentColor&quot;&gt;&lt;/path&gt;&lt;/svg&gt;&lt;span&gt;Abort&lt;/span&gt;&lt;/button&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;dashboard.controls&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About Pause, Stop and Abort&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;p class=&quot;reason&quot; role=&quot;status&quot;&gt;&lt;/p&gt;&lt;small class=&quot;control-disabled-reason&quot;&gt;Pause, Stop, Abort unavailable in the observed state.&lt;/small&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;p id=&quot;work-filter-gap&quot; class=&quot;workspace-notice&quot; role=&quot;status&quot;&gt;&lt;/p&gt;&lt;/section&gt;&lt;nav class=&quot;tabs&quot; role=&quot;tablist&quot; aria-label=&quot;Context workspace&quot;&gt;&lt;button role=&quot;tab&quot; id=&quot;workspace-tab-graph&quot; aria-controls=&quot;workspace-panel&quot; aria-selected=&quot;false&quot; tabindex=&quot;-1&quot; data-tab=&quot;graph&quot;&gt;Graph&lt;/button&gt;&lt;button role=&quot;tab&quot; id=&quot;workspace-tab-summary&quot; aria-controls=&quot;workspace-panel&quot; aria-selected=&quot;false&quot; tabindex=&quot;-1&quot; data-tab=&quot;summary&quot;&gt;Summary&lt;/button&gt;&lt;button role=&quot;tab&quot; id=&quot;workspace-tab-failure&quot; aria-controls=&quot;workspace-panel&quot; aria-selected=&quot;false&quot; tabindex=&quot;-1&quot; data-tab=&quot;failure&quot;&gt;Failure&lt;/button&gt;&lt;button role=&quot;tab&quot; id=&quot;workspace-tab-configuration&quot; aria-controls=&quot;workspace-panel&quot; aria-selected=&quot;false&quot; tabindex=&quot;-1&quot; data-tab=&quot;configuration&quot;&gt;Configuration&lt;/button&gt;&lt;button role=&quot;tab&quot; id=&quot;workspace-tab-settings&quot; aria-controls=&quot;workspace-panel&quot; aria-selected=&quot;false&quot; tabindex=&quot;-1&quot; data-tab=&quot;settings&quot;&gt;Settings&lt;/button&gt;&lt;button role=&quot;tab&quot; id=&quot;workspace-tab-records&quot; aria-controls=&quot;workspace-panel&quot; aria-selected=&quot;false&quot; tabindex=&quot;-1&quot; data-tab=&quot;records&quot;&gt;Records&lt;/button&gt;&lt;button role=&quot;tab&quot; id=&quot;workspace-tab-artifacts&quot; aria-controls=&quot;workspace-panel&quot; aria-selected=&quot;false&quot; tabindex=&quot;-1&quot; data-tab=&quot;artifacts&quot;&gt;Artifacts&lt;/button&gt;&lt;button role=&quot;tab&quot; id=&quot;workspace-tab-report&quot; aria-controls=&quot;workspace-panel&quot; aria-selected=&quot;false&quot; tabindex=&quot;-1&quot; data-tab=&quot;report&quot;&gt;Report&lt;/button&gt;&lt;button role=&quot;tab&quot; id=&quot;workspace-tab-activity&quot; aria-controls=&quot;workspace-panel&quot; aria-selected=&quot;true&quot; tabindex=&quot;0&quot; data-tab=&quot;activity&quot;&gt;Activity&lt;/button&gt;&lt;/nav&gt;&lt;section class=&quot;tab-content workspace-stack&quot; id=&quot;workspace-panel&quot; role=&quot;tabpanel&quot; tabindex=&quot;0&quot; aria-labelledby=&quot;workspace-tab-activity&quot; data-tab=&quot;activity&quot;&gt;&lt;div class=&quot;workspace-body inactive&quot; data-view=&quot;graph&quot; inert=&quot;&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;inline evidence-stamp&quot;&gt;&lt;small&gt;Evidence sampled: Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/small&gt;&lt;/div&gt;&lt;p class=&quot;muted graph-caption&quot;&gt;Captured definition with finalized execution evidence.&lt;/p&gt;&lt;a class=&quot;graph-export&quot; download=&quot;context-4288634963145949227.html&quot; aria-disabled=&quot;true&quot;&gt;Export graph&lt;/a&gt;&lt;div class=&quot;graph-host&quot;&gt;&lt;jayrun-graph theme=&quot;light&quot;&gt;&lt;template shadowrootmode=&quot;open&quot;&gt;&lt;style&gt;:host {
+  display:block;
+  color-scheme:light;
+  font-family:ui-sans-serif,system-ui,-apple-system,&quot;Segoe UI&quot;,sans-serif;
+  font-size:14px;
+  line-height:1.5;
+  --bg:#f3f6fb;
+  --surface:#fff;
+  --surface-subtle:#f8fafc;
+  --surface-raised:#fff;
+  --ink:#172033;
+  --muted:#5b6d84;
+  --line:#d7e0ec;
+  --line-strong:#c3cfdd;
+  --accent:#2563eb;
+  --accent-strong:#1d4ed8;
+  --selected:#eaf2ff;
+  --grid:#d8e2ef;
+  --resource:#eef4fc;
+  --shadow:0 18px 42px #1720331a;
+  --shadow-sm:0 1px 2px #1720330a,0 4px 14px #17203308;
+  color:var(--ink);
+  background:var(--bg)
+}
+:host([theme=dark]) {
+  color-scheme:dark;
+  --bg:#08121f;
+  --surface:#101d2d;
+  --surface-subtle:#142337;
+  --surface-raised:#172638;
+  --ink:#e8eef8;
+  --muted:#9db0c8;
+  --line:#293c52;
+  --line-strong:#3a506a;
+  --accent:#60a5fa;
+  --accent-strong:#93c5fd;
+  --selected:#183554;
+  --grid:#203249;
+  --resource:#1a3048;
+  --shadow:0 20px 48px #0007;
+  --shadow-sm:0 1px 2px #0005,0 8px 24px #0002
+}
+* {
+  box-sizing:border-box
+}
+button,input,select {
+  font:inherit;
+  color:var(--ink)
+}
+button,select,input[type=search] {
+  border:1px solid var(--line);
+  border-radius:7px;
+  background:var(--surface);
+  min-height:36px
+}
+button {
+  padding:6px 11px;
+  cursor:pointer
+}
+button:hover:not(:disabled) {
+  background:var(--selected)
+}
+button:disabled,select:disabled {
+  opacity:.55;
+  cursor:default
+}
+input[type=search] {
+  padding:7px 10px;
+  width:100%
+}
+input[type=checkbox] {
+  accent-color:var(--accent);
+  width:16px;
+  height:16px;
+  vertical-align:middle
+}
+select {
+  padding:5px 30px 5px 9px;
+  max-width:100%
+}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible {
+  outline:3px solid var(--accent);
+  outline-offset:3px
+}
+.shell {
+  display:flex;
+  height:var(--jayrun-viewer-height,100vh);
+  height:var(--jayrun-viewer-height,100dvh);
+  min-height:0;
+  overflow:hidden;
+  flex-direction:column
+}
+.top {
+  padding:20px 26px 15px;
+  background:var(--surface);
+  border-bottom:1px solid var(--line)
+}
+.brand {
+  font-size:11px;
+  letter-spacing:.18em;
+  font-weight:750;
+  text-transform:uppercase;
+  color:var(--muted)
+}
+h1 {
+  font-size:23px;
+  font-weight:680;
+  letter-spacing:-.025em;
+  margin:5px 0;
+  overflow-wrap:anywhere
+}
+h2 {
+  font-size:18px;
+  margin:0;
+  overflow-wrap:anywhere
+}
+h3 {
+  font-size:12px;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  margin:22px 0 8px;
+  color:var(--muted)
+}
+.subtitle,.muted {
+  color:var(--muted);
+  font-size:12px
+}
+.subtitle[data-help],.graph-identity[data-help],.execution-identity[data-help] {
+  display:inline-block;
+  width:fit-content;
+  max-width:100%
+}
+.toolbar {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+  padding:12px 26px;
+  border-bottom:1px solid var(--line);
+  background:var(--surface)
+}
+.toolbar label {
+  display:flex;
+  align-items:center;
+  gap:7px;
+  font-size:12px
+}
+.registry-label {
+  flex:1;
+  min-width:240px
+}
+.registry-label select {
+  flex:1
+}
+.search-wrap {
+  position:relative;
+  flex:1;
+  min-width:180px;
+  max-width:440px
+}
+.search-label {
+  position:absolute;
+  width:1px;
+  height:1px;
+  overflow:hidden
+}
+.results {
+  position:absolute;
+  z-index:10;
+  top:0;
+  left:12px;
+  right:12px;
+  max-width:440px;
+  padding:7px;
+  background:var(--surface);
+  box-shadow:var(--shadow);
+  border:1px solid var(--line);
+  border-radius:8px;
+  max-height:min(320px,100%);
+  overflow:auto;
+  overscroll-behavior:contain
+}
+.results:empty {
+  display:none
+}
+.results button {
+  display:block;
+  text-align:left;
+  width:100%;
+  margin:3px 0;
+  overflow-wrap:anywhere
+}
+.results .muted {
+  padding:4px 7px
+}
+.check {
+  white-space:nowrap
+}
+.work {
+  position:relative;
+  isolation:isolate;
+  display:flex;
+  flex-direction:column;
+  flex:1 1 0;
+  min-height:0;
+  overflow:hidden
+}
+.canvas-panel {
+  display:flex;
+  flex-direction:column;
+  flex:1 1 0;
+  min-width:0;
+  min-height:0
+}
+.graph-heading {
+  display:flex;
+  justify-content:space-between;
+  gap:8px 12px;
+  align-items:center;
+  flex-wrap:wrap;
+  flex:0 0 auto;
+  min-height:0;
+  padding:12px 26px
+}
+.tools {
+  display:flex;
+  align-items:center;
+  gap:5px;
+  flex-wrap:wrap
+}
+.tools button {
+  font-size:12px;
+  min-height:32px;
+  padding:4px 9px
+}
+.count {
+  font-variant-numeric:tabular-nums;
+  font-size:12px;
+  color:var(--muted)
+}
+.view-hint {
+  padding:0 26px 10px;
+  overflow-wrap:anywhere
+}
+.viewport {
+  flex:1 1 0;
+  min-width:0;
+  min-height:0;
+  overflow:auto;
+  position:relative;
+  overscroll-behavior:contain;
+  background-image:radial-gradient(var(--grid) 1px,transparent 1px);
+  background-size:18px 18px;
+  touch-action:pan-x pan-y;
+  overflow-anchor:none
+}
+.viewport:focus-visible {
+  outline:3px solid var(--accent);
+  outline-offset:-4px
+}
+.viewport svg {
+  display:block;
+  margin:0 auto;
+  max-width:none
+}
+.empty {
+  padding:70px 25px;
+  text-align:center;
+  color:var(--muted)
+}
+.footer {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  flex:0 1 auto;
+  min-height:76px;
+  max-height:clamp(76px,24vh,178px);
+  gap:4px;
+  border-top:1px solid var(--line);
+  padding:6px 16px;
+  font-size:11px;
+  color:var(--muted);
+  background:var(--surface);
+  overflow:hidden
+}
+.legend {
+  display:flex;
+  gap:14px;
+  flex:0 0 auto
+}
+.legend span {
+  white-space:nowrap
+}
+.detail-panel {
+  display:flex;
+  flex-direction:column;
+  width:330px;
+  min-width:0;
+  min-height:0;
+  border-left:1px solid var(--line);
+  background:var(--surface);
+  overflow:hidden;
+  overflow-wrap:anywhere
+}
+.detail-panel .kind {
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--muted);
+  margin-bottom:7px
+}
+.inspector-heading{display:flex;align-items:center;gap:6px;min-width:0}
+.inspector-heading h2{min-width:0;line-height:1.3}
+.detail-panel p {
+  font-size:13px;
+  white-space:pre-wrap
+}
+.detail-panel dl {
+  margin:8px 0
+}
+.detail-panel dt {
+  font-size:12px;
+  color:var(--muted);
+  margin-top:10px
+}
+.detail-panel dd {
+  margin:2px 0 6px;
+  font-size:13px;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere
+}
+.detail-panel details {
+  padding:4px 0
+}
+.detail-panel summary {
+  cursor:pointer;
+  font-size:13px
+}
+.detail-panel details details {
+  margin-left:10px;
+  border-left:1px solid var(--line);
+  padding-left:10px
+}
+.technical {
+  margin-top:22px;
+  border-top:1px solid var(--line);
+  padding-top:12px!important
+}
+.detail-panel .link {
+  display:block;
+  width:100%;
+  text-align:left;
+  margin:6px 0;
+  overflow-wrap:anywhere
+}
+.badge {
+  display:inline-block;
+  border:1px solid var(--line);
+  border-radius:5px;
+  padding:2px 6px;
+  font-size:11px;
+  margin:5px 0
+}
+.status {
+  font-size:12px;
+  color:var(--muted);
+  min-height:20px
+}
+.live-status {
+  position:absolute;
+  left:-10000px;
+  width:1px;
+  height:1px;
+  overflow:hidden
+}
+.node .card {
+  fill:var(--surface);
+  stroke:var(--boundary,var(--line));
+  stroke-width:1.4;
+  filter:drop-shadow(0 4px 6px #00000008)
+}
+.node.selected .card {
+  stroke:var(--accent);
+  stroke-width:3
+}
+.node:focus-visible .card,.port:focus-visible circle,.resource:focus-visible rect {
+  stroke:var(--accent);
+  stroke-width:3.5
+}
+.node,.edge,.port,.resource {
+  cursor:pointer;
+  outline:none
+}
+.node .name {
+  fill:var(--ink);
+  font-size:16px;
+  font-weight:650
+}
+.node .description {
+  fill:var(--muted);
+  font-size:12px
+}
+.node .type {
+  fill:var(--muted);
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:1px
+}
+.node .divider {
+  stroke:var(--line);
+  stroke-width:1
+}
+.port text {
+  fill:var(--ink);
+  font-size:12px
+}
+.port circle {
+  stroke:var(--surface);
+  stroke-width:2
+}
+.resource rect {
+  fill:var(--resource);
+  stroke:var(--line);
+  stroke-width:1
+}
+.resource text {
+  fill:var(--ink);
+  font-size:12px
+}
+.resource.selected rect {
+  stroke:var(--accent);
+  stroke-width:2.5
+}
+.resource[data-state=required-unbound] rect {
+  stroke-dasharray:4 3
+}
+.resource[data-state=optional-unbound] rect {
+  stroke-dasharray:2 3
+}
+.edge .artifact-stroke {
+  fill:none;
+  stroke-width:3;
+  stroke-linecap:round;
+  stroke-linejoin:round
+}
+.edge .hit {
+  fill:none;
+  stroke:transparent;
+  stroke-width:17
+}
+.edge .artifact-arrow {
+  stroke-width:1;
+  stroke-linejoin:round
+}
+.edge .edge-label-bg {
+  fill:var(--bg);
+  opacity:.97
+}
+.edge .edge-label {
+  fill:var(--ink);
+  font-size:11px;
+  font-weight:550;
+  paint-order:stroke;
+  stroke:var(--bg);
+  stroke-width:3px;
+  stroke-linejoin:round
+}
+.edge .cue {
+  font-weight:800;
+  font-size:14px
+}
+.edge.selected .artifact-stroke,.edge:focus-visible .artifact-stroke {
+  stroke-width:5
+}
+.edge.selected .edge-label-bg,.edge:focus-visible .edge-label-bg {
+  stroke:var(--accent);
+  stroke-width:1.5
+}
+.edge[data-status=unknown] .artifact-stroke {
+  stroke-dasharray:8 5
+}
+.edge[data-status=unchecked] .artifact-stroke {
+  stroke-dasharray:3 5
+}
+.edge[data-status=mismatch] .artifact-stroke {
+  stroke-width:4
+}
+.reiteration .artifact-stroke {
+  stroke-dasharray:7 6
+}
+.reiteration {
+  display:none
+}
+.show-reiteration .reiteration {
+  display:inline
+}
+.resource.selected:focus-visible rect {
+  stroke-width:3.5
+}
+@keyframes artifact-pulse {
+  0%,100% {
+    opacity:1
+  }
+  50% {
+    opacity:.28
+  }
+}
+.motion .edge[data-status=mismatch] .artifact-stroke,.motion .edge[data-status=mismatch] .artifact-arrow {
+  animation:artifact-pulse 2.4s ease-in-out infinite
+}
+@media(prefers-reduced-motion:reduce) {
+  .edge .artifact-stroke,.edge .artifact-arrow {
+    animation:none!important
+  }
+  .edge[data-status=mismatch] .artifact-stroke {
+    stroke-width:4.5
+  }
+}
+/* Presentation changes never rebuild graph geometry or replace selection. */
+.theme {display:flex;align-items:center;gap:10px;border:0;padding:0;margin:0;min-width:0}
+.theme legend {float:left;padding:0 4px 0 0;font-size:12px}
+.theme input {width:16px;height:16px;accent-color:var(--accent);margin:0}
+.theme label {cursor:pointer;white-space:nowrap;min-height:36px}
+.node[data-kind=entry] .name,.node[data-kind=exit] .name {font-size:13px}
+.node[data-kind=entry] .type,.node[data-kind=exit] .type {font-size:8px;letter-spacing:.8px}
+.node.dim,.edge.dim {opacity:.13}
+.node.emphasized .card {stroke:var(--accent);stroke-width:2.6}
+.edge.highlight .artifact-stroke {stroke-width:4.5}
+.edge.selected .artifact-stroke,.edge:focus-visible .artifact-stroke {stroke-width:5}
+.artifact-legend {display:flex;gap:6px;flex-wrap:wrap;align-content:flex-start;flex:1 1 auto;min-height:32px;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:3px}
+.artifact-legend button {display:flex;align-items:center;gap:7px;padding:3px 8px;min-height:28px;max-width:100%;font-size:12px;text-align:left;overflow-wrap:anywhere;flex-shrink:0}
+.artifact-legend button[aria-pressed=true] {background:var(--selected);border-color:var(--accent)}
+.artifact-dot {display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0}
+[hidden] {display:none!important}
+.progress {display:none}
+.dashboard .progress {display:inline}
+.progress-summary {display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 26px;border-bottom:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:12px}
+.progress-summary strong {color:var(--ink)}
+.progress-summary .elapsed-fact[data-help] {display:inline-block;width:fit-content;max-width:100%}
+.progress-state,.progress-value {font-size:10px;fill:var(--muted)}
+.progress-track {fill:var(--line)}
+.progress-fill {fill:var(--accent)}
+.total-progress {display:inline-block;width:100px;height:5px;background:var(--line);overflow:hidden;border-radius:3px}
+.total-progress span {display:block;height:100%;background:var(--accent)}
+.dashboard .node[data-state=running] .card {stroke:var(--accent);stroke-width:2}
+.dashboard .node[data-state=failed] .card,.dashboard .node[data-state=cancelled] .card {stroke-dasharray:6 3;stroke-width:2.5}
+@keyframes estimate-activity {0%,100%{opacity:1}50%{opacity:.35}}
+.motion.dashboard .progress-fill.indeterminate {animation:estimate-activity 2.4s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce) {.progress-fill.indeterminate {animation:none!important}}
+
+
+.viewport.dragging{cursor:grabbing;user-select:none}.viewport svg{touch-action:none}
+
+/* Independently scrolling chrome, graph, details and legends share one viewport. */
+.chrome {flex:0 0 auto;min-height:0;overflow:visible}
+/* Primary controls never depend on discovering an internal header scrollbar. */
+.title-row h1 {overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.title-row {display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.title-row h1 {flex:0 1 auto;min-width:0}
+.title-row button {flex-shrink:0}
+.panel-layout {display:flex;position:relative;isolation:isolate;flex:1 1 0;min-height:0;overflow:clip}
+/* Panels never participate in sizing the canvas. Only their transform moves.
+   Retain the closing content for its slide, but remove interaction/accessibility
+   immediately via hidden + inert. Visibility is delayed only for the exit slide. */
+.detail-panel {position:absolute;top:0;bottom:0;z-index:5;box-shadow:var(--shadow);transform:translateX(0);visibility:visible;overscroll-behavior:contain}
+.graph-info {left:0;width:300px;border-left:0;border-right:1px solid var(--line);--closed-offset:-100%}
+.inspector {right:0;--closed-offset:100%}
+.detail-panel[hidden],.detail-panel.covered {display:flex!important;transform:translateX(var(--closed-offset));visibility:hidden;pointer-events:none}
+.motion .detail-panel {transition:transform 180ms ease,visibility 0s linear 180ms}
+.motion .detail-panel:not([hidden]):not(.covered) {transition-delay:0s}
+@media(prefers-reduced-motion:reduce) {.detail-panel {transition:none!important}}
+.panel-header {display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line);flex:0 0 auto;font-weight:650;font-size:12px}
+.panel-header button {min-height:30px;font-size:12px}
+.panel-content {padding:18px 22px 28px;overflow:auto;overscroll-behavior:contain;min-height:0;flex:1 1 auto}
+.panel-content:focus-visible,.artifact-legend:focus-visible,.legend-row:focus-visible {outline:3px solid var(--accent);outline-offset:-3px}
+.legend-row {display:flex;align-items:center;justify-content:space-between;gap:16px;overflow:auto;overscroll-behavior:contain;min-height:32px;flex:0 0 auto;max-height:46px;padding:2px 3px}
+.legend-row button {flex-shrink:0;min-height:28px;padding:3px 8px;font-size:11px}
+.graph-heading &gt; div:first-child {min-width:0;flex:1 1 220px}
+.view-hint {flex-shrink:0;max-height:24%;overflow:auto}
+.work.narrow .detail-panel {width:min(340px,calc(100% - 36px))}
+@media(max-width:900px) {
+  .toolbar {gap:8px;padding:10px 16px}
+  .top {padding:14px 16px}
+  .graph-heading {padding:10px 16px}
+}
+@media(max-width:680px) {
+  h1 {font-size:20px}
+  .title-row {gap:5px 10px}
+  .title-row h1 {flex:1 1 220px}
+  .toolbar {gap:8px}
+  .registry-label {flex-basis:100%;min-width:0}
+  .registry-label select {min-width:0}
+  .search-wrap {flex-basis:100%;max-width:none;min-width:0}
+  .graph-heading {align-items:flex-start;padding:8px 12px}
+  .graph-heading h2 {font-size:15px}
+  .footer {padding:6px 10px}
+  .toolbar .check {font-size:11px}
+  .panel-content {padding:14px 16px 22px}
+}
+@media(max-height:520px) {
+  .top {padding:3px 12px}
+  .brand {display:none}
+  .title-row {gap:4px 10px;flex-wrap:nowrap}
+  .title-row h1 {font-size:15px;margin:0}
+  .subtitle {font-size:11px}
+  .toolbar {padding:4px 12px;gap:4px 8px}
+  .toolbar .registry-label {min-width:160px;flex:1 1 190px}
+  .toolbar .search-wrap {min-width:170px;flex:1 1 200px;max-width:none}
+  .toolbar button,.toolbar select,.toolbar input[type=search],.theme label,.title-row button {min-height:30px}
+  .graph-heading {padding:4px 12px}
+  .graph-heading h2 {font-size:14px}
+  .graph-heading &gt; div:first-child {flex-basis:180px}
+  .tools button {min-height:28px}
+  .panel-header {padding:5px 12px}
+  .progress-summary {padding:4px 12px;gap:4px 12px}
+  .footer {min-height:60px;max-height:60px;padding:2px 10px;gap:0}
+  .artifact-legend,.legend-row {min-height:28px}
+}
+
+.artifact-legend button &gt; span:last-child {min-width:0;overflow-wrap:anywhere}
+
+
+.requirement-declaration{font-family:ui-monospace,monospace;overflow-wrap:anywhere}.requirement-conflict{margin-block:12px}.requirement-conflict p{white-space:pre-wrap;overflow-wrap:anywhere}
+
+.graph-identity,.execution-identity {font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.execution-identity {margin:8px 0;border-inline-start:3px solid var(--accent);padding-inline-start:8px}
+.paused .elapsed-fact {font-weight:600;color:var(--ink)}
+.paused .progress-fill.indeterminate {animation:none!important}
+
+/* Phase 2: existing theme tokens and explicit text, not another status palette. */
+.copy-row{display:inline-flex;align-items:center;gap:8px;max-width:100%;flex-wrap:wrap}
+.copy-feedback{display:inline-block;min-width:8ch;min-height:1.5em;font-size:12px;color:var(--accent);font-weight:600}
+.copy-feedback[data-outcome=failure]{color:var(--ink);text-decoration:underline}
+.disabled-reasons{font-size:11px;color:var(--muted);padding-top:4px;max-height:3em;overflow:auto;overflow-wrap:anywhere}
+.disabled-reasons[hidden]{display:none}
+.paused .elapsed-fact{border-inline-start:3px solid var(--accent);padding-inline-start:6px}
+.technical&gt;small{display:block;margin-top:6px}
+summary:hover{color:var(--accent)}
+
+/* The same completed overlay is used inside dashboards and saved runs. */
+.completed-view .progress {display:inline}
+.completed-view .node[data-state=failed] .card,.completed-view .node[data-state=cancelled] .card {stroke-dasharray:6 3;stroke-width:2.5}
+/* One theme control for every visualization host. */
+.theme-switch{display:flex;align-items:center;gap:12px;border:0;padding:0;margin:0;color:var(--ink);background:transparent;font:14px/1.5 system-ui,sans-serif;flex-shrink:0}
+.theme-switch legend{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
+.theme-switch label{display:inline-flex;align-items:center;gap:6px;min-height:36px;font-weight:400;white-space:nowrap;cursor:pointer}
+.theme-switch input[type=radio]{appearance:auto;width:18px;height:18px;min-height:0;margin:0;padding:0;accent-color:var(--accent);cursor:pointer}
+.theme-switch input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+&lt;/style&gt;&lt;style&gt;/* Inherit each surface&#x27;s existing palette; no separate help color system. */
+.context-help{position:fixed;inset:auto;margin:0;z-index:1000;box-sizing:border-box;width:max-content;max-width:min(380px,calc(100vw - 16px));max-height:calc(100dvh - 16px);padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow,0 6px 18px #0002);font:13px/1.5 system-ui,sans-serif;overflow:auto;overflow-wrap:anywhere;pointer-events:none;text-align:left}
+.context-help[hidden]{display:none!important}
+.context-help p{margin:0;white-space:pre-wrap}
+.context-help.help-pinned{pointer-events:auto}
+.context-help button{display:block;position:sticky;top:0;margin:0 0 8px auto;min-height:36px;font:inherit;border:1px solid var(--line);border-radius:6px;padding:5px 10px;background:var(--surface);color:var(--ink);cursor:pointer}
+.context-help button[hidden]{display:none}
+.help-button{display:inline-grid;place-items:center;box-sizing:border-box;min-width:26px;min-height:26px;max-width:26px;max-height:26px;width:26px;height:26px;aspect-ratio:1;padding:0;flex:none;font:600 12px/1 system-ui,sans-serif;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--muted);cursor:pointer;vertical-align:middle}
+.help-button:hover,.context-help button:hover{background:var(--selected)}
+.help-button:focus-visible,.context-help button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.context-help,.help-button{animation:none!important;transition:none!important}}
+&lt;/style&gt;&lt;div class=&quot;shell completed-view dashboard&quot;&gt;&lt;div class=&quot;chrome&quot;&gt;&lt;header class=&quot;top&quot;&gt;&lt;div class=&quot;brand&quot;&gt;JAYRUN / GRAPH EXPLORER&lt;/div&gt;&lt;div class=&quot;title-row&quot;&gt;&lt;h1&gt;Graph definition · v1&lt;/h1&gt;&lt;/div&gt;&lt;div class=&quot;subtitle&quot;&gt;Finalized finished · context 4288634963145949227 · iteration 2 · retained evidence only&lt;/div&gt;&lt;/header&gt;&lt;div class=&quot;toolbar&quot; role=&quot;toolbar&quot; aria-label=&quot;Graph presentation&quot;&gt;&lt;label&gt;Iteration&lt;select aria-label=&quot;Completed iteration&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;1&quot;&gt;1&lt;/option&gt;&lt;option value=&quot;2&quot; selected=&quot;&quot;&gt;2&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;small class=&quot;duration-key&quot;&gt;Bars compare active session durations, not progress or a timeline.&lt;/small&gt;&lt;div class=&quot;search-wrap&quot;&gt;&lt;input type=&quot;search&quot; placeholder=&quot;Search names or identities…&quot; aria-label=&quot;Search names or identities&quot; data-help=&quot;graph.search&quot; value=&quot;&quot; disabled=&quot;&quot;&gt;&lt;/div&gt;&lt;fieldset class=&quot;theme theme-switch&quot; aria-label=&quot;Theme&quot; data-help=&quot;view.theme&quot;&gt;&lt;legend&gt;Theme&lt;/legend&gt;&lt;label&gt;&lt;input type=&quot;radio&quot; name=&quot;theme&quot; value=&quot;light&quot; aria-label=&quot;Light&quot; checked=&quot;&quot; disabled=&quot;&quot;&gt;&lt;span&gt;Light&lt;/span&gt;&lt;/label&gt;&lt;label&gt;&lt;input type=&quot;radio&quot; name=&quot;theme&quot; value=&quot;dark&quot; aria-label=&quot;Dark&quot; disabled=&quot;&quot;&gt;&lt;span&gt;Dark&lt;/span&gt;&lt;/label&gt;&lt;/fieldset&gt;&lt;label class=&quot;check&quot; title=&quot;Show eligible next-iteration mappings; presentation only&quot;&gt;&lt;input type=&quot;checkbox&quot; aria-label=&quot;Re-iteration&quot; data-help=&quot;graph.reiteration&quot; value=&quot;on&quot; disabled=&quot;&quot;&gt;&lt;span&gt;Re-iteration (1)&lt;/span&gt;&lt;/label&gt;&lt;label class=&quot;check&quot; hidden=&quot;&quot;&gt;&lt;input type=&quot;checkbox&quot; aria-label=&quot;Motion&quot; data-help=&quot;view.motion&quot; value=&quot;on&quot; disabled=&quot;&quot;&gt;&lt;span&gt;Motion&lt;/span&gt;&lt;/label&gt;&lt;/div&gt;&lt;section class=&quot;progress-summary&quot; aria-label=&quot;Execution progress&quot;&gt;&lt;strong&gt;finished · iteration 2 / 2&lt;/strong&gt;&lt;span&gt;Context 4288634963145949227&lt;/span&gt;&lt;span class=&quot;elapsed-fact&quot; data-help=&quot;progress.elapsed&quot; data-help-variant=&quot;final&quot;&gt;Elapsed 13.3 ms · includes pauses and waits&lt;/span&gt;&lt;span&gt;Remaining step work 0 s (not wall-clock ETA)&lt;/span&gt;&lt;div class=&quot;total-progress&quot; role=&quot;progressbar&quot; aria-label=&quot;Estimated total progress&quot; aria-valuemin=&quot;0&quot; aria-valuemax=&quot;100&quot; aria-valuenow=&quot;100&quot; aria-valuetext=&quot;Execution ended; fraction does not measure successful work&quot;&gt;&lt;span style=&quot;width: 100%;&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;span&gt;Execution ended; fraction does not measure successful work&lt;/span&gt;&lt;/section&gt;&lt;/div&gt;&lt;main class=&quot;work&quot;&gt;&lt;div class=&quot;results&quot; aria-label=&quot;Search results&quot;&gt;&lt;/div&gt;&lt;div class=&quot;graph-heading&quot;&gt;&lt;div&gt;&lt;button type=&quot;button&quot; aria-expanded=&quot;false&quot; aria-controls=&quot;graph-info&quot; data-help=&quot;graph.snapshot&quot; disabled=&quot;&quot;&gt;Graph info&lt;/button&gt;&lt;h2&gt;Graph definition · v1&lt;/h2&gt;&lt;/div&gt;&lt;div class=&quot;tools&quot;&gt;&lt;button type=&quot;button&quot; aria-label=&quot;Zoom out&quot; data-help=&quot;graph.navigation&quot; disabled=&quot;&quot;&gt;−&lt;/button&gt;&lt;button type=&quot;button&quot; aria-label=&quot;Zoom in&quot; data-help=&quot;graph.navigation&quot; disabled=&quot;&quot;&gt;+&lt;/button&gt;&lt;button type=&quot;button&quot; aria-label=&quot;Fit graph&quot; data-help=&quot;graph.navigation&quot; disabled=&quot;&quot;&gt;Fit&lt;/button&gt;&lt;button type=&quot;button&quot; aria-label=&quot;Focus selection&quot; data-help=&quot;graph.selection&quot; disabled=&quot;&quot; title=&quot;Select a component to center it&quot;&gt;Focus&lt;/button&gt;&lt;button type=&quot;button&quot; aria-label=&quot;Toggle component details&quot; data-help=&quot;graph.selection&quot; aria-expanded=&quot;false&quot; aria-controls=&quot;component-details&quot; disabled=&quot;&quot;&gt;Details&lt;/button&gt;&lt;button type=&quot;button&quot; aria-label=&quot;Graph issues&quot; data-help=&quot;graph.navigation&quot; aria-controls=&quot;graph-info&quot; aria-expanded=&quot;false&quot; disabled=&quot;&quot;&gt;Issues&lt;/button&gt;&lt;span class=&quot;count&quot;&gt;0 issues&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;panel-layout&quot;&gt;&lt;aside id=&quot;graph-info&quot; class=&quot;graph-info detail-panel&quot; aria-label=&quot;Graph information&quot; hidden=&quot;&quot; inert=&quot;&quot; aria-hidden=&quot;true&quot;&gt;&lt;/aside&gt;&lt;section class=&quot;canvas-panel&quot; aria-label=&quot;Graph&quot;&gt;&lt;div class=&quot;view-hint muted&quot; hidden=&quot;&quot;&gt;&lt;/div&gt;&lt;div class=&quot;viewport&quot; tabindex=&quot;0&quot; role=&quot;region&quot; aria-label=&quot;Graph viewport. Scroll to pan; use Fit and zoom controls.&quot;&gt;&lt;svg viewBox=&quot;0 0 892 337&quot; width=&quot;892&quot; height=&quot;337&quot; role=&quot;graphics-document&quot; aria-label=&quot;Graph definition · v1&quot; style=&quot;margin-top: 41px;&quot;&gt;&lt;g class=&quot;edge&quot; data-status=&quot;unchecked&quot; data-id=&quot;edge-0&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;value · Artifact connection · unchecked&quot;&gt;&lt;title&gt;value · unchecked&lt;/title&gt;&lt;path class=&quot;hit&quot; d=&quot;M190,200 L316,200&quot;&gt;&lt;/path&gt;&lt;path class=&quot;artifact-stroke&quot; d=&quot;M190,200 L316,200&quot; stroke=&quot;#38CDE0&quot;&gt;&lt;/path&gt;&lt;path class=&quot;artifact-arrow&quot; d=&quot;M316,200 L306,195 L306,205 Z&quot; fill=&quot;#38CDE0&quot; stroke=&quot;#38CDE0&quot;&gt;&lt;/path&gt;&lt;rect class=&quot;edge-label-bg&quot; x=&quot;222.2&quot; y=&quot;176&quot; width=&quot;61.6&quot; height=&quot;21&quot; rx=&quot;5&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;edge-label&quot; x=&quot;253&quot; y=&quot;190&quot; text-anchor=&quot;middle&quot;&gt;· value&lt;/text&gt;&lt;/g&gt;&lt;g class=&quot;edge&quot; data-status=&quot;unchecked&quot; data-id=&quot;edge-1&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;value · Artifact connection · unchecked&quot;&gt;&lt;title&gt;value · unchecked&lt;/title&gt;&lt;path class=&quot;hit&quot; d=&quot;M576,200 L702,200&quot;&gt;&lt;/path&gt;&lt;path class=&quot;artifact-stroke&quot; d=&quot;M576,200 L702,200&quot; stroke=&quot;#38CDE0&quot;&gt;&lt;/path&gt;&lt;path class=&quot;artifact-arrow&quot; d=&quot;M702,200 L692,195 L692,205 Z&quot; fill=&quot;#38CDE0&quot; stroke=&quot;#38CDE0&quot;&gt;&lt;/path&gt;&lt;rect class=&quot;edge-label-bg&quot; x=&quot;608.2&quot; y=&quot;176&quot; width=&quot;61.6&quot; height=&quot;21&quot; rx=&quot;5&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;edge-label&quot; x=&quot;639&quot; y=&quot;190&quot; text-anchor=&quot;middle&quot;&gt;· value&lt;/text&gt;&lt;/g&gt;&lt;g class=&quot;edge reiteration&quot; data-status=&quot;unchecked&quot; data-id=&quot;reiteration-0&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;value → value · n → n+1 · Re-iteration mapping · unchecked&quot;&gt;&lt;title&gt;value → value · n → n+1 · structural re-iteration&lt;/title&gt;&lt;path class=&quot;hit&quot; d=&quot;M576,200 L594,200 Q600,200 600,194 L600,34 Q600,28 594,28 L298,28 Q292,28 292,34 L292,194 Q292,200 298,200 L316,200&quot;&gt;&lt;/path&gt;&lt;path class=&quot;artifact-stroke&quot; d=&quot;M576,200 L594,200 Q600,200 600,194 L600,34 Q600,28 594,28 L298,28 Q292,28 292,34 L292,194 Q292,200 298,200 L316,200&quot; stroke=&quot;#38CDE0&quot;&gt;&lt;/path&gt;&lt;path class=&quot;artifact-arrow&quot; d=&quot;M316,200 L306,195 L306,205 Z&quot; fill=&quot;#38CDE0&quot; stroke=&quot;#38CDE0&quot;&gt;&lt;/path&gt;&lt;rect class=&quot;edge-label-bg&quot; x=&quot;360.8&quot; y=&quot;4&quot; width=&quot;170.4&quot; height=&quot;21&quot; rx=&quot;5&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;edge-label&quot; x=&quot;446&quot; y=&quot;18&quot; text-anchor=&quot;middle&quot;&gt;value → value · n → n+1&lt;/text&gt;&lt;/g&gt;&lt;g class=&quot;node&quot; data-kind=&quot;entry&quot; transform=&quot;translate(48,177)&quot; data-id=&quot;node-0&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;value · entry boundary · Artifact identity: artifact-0 · Node identity: node-0&quot; style=&quot;--boundary: #38CDE0;&quot;&gt;&lt;title&gt;value · Artifact identity: artifact-0 · Node identity: node-0&lt;/title&gt;&lt;rect class=&quot;card&quot; width=&quot;142&quot; height=&quot;46&quot; rx=&quot;22&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;type&quot; x=&quot;12&quot; y=&quot;16&quot;&gt;ENTRY&lt;/text&gt;&lt;text class=&quot;name&quot; x=&quot;12&quot; y=&quot;34&quot;&gt;value&lt;/text&gt;&lt;g class=&quot;port&quot; data-id=&quot;node-0/outputs/boundary&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;value · value · Artifact identity: artifact-0 · Port identity: node-0/outputs/boundary&quot;&gt;&lt;title&gt;value · value · Artifact identity: artifact-0 · Port identity: node-0/outputs/boundary&lt;/title&gt;&lt;circle cx=&quot;142&quot; cy=&quot;23&quot; r=&quot;5&quot; fill=&quot;#38CDE0&quot;&gt;&lt;/circle&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;node&quot; data-kind=&quot;operator&quot; transform=&quot;translate(316,84)&quot; data-id=&quot;node-1&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;Step 1 · operator · Refine value&quot; data-state=&quot;finished&quot;&gt;&lt;title&gt;Refine value — Each iteration increments the current value and records explicit evidence.&lt;/title&gt;&lt;rect class=&quot;card&quot; width=&quot;260&quot; height=&quot;205&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;type&quot; x=&quot;17&quot; y=&quot;24&quot;&gt;STEP 1 · FINISHED&lt;/text&gt;&lt;text class=&quot;name&quot; x=&quot;17&quot; y=&quot;48&quot;&gt;Refine value&lt;/text&gt;&lt;text class=&quot;description&quot; x=&quot;17&quot; y=&quot;72&quot;&gt;Each iteration increments the&lt;/text&gt;&lt;text class=&quot;description&quot; x=&quot;17&quot; y=&quot;88&quot;&gt;current value and records explicit…&lt;/text&gt;&lt;line class=&quot;divider&quot; x1=&quot;16&quot; x2=&quot;244&quot; y1=&quot;97&quot; y2=&quot;97&quot;&gt;&lt;/line&gt;&lt;g class=&quot;port&quot; data-id=&quot;node-1/inputs/0&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;value · value · Artifact identity: artifact-0 · Port identity: node-1/inputs/0&quot;&gt;&lt;title&gt;value · value · Artifact identity: artifact-0 · Port identity: node-1/inputs/0&lt;/title&gt;&lt;circle cx=&quot;0&quot; cy=&quot;116&quot; r=&quot;5&quot; fill=&quot;#38CDE0&quot;&gt;&lt;/circle&gt;&lt;text x=&quot;13&quot; y=&quot;120&quot; text-anchor=&quot;start&quot;&gt;value&lt;/text&gt;&lt;/g&gt;&lt;g class=&quot;port&quot; data-id=&quot;node-1/outputs/0&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;outputs[0] · value · Artifact identity: artifact-0 · Port identity: node-1/outputs/0&quot;&gt;&lt;title&gt;outputs[0] · value · Artifact identity: artifact-0 · Port identity: node-1/outputs/0&lt;/title&gt;&lt;circle cx=&quot;260&quot; cy=&quot;116&quot; r=&quot;5&quot; fill=&quot;#38CDE0&quot;&gt;&lt;/circle&gt;&lt;text x=&quot;247&quot; y=&quot;120&quot; text-anchor=&quot;end&quot;&gt;outputs[0]&lt;/text&gt;&lt;/g&gt;&lt;g class=&quot;resource&quot; data-state=&quot;bound&quot; transform=&quot;translate(12,138)&quot; data-id=&quot;node-1/resource/0&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;workspace: CPU workspace · Resource binding&quot;&gt;&lt;title&gt;workspace: CPU workspace · skipped · 0 s active&lt;/title&gt;&lt;rect width=&quot;236&quot; height=&quot;30&quot; rx=&quot;6&quot;&gt;&lt;/rect&gt;&lt;text x=&quot;10&quot; y=&quot;19&quot;&gt;▣ workspace: CPU workspace&lt;/text&gt;&lt;/g&gt;&lt;g class=&quot;progress&quot; transform=&quot;translate(14,183)&quot; role=&quot;meter&quot; aria-label=&quot;Refine value active session duration&quot; aria-valuemin=&quot;0&quot; aria-valuemax=&quot;0.0002132439985871315&quot; aria-valuetext=&quot;finished; 213 µs active; 1 executions&quot; aria-valuenow=&quot;0.0002132439985871315&quot;&gt;&lt;text class=&quot;progress-state&quot; x=&quot;0&quot; y=&quot;0&quot;&gt;finished · 1 execution&lt;/text&gt;&lt;rect class=&quot;progress-track&quot; x=&quot;0&quot; y=&quot;8&quot; width=&quot;190&quot; height=&quot;4&quot; rx=&quot;2&quot;&gt;&lt;/rect&gt;&lt;rect class=&quot;progress-fill&quot; x=&quot;0&quot; y=&quot;8&quot; width=&quot;190&quot; height=&quot;4&quot; rx=&quot;2&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;progress-value&quot; x=&quot;232&quot; y=&quot;13&quot; text-anchor=&quot;end&quot;&gt;213 µs&lt;/text&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;node&quot; data-kind=&quot;exit&quot; transform=&quot;translate(702,177)&quot; data-id=&quot;node-2&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;value · exit boundary · Artifact identity: artifact-0 · Node identity: node-2&quot; style=&quot;--boundary: #38CDE0;&quot;&gt;&lt;title&gt;value · Artifact identity: artifact-0 · Node identity: node-2&lt;/title&gt;&lt;rect class=&quot;card&quot; width=&quot;142&quot; height=&quot;46&quot; rx=&quot;22&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;type&quot; x=&quot;12&quot; y=&quot;16&quot;&gt;EXIT&lt;/text&gt;&lt;text class=&quot;name&quot; x=&quot;12&quot; y=&quot;34&quot;&gt;value&lt;/text&gt;&lt;g class=&quot;port&quot; data-id=&quot;node-2/inputs/boundary&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;value · value · Artifact identity: artifact-0 · Port identity: node-2/inputs/boundary&quot;&gt;&lt;title&gt;value · value · Artifact identity: artifact-0 · Port identity: node-2/inputs/boundary&lt;/title&gt;&lt;circle cx=&quot;0&quot; cy=&quot;23&quot; r=&quot;5&quot; fill=&quot;#38CDE0&quot;&gt;&lt;/circle&gt;&lt;/g&gt;&lt;/g&gt;&lt;/svg&gt;&lt;/div&gt;&lt;/section&gt;&lt;aside id=&quot;component-details&quot; class=&quot;inspector detail-panel&quot; aria-label=&quot;Component details&quot; hidden=&quot;&quot; inert=&quot;&quot; aria-hidden=&quot;true&quot;&gt;&lt;/aside&gt;&lt;/div&gt;&lt;/main&gt;&lt;footer class=&quot;footer&quot;&gt;&lt;div class=&quot;artifact-legend&quot; role=&quot;region&quot; tabindex=&quot;0&quot; aria-label=&quot;Artifacts&quot;&gt;&lt;button type=&quot;button&quot; data-artifact=&quot;artifact-0&quot; aria-pressed=&quot;false&quot; data-id=&quot;@artifact/artifact-0&quot; tabindex=&quot;0&quot; role=&quot;button&quot; aria-label=&quot;value · Artifact&quot; disabled=&quot;&quot;&gt;&lt;span class=&quot;artifact-dot&quot; style=&quot;background-color: rgb(56, 205, 224);&quot;&gt;&lt;/span&gt;&lt;span&gt;value&lt;/span&gt;&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;legend-row&quot; tabindex=&quot;0&quot; role=&quot;region&quot; aria-label=&quot;Connection key and data export&quot;&gt;&lt;div class=&quot;legend&quot; aria-label=&quot;Connection legend&quot;&gt;&lt;span&gt;✓ Match&lt;/span&gt;&lt;span&gt;! Mismatch&lt;/span&gt;&lt;span&gt;? Unknown&lt;/span&gt;&lt;span&gt;· Unchecked&lt;/span&gt;&lt;span&gt;▣ Resource binding&lt;/span&gt;&lt;/div&gt;&lt;button type=&quot;button&quot; data-help=&quot;action.export-graph&quot; disabled=&quot;&quot;&gt;Export graph data&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;disabled-reasons&quot;&gt;Select a component for Focus / Details.&lt;/div&gt;&lt;/footer&gt;&lt;div class=&quot;live-status&quot; role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;Selected Graph definition · v1. Selection and overlays cleared.&lt;/div&gt;&lt;/div&gt;&lt;style data-workspace-style=&quot;&quot;&gt;.top,.theme,.progress-summary{display:none!important}.shell{height:100%;min-height:0}.graph-heading h2{display:none}.graph-heading{padding:6px 10px}.graph-heading .description{display:none}.toolbar{padding:6px 10px}@media(max-width:620px){.shell{min-height:0}.graph-heading{padding:4px 8px}.toolbar{padding:4px 8px;gap:5px}.graph-heading{display:block;max-height:none}.graph-heading&gt;div:first-child{margin:0 0 4px}.tools{flex-wrap:wrap;overflow:visible;max-width:100%;padding-bottom:2px}.tools&gt;*{flex-shrink:0}.tools button{padding:3px 6px}.view-hint{max-height:28px;font-size:11px;padding:3px 8px;overflow:auto}}&lt;/style&gt;&lt;/template&gt;&lt;/jayrun-graph&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;workspace-body inactive&quot; data-view=&quot;summary&quot; inert=&quot;&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;inline evidence-stamp&quot;&gt;&lt;small&gt;Evidence sampled: Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/small&gt;&lt;/div&gt;&lt;section class=&quot;summary-identities&quot;&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h2&gt;Identities&lt;/h2&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;graph.identity&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About full identities&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;identity-fact&quot; data-copy-value=&quot;4288634963145949227&quot; data-copy-label=&quot;Context&quot;&gt;&lt;strong&gt;Context&lt;/strong&gt;&lt;code&gt;4288634963145949227&lt;/code&gt;&lt;span class=&quot;copy-row&quot;&gt;&lt;button aria-label=&quot;Copy full context&quot; data-help=&quot;action.copy&quot; disabled=&quot;&quot;&gt;Copy&lt;/button&gt;&lt;span class=&quot;copy-feedback&quot; role=&quot;status&quot; aria-live=&quot;polite&quot; aria-atomic=&quot;true&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;small class=&quot;muted&quot;&gt;Manual copy: select the full value.&lt;/small&gt;&lt;/div&gt;&lt;div class=&quot;identity-fact&quot; data-copy-value=&quot;3571174985996562445&quot; data-copy-label=&quot;Engine session&quot;&gt;&lt;strong&gt;Engine session&lt;/strong&gt;&lt;code&gt;3571174985996562445&lt;/code&gt;&lt;span class=&quot;copy-row&quot;&gt;&lt;button aria-label=&quot;Copy full engine session&quot; data-help=&quot;action.copy&quot; disabled=&quot;&quot;&gt;Copy&lt;/button&gt;&lt;span class=&quot;copy-feedback&quot; role=&quot;status&quot; aria-live=&quot;polite&quot; aria-atomic=&quot;true&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;small class=&quot;muted&quot;&gt;Manual copy: select the full value.&lt;/small&gt;&lt;/div&gt;&lt;p&gt;Graph ID: jrg1:83598e73626c…&lt;/p&gt;&lt;details&gt;&lt;summary&gt;Full graph identity&lt;/summary&gt;&lt;div class=&quot;identity-fact&quot; data-copy-value=&quot;jrg1:83598e73626c3a1c6bc3ef46bdbfe482093d58d414bf9da377f9cd6721772692&quot; data-copy-label=&quot;Graph ID&quot;&gt;&lt;strong&gt;Graph ID&lt;/strong&gt;&lt;code&gt;jrg1:83598e73626c3a1c6bc3ef46bdbfe482093d58d414bf9da377f9cd6721772692&lt;/code&gt;&lt;span class=&quot;copy-row&quot;&gt;&lt;button aria-label=&quot;Copy full graph id&quot; data-help=&quot;action.copy&quot; disabled=&quot;&quot;&gt;Copy&lt;/button&gt;&lt;span class=&quot;copy-feedback&quot; role=&quot;status&quot; aria-live=&quot;polite&quot; aria-atomic=&quot;true&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;small class=&quot;muted&quot;&gt;Manual copy: select the full value.&lt;/small&gt;&lt;/div&gt;&lt;/details&gt;&lt;div class=&quot;identity-fact&quot; data-copy-value=&quot;local:8027b3a09abd486f927dec767ec8fdbe&quot; data-copy-label=&quot;Captured graph reference (not graph ID)&quot;&gt;&lt;strong&gt;Captured graph reference (not graph ID)&lt;/strong&gt;&lt;code&gt;local:8027b3a09abd486f927dec767ec8fdbe&lt;/code&gt;&lt;span class=&quot;copy-row&quot;&gt;&lt;button aria-label=&quot;Copy full captured graph reference (not graph id)&quot; data-help=&quot;action.copy&quot; disabled=&quot;&quot;&gt;Copy&lt;/button&gt;&lt;span class=&quot;copy-feedback&quot; role=&quot;status&quot; aria-live=&quot;polite&quot; aria-atomic=&quot;true&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;small class=&quot;muted&quot;&gt;Manual copy: select the full value.&lt;/small&gt;&lt;/div&gt;&lt;div class=&quot;identity-fact&quot; data-copy-value=&quot;1&quot; data-copy-label=&quot;Graph version&quot;&gt;&lt;strong&gt;Graph version&lt;/strong&gt;&lt;code&gt;1&lt;/code&gt;&lt;span class=&quot;copy-row&quot;&gt;&lt;button aria-label=&quot;Copy full graph version&quot; data-help=&quot;action.copy&quot; disabled=&quot;&quot;&gt;Copy&lt;/button&gt;&lt;span class=&quot;copy-feedback&quot; role=&quot;status&quot; aria-live=&quot;polite&quot; aria-atomic=&quot;true&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;small class=&quot;muted&quot;&gt;Manual copy: select the full value.&lt;/small&gt;&lt;/div&gt;&lt;p class=&quot;notice&quot;&gt;Graph ID correlates declarations; it is not context identity, exact layout identity or control authority.&lt;/p&gt;&lt;/section&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h2&gt;Evidence&lt;/h2&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;evidence.retained&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About summary evidence&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;Report&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Available&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;Records&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;3 retained · Partial&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;Graph layout&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Available&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;Configuration&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Available&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;captured at&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Not recorded&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;graph coverage&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Captured in this dashboard session&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;observation coverage&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;status&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;not_guaranteed&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;event gap&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;None&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;capture gap&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;None&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;terminal recovery gap&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;None&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;scope&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Service-wide gaps known at capture time; not proof that this individual run lost evidence. Absence of a gap does not establish complete observation.&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;dt&gt;outcome&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;finished&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;estimated progress&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;1&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;iteration&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;2&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;failure&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;None&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;execution location&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;engine name&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;self&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;engine session&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;self@zlLMWhFASAyXbHJXdDMtCA&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;physical machine&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Unknown&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;identity coverage&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Captured engine incarnation (routing owner); physical host unknown&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;div&gt;&lt;h3&gt;Cross-context access&lt;/h3&gt;&lt;span class=&quot;badge&quot; data-help=&quot;evidence.access&quot;&gt;Observes: Unknown&lt;/span&gt; &lt;span class=&quot;badge&quot;&gt;Controls: Unknown&lt;/span&gt;&lt;p class=&quot;muted&quot;&gt;Public granted-access metadata unavailable&lt;/p&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;workspace-body inactive&quot; data-view=&quot;failure&quot; inert=&quot;&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;inline evidence-stamp&quot;&gt;&lt;small&gt;Evidence sampled: Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/small&gt;&lt;/div&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h2&gt;Failure details&lt;/h2&gt;&lt;/div&gt;&lt;p class=&quot;notice&quot;&gt;No failure recorded for this context.&lt;/p&gt;&lt;/div&gt;&lt;div class=&quot;workspace-body inactive&quot; data-view=&quot;configuration&quot; inert=&quot;&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h2&gt;Captured configuration&lt;/h2&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;evidence.configuration&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About captured configuration&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;section class=&quot;box configuration-card&quot;&gt;&lt;h3&gt;Refine(name=&#x27;Refine value&#x27;) · fail&lt;/h3&gt;&lt;p&gt;Type: bool&lt;/p&gt;&lt;p&gt;Effective: unknown · Effective/default provenance is not recorded in the public snapshot.&lt;/p&gt;&lt;p&gt;Submitted: false&lt;/p&gt;&lt;p&gt;Declared default: false&lt;/p&gt;&lt;p class=&quot;notice&quot;&gt;Declaration captured at dashboard acquisition; submitted values from context snapshot.&lt;/p&gt;&lt;details&gt;&lt;summary&gt;Full retained fields&lt;/summary&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;id&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;0&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;owner&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Refine(name=&#x27;Refine value&#x27;)&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;position&lt;/dt&gt;&lt;dd&gt;&lt;div&gt;&lt;details&gt;&lt;summary&gt;Entry 1&lt;/summary&gt;&lt;span&gt;0&lt;/span&gt;&lt;/details&gt;&lt;details&gt;&lt;summary&gt;Entry 2&lt;/summary&gt;&lt;span&gt;0&lt;/span&gt;&lt;/details&gt;&lt;/div&gt;&lt;/dd&gt;&lt;dt&gt;name&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;fail&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;description&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;None&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;bool&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;submitted&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;false&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;declared default&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;false&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;provenance&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Declaration captured at dashboard acquisition; submitted values from context snapshot.&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;effective&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;availability&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;unknown&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;reason&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Effective/default provenance is not recorded in the public snapshot.&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/details&gt;&lt;/section&gt;&lt;section class=&quot;box configuration-card&quot;&gt;&lt;h3&gt;Refine(name=&#x27;Refine value&#x27;) · stop_run&lt;/h3&gt;&lt;p&gt;Type: bool&lt;/p&gt;&lt;p&gt;Effective: unknown · Effective/default provenance is not recorded in the public snapshot.&lt;/p&gt;&lt;p&gt;Submitted: false&lt;/p&gt;&lt;p&gt;Declared default: false&lt;/p&gt;&lt;p class=&quot;notice&quot;&gt;Declaration captured at dashboard acquisition; submitted values from context snapshot.&lt;/p&gt;&lt;details&gt;&lt;summary&gt;Full retained fields&lt;/summary&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;id&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;1&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;owner&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Refine(name=&#x27;Refine value&#x27;)&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;position&lt;/dt&gt;&lt;dd&gt;&lt;div&gt;&lt;details&gt;&lt;summary&gt;Entry 1&lt;/summary&gt;&lt;span&gt;0&lt;/span&gt;&lt;/details&gt;&lt;details&gt;&lt;summary&gt;Entry 2&lt;/summary&gt;&lt;span&gt;0&lt;/span&gt;&lt;/details&gt;&lt;/div&gt;&lt;/dd&gt;&lt;dt&gt;name&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;stop_run&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;description&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;None&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;bool&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;submitted&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;false&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;declared default&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;false&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;provenance&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Declaration captured at dashboard acquisition; submitted values from context snapshot.&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;effective&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;availability&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;unknown&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;reason&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Effective/default provenance is not recorded in the public snapshot.&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/details&gt;&lt;/section&gt;&lt;section class=&quot;box configuration-card&quot;&gt;&lt;h3&gt;Refine(name=&#x27;Refine value&#x27;) · abort_run&lt;/h3&gt;&lt;p&gt;Type: bool&lt;/p&gt;&lt;p&gt;Effective: unknown · Effective/default provenance is not recorded in the public snapshot.&lt;/p&gt;&lt;p&gt;Submitted: false&lt;/p&gt;&lt;p&gt;Declared default: false&lt;/p&gt;&lt;p class=&quot;notice&quot;&gt;Declaration captured at dashboard acquisition; submitted values from context snapshot.&lt;/p&gt;&lt;details&gt;&lt;summary&gt;Full retained fields&lt;/summary&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;id&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;2&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;owner&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Refine(name=&#x27;Refine value&#x27;)&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;position&lt;/dt&gt;&lt;dd&gt;&lt;div&gt;&lt;details&gt;&lt;summary&gt;Entry 1&lt;/summary&gt;&lt;span&gt;0&lt;/span&gt;&lt;/details&gt;&lt;details&gt;&lt;summary&gt;Entry 2&lt;/summary&gt;&lt;span&gt;0&lt;/span&gt;&lt;/details&gt;&lt;/div&gt;&lt;/dd&gt;&lt;dt&gt;name&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;abort_run&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;description&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;None&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;bool&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;submitted&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;false&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;declared default&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;false&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;provenance&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Declaration captured at dashboard acquisition; submitted values from context snapshot.&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;effective&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;availability&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;unknown&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;reason&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Effective/default provenance is not recorded in the public snapshot.&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/details&gt;&lt;/section&gt;&lt;section class=&quot;box configuration-card&quot;&gt;&lt;h3&gt;Workspace(name=&#x27;CPU workspace&#x27;) · fail&lt;/h3&gt;&lt;p&gt;Type: bool&lt;/p&gt;&lt;p&gt;Effective: unknown · Effective/default provenance is not recorded in the public snapshot.&lt;/p&gt;&lt;p&gt;Submitted: false&lt;/p&gt;&lt;p&gt;Declared default: false&lt;/p&gt;&lt;p class=&quot;notice&quot;&gt;Declaration captured at dashboard acquisition; submitted values from context snapshot.&lt;/p&gt;&lt;details&gt;&lt;summary&gt;Full retained fields&lt;/summary&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;id&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;3&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;owner&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Workspace(name=&#x27;CPU workspace&#x27;)&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;position&lt;/dt&gt;&lt;dd&gt;&lt;div&gt;&lt;details&gt;&lt;summary&gt;Entry 1&lt;/summary&gt;&lt;span&gt;0&lt;/span&gt;&lt;/details&gt;&lt;details&gt;&lt;summary&gt;Entry 2&lt;/summary&gt;&lt;span&gt;0&lt;/span&gt;&lt;/details&gt;&lt;/div&gt;&lt;/dd&gt;&lt;dt&gt;name&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;fail&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;description&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;None&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;bool&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;submitted&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;false&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;declared default&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;false&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;provenance&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Declaration captured at dashboard acquisition; submitted values from context snapshot.&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;effective&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;availability&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;unknown&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;reason&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;Effective/default provenance is not recorded in the public snapshot.&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/details&gt;&lt;/section&gt;&lt;/div&gt;&lt;div class=&quot;workspace-body inactive&quot; data-view=&quot;settings&quot; inert=&quot;&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h2&gt;Execution settings&lt;/h2&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;evidence.settings&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About captured settings&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;p class=&quot;notice&quot;&gt;Captured effective portable ContextSettings.&lt;/p&gt;&lt;h3&gt;Iteration&lt;/h3&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;max iterations&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;2&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;max repeats&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;None&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;h3&gt;Recording&lt;/h3&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;record history limit&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;1&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;record max keys&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;256&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;record max value bytes&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;65536&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;record max total bytes&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;8388608&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;h3&gt;Artifact retention&lt;/h3&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;artifact policy&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;retained artifacts&lt;/dt&gt;&lt;dd&gt;&lt;div&gt;&lt;details&gt;&lt;summary&gt;Entry 1&lt;/summary&gt;&lt;span&gt;0&lt;/span&gt;&lt;/details&gt;&lt;/div&gt;&lt;/dd&gt;&lt;dt&gt;release entry artifacts&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;false&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;h3&gt;Failure policy&lt;/h3&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;retry policy&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;max attempts&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;1&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;retry on&lt;/dt&gt;&lt;dd&gt;&lt;div&gt;&lt;/div&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;h3&gt;All captured effective settings&lt;/h3&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;artifact policy&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;retained artifacts&lt;/dt&gt;&lt;dd&gt;&lt;div&gt;&lt;details&gt;&lt;summary&gt;Entry 1&lt;/summary&gt;&lt;span&gt;0&lt;/span&gt;&lt;/details&gt;&lt;/div&gt;&lt;/dd&gt;&lt;dt&gt;release entry artifacts&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;false&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;dt&gt;retry policy&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;max attempts&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;1&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;retry on&lt;/dt&gt;&lt;dd&gt;&lt;div&gt;&lt;/div&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;dt&gt;max iterations&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;2&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;max repeats&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;None&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;record history limit&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;1&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;record max keys&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;256&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;record max value bytes&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;65536&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;record max total bytes&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;8388608&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;p class=&quot;notice&quot;&gt;Requested settings and engine-level effective placement/execution/failure policy are not exposed here.&lt;/p&gt;&lt;/div&gt;&lt;div class=&quot;workspace-body inactive&quot; data-view=&quot;records&quot; inert=&quot;&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h2&gt;Context records&lt;/h2&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;evidence.records&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About record and chart scope&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;inline&quot;&gt;&lt;small&gt;Evidence sampled: Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/small&gt;&lt;/div&gt;&lt;p class=&quot;notice&quot;&gt;Retained subset; earlier records may be pruned or unavailable. Display omissions: 0. Values belong to this context only.&lt;/p&gt;&lt;p class=&quot;notice&quot; hidden=&quot;&quot;&gt;No displayed record keys; retained/pruned/display-limited evidence is unavailable.&lt;/p&gt;&lt;div class=&quot;record-layout&quot;&gt;&lt;div class=&quot;keys&quot;&gt;&lt;button data-key=&quot;nullable&quot; aria-pressed=&quot;true&quot; disabled=&quot;&quot;&gt;nullable&lt;/button&gt;&lt;button data-key=&quot;result&quot; aria-pressed=&quot;false&quot; disabled=&quot;&quot;&gt;result&lt;/button&gt;&lt;button data-key=&quot;numeric&quot; aria-pressed=&quot;false&quot; disabled=&quot;&quot;&gt;numeric&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;record-view&quot;&gt;&lt;h2&gt;nullable&lt;/h2&gt;&lt;div class=&quot;box record-latest&quot;&gt;&lt;div&gt;&lt;h3&gt;Latest displayed · sequence 4&lt;/h3&gt;&lt;span&gt;None&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;/div&gt;&lt;div class=&quot;record-actions&quot;&gt;&lt;button data-help=&quot;dashboard.summary-pin&quot; disabled=&quot;&quot;&gt;Show in Summary&lt;/button&gt;&lt;button disabled=&quot;&quot;&gt;Export retained records&lt;/button&gt;&lt;button disabled=&quot;&quot; title=&quot;No retained numeric scalar values for this key&quot;&gt;Show chart&lt;/button&gt;&lt;/div&gt;&lt;p class=&quot;notice&quot;&gt;Latest value, chart, Summary and export use all retained values for the selected key; this filter affects only the table.&lt;/p&gt;&lt;div class=&quot;record-filter&quot; hidden=&quot;&quot;&gt;&lt;label&gt;Table values only &lt;input type=&quot;search&quot; aria-label=&quot;Search record values&quot; placeholder=&quot;Filter table values only&quot; hidden=&quot;&quot; value=&quot;&quot; disabled=&quot;&quot;&gt;&lt;/label&gt;&lt;button disabled=&quot;&quot;&gt;Reset table filter&lt;/button&gt;&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;record-table&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;th&gt;Sequence&lt;/th&gt;&lt;th&gt;Value&lt;/th&gt;&lt;th&gt;Execution step&lt;/th&gt;&lt;th&gt;Recorded iteration&lt;/th&gt;&lt;th&gt;Recorded time&lt;/th&gt;&lt;/tr&gt;&lt;tr tabindex=&quot;0&quot; data-sequence=&quot;4&quot;&gt;&lt;td&gt;4&lt;/td&gt;&lt;td&gt;&lt;span&gt;None&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Step 1&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td title=&quot;2026-09-27T13:04:12.974627+00:00&quot;&gt;Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;div class=&quot;pager&quot;&gt;&lt;button disabled=&quot;&quot;&gt;Previous records&lt;/button&gt;&lt;span&gt;1–1 of 1&lt;/span&gt;&lt;button disabled=&quot;&quot;&gt;Next records&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;workspace-body inactive&quot; data-view=&quot;artifacts&quot; inert=&quot;&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h2&gt;Artifact history&lt;/h2&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;evidence.artifacts&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About artifact lifecycle evidence&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;p class=&quot;muted&quot;&gt;Showing retained artifact lifecycle evidence.&lt;/p&gt;&lt;section class=&quot;box&quot;&gt;&lt;h3&gt;Artifact 0&lt;/h3&gt;&lt;p class=&quot;notice&quot;&gt;Retained lifecycle order; completeness unknown.&lt;/p&gt;&lt;div class=&quot;table-wrap artifact-history&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;th&gt;Retained order&lt;/th&gt;&lt;th&gt;Iteration&lt;/th&gt;&lt;th&gt;Lifecycle event&lt;/th&gt;&lt;th&gt;Actor&lt;/th&gt;&lt;th&gt;Step&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;span&gt;1&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;1&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;registered&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;entry&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;Not recorded&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;span&gt;2&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;1&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;updated&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;operator&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;1&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;span&gt;3&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;1&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;cleared&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;internal&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;Not recorded&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;span&gt;4&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;2&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;registered&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;entry&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;Not recorded&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;span&gt;5&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;2&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;updated&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;operator&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span&gt;1&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/section&gt;&lt;/div&gt;&lt;div class=&quot;workspace-body inactive&quot; data-view=&quot;report&quot; inert=&quot;&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h2&gt;Finalized report&lt;/h2&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;evidence.report&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About finalized reports&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;button disabled=&quot;&quot;&gt;Export report&lt;/button&gt;&lt;pre&gt;Completed run | context=4288634963145949227 | FINISHED
+Graph: None v1
+Iterations: 2 completed / 2 started
+Stop accepted: no
+Elapsed wall seconds: 0.014365
+IDENTITY
+&quot;context_id&quot;: &quot;4288634963145949227&quot;
+&quot;graph_key&quot;: null
+&quot;graph_version&quot;: &quot;1&quot;
+&quot;engine_id&quot;: &quot;self@zlLMWhFASAyXbHJXdDMtCA&quot;
+&quot;generation&quot;: 0
+&quot;revision&quot;: 26
+&quot;report_revision&quot;: 7
+FAILED STEP
+null
+COVERAGE
+&quot;artifact_values&quot;: &quot;Not collected by dashboard&quot;
+&quot;context_records&quot;: &quot;missing/pruned/display-limited&quot;
+&quot;committed_record_sequence&quot;: &quot;6&quot;
+&quot;executions_omitted&quot;: 0
+&quot;artifacts_omitted&quot;: 0
+&quot;records_omitted&quot;: 0
+&quot;history_omitted&quot;: 0
+&quot;connections&quot;: &quot;Captured declaration correspondence; retained entries only, omissions and unassigned lifecycle events remain explicit.&quot;
+&quot;timing&quot;: &quot;Recorded durations only; no fabricated timeline&quot;
+FAILURE
+null
+CONFIGURATION
+[1]
+  &quot;id&quot;: &quot;0&quot;
+  &quot;owner&quot;: &quot;Refine(name=&#x27;Refine value&#x27;)&quot;
+  &quot;position&quot;:
+    [1]
+      0
+    [2]
+      0
+  &quot;name&quot;: &quot;fail&quot;
+  &quot;description&quot;: null
+  &quot;type&quot;: &quot;bool&quot;
+  &quot;submitted&quot;: false
+  &quot;declared_default&quot;: false
+  &quot;provenance&quot;: &quot;Declaration captured at dashboard acquisition; submitted values from context snapshot.&quot;
+  &quot;effective&quot;:
+    &quot;availability&quot;: &quot;unknown&quot;
+    &quot;reason&quot;: &quot;Effective/default provenance is not recorded in the public snapshot.&quot;
+[2]
+  &quot;id&quot;: &quot;1&quot;
+  &quot;owner&quot;: &quot;Refine(name=&#x27;Refine value&#x27;)&quot;
+  &quot;position&quot;:
+    [1]
+      0
+    [2]
+      0
+  &quot;name&quot;: &quot;stop_run&quot;
+  &quot;description&quot;: null
+  &quot;type&quot;: &quot;bool&quot;
+  &quot;submitted&quot;: false
+  &quot;declared_default&quot;: false
+  &quot;provenance&quot;: &quot;Declaration captured at dashboard acquisition; submitted values from context snapshot.&quot;
+  &quot;effective&quot;:
+    &quot;availability&quot;: &quot;unknown&quot;
+    &quot;reason&quot;: &quot;Effective/default provenance is not recorded in the public snapshot.&quot;
+[3]
+  &quot;id&quot;: &quot;2&quot;
+  &quot;owner&quot;: &quot;Refine(name=&#x27;Refine value&#x27;)&quot;
+  &quot;position&quot;:
+    [1]
+      0
+    [2]
+      0
+  &quot;name&quot;: &quot;abort_run&quot;
+  &quot;description&quot;: null
+  &quot;type&quot;: &quot;bool&quot;
+  &quot;submitted&quot;: false
+  &quot;declared_default&quot;: false
+  &quot;provenance&quot;: &quot;Declaration captured at dashboard acquisition; submitted values from context snapshot.&quot;
+  &quot;effective&quot;:
+    &quot;availability&quot;: &quot;unknown&quot;
+    &quot;reason&quot;: &quot;Effective/default provenance is not recorded in the public snapshot.&quot;
+[4]
+  &quot;id&quot;: &quot;3&quot;
+  &quot;owner&quot;: &quot;Workspace(name=&#x27;CPU workspace&#x27;)&quot;
+  &quot;position&quot;:
+    [1]
+      0
+    [2]
+      0
+  &quot;name&quot;: &quot;fail&quot;
+  &quot;description&quot;: null
+  &quot;type&quot;: &quot;bool&quot;
+  &quot;submitted&quot;: false
+  &quot;declared_default&quot;: false
+  &quot;provenance&quot;: &quot;Declaration captured at dashboard acquisition; submitted values from context snapshot.&quot;
+  &quot;effective&quot;:
+    &quot;availability&quot;: &quot;unknown&quot;
+    &quot;reason&quot;: &quot;Effective/default provenance is not recorded in the public snapshot.&quot;
+Configuration entries omitted: 0
+SETTINGS
+&quot;values&quot;:
+  &quot;artifact_policy&quot;:
+    &quot;retained_artifacts&quot;:
+      [1]
+        0
+    &quot;release_entry_artifacts&quot;: false
+  &quot;retry_policy&quot;:
+    &quot;max_attempts&quot;: 1
+    &quot;retry_on&quot;:
+      (no retained entries)
+  &quot;max_iterations&quot;: 2
+  &quot;max_repeats&quot;: null
+  &quot;record_history_limit&quot;: 1
+  &quot;record_max_keys&quot;: 256
+  &quot;record_max_value_bytes&quot;: 65536
+  &quot;record_max_total_bytes&quot;: 8388608
+&quot;provenance&quot;: &quot;Captured effective portable ContextSettings.&quot;
+&quot;gap&quot;: &quot;Requested settings and engine-level effective placement/execution/failure policy are not exposed here.&quot;
+OPERATOR SESSIONS
+&quot;id&quot;: &quot;session-1&quot;
+&quot;step_index&quot;: 1
+&quot;kind&quot;: &quot;operator&quot;
+&quot;name&quot;: &quot;Refine value&quot;
+&quot;layout_position&quot;:
+  [1]
+    0
+  [2]
+    0
+&quot;iteration&quot;: 1
+&quot;outcome&quot;: &quot;finished&quot;
+&quot;skip_reason&quot;: null
+&quot;active_seconds&quot;: 0.0111214320641011
+&quot;execution_count&quot;: 1
+&quot;attempts&quot;:
+  [1]
+    &quot;execution&quot;: 1
+    &quot;attempt&quot;: 1
+    &quot;records&quot;:
+      [1]
+        &quot;type&quot;: &quot;LogRecord&quot;
+        &quot;origin&quot;: &quot;user&quot;
+        &quot;execution&quot;: 1
+        &quot;message&quot;: &quot;Refine invocation&quot;
+      [2]
+        &quot;type&quot;: &quot;MetricRecord&quot;
+        &quot;origin&quot;: &quot;user&quot;
+        &quot;execution&quot;: 1
+        &quot;name&quot;: &quot;result&quot;
+        &quot;value&quot;: 1
+      [3]
+        &quot;type&quot;: &quot;TimerRecord&quot;
+        &quot;origin&quot;: &quot;user&quot;
+        &quot;execution&quot;: 1
+        &quot;name&quot;: &quot;refine&quot;
+        &quot;elapsed_time&quot;: 5.298189353197813e-05
+      [4]
+        &quot;type&quot;: &quot;TimerRecord&quot;
+        &quot;origin&quot;: &quot;internal&quot;
+        &quot;execution&quot;: 1
+        &quot;name&quot;: &quot;execution_runtime&quot;
+        &quot;elapsed_time&quot;: 0.010979612939991057
+      [5]
+        &quot;type&quot;: &quot;TimerRecord&quot;
+        &quot;origin&quot;: &quot;internal&quot;
+        &quot;execution&quot;: 1
+        &quot;name&quot;: &quot;execution_latency&quot;
+        &quot;elapsed_time&quot;: 0.011313109076581895
+    &quot;records_omitted&quot;: 0
+&quot;attempts_omitted&quot;: 0
+
+&quot;id&quot;: &quot;session-3&quot;
+&quot;step_index&quot;: 1
+&quot;kind&quot;: &quot;operator&quot;
+&quot;name&quot;: &quot;Refine value&quot;
+&quot;layout_position&quot;:
+  [1]
+    0
+  [2]
+    0
+&quot;iteration&quot;: 2
+&quot;outcome&quot;: &quot;finished&quot;
+&quot;skip_reason&quot;: null
+&quot;active_seconds&quot;: 0.0002132439985871315
+&quot;execution_count&quot;: 1
+&quot;attempts&quot;:
+  [1]
+    &quot;execution&quot;: 1
+    &quot;attempt&quot;: 1
+    &quot;records&quot;:
+      [1]
+        &quot;type&quot;: &quot;LogRecord&quot;
+        &quot;origin&quot;: &quot;user&quot;
+        &quot;execution&quot;: 1
+        &quot;message&quot;: &quot;Refine invocation&quot;
+      [2]
+        &quot;type&quot;: &quot;MetricRecord&quot;
+        &quot;origin&quot;: &quot;user&quot;
+        &quot;execution&quot;: 1
+        &quot;name&quot;: &quot;result&quot;
+        &quot;value&quot;: 2
+      [3]
+        &quot;type&quot;: &quot;TimerRecord&quot;
+        &quot;origin&quot;: &quot;user&quot;
+        &quot;execution&quot;: 1
+        &quot;name&quot;: &quot;refine&quot;
+        &quot;elapsed_time&quot;: 3.767595626413822e-05
+      [4]
+        &quot;type&quot;: &quot;TimerRecord&quot;
+        &quot;origin&quot;: &quot;internal&quot;
+        &quot;execution&quot;: 1
+        &quot;name&quot;: &quot;execution_runtime&quot;
+        &quot;elapsed_time&quot;: 0.00010480196215212345
+      [5]
+        &quot;type&quot;: &quot;TimerRecord&quot;
+        &quot;origin&quot;: &quot;internal&quot;
+        &quot;execution&quot;: 1
+        &quot;name&quot;: &quot;execution_latency&quot;
+        &quot;elapsed_time&quot;: 0.00024596997536718845
+    &quot;records_omitted&quot;: 0
+&quot;attempts_omitted&quot;: 0
+
+RESOURCE SESSIONS
+&quot;id&quot;: &quot;session-0&quot;
+&quot;step_index&quot;: 0
+&quot;kind&quot;: &quot;resource&quot;
+&quot;name&quot;: &quot;CPU workspace&quot;
+&quot;layout_position&quot;:
+  [1]
+    0
+  [2]
+    0
+&quot;iteration&quot;: 1
+&quot;outcome&quot;: &quot;finished&quot;
+&quot;skip_reason&quot;: null
+&quot;active_seconds&quot;: 6.772007327526808e-05
+&quot;execution_count&quot;: 1
+&quot;attempts&quot;:
+  [1]
+    &quot;execution&quot;: 1
+    &quot;attempt&quot;: 1
+    &quot;records&quot;:
+      [1]
+        &quot;type&quot;: &quot;LogRecord&quot;
+        &quot;origin&quot;: &quot;user&quot;
+        &quot;execution&quot;: 1
+        &quot;message&quot;: &quot;Workspace setup invoked&quot;
+      [2]
+        &quot;type&quot;: &quot;TimerRecord&quot;
+        &quot;origin&quot;: &quot;internal&quot;
+        &quot;execution&quot;: 1
+        &quot;name&quot;: &quot;execution_runtime&quot;
+        &quot;elapsed_time&quot;: 2.45699193328619e-05
+      [3]
+        &quot;type&quot;: &quot;TimerRecord&quot;
+        &quot;origin&quot;: &quot;internal&quot;
+        &quot;execution&quot;: 1
+        &quot;name&quot;: &quot;execution_latency&quot;
+        &quot;elapsed_time&quot;: 0.00036450300831347704
+    &quot;records_omitted&quot;: 0
+&quot;attempts_omitted&quot;: 0
+
+&quot;id&quot;: &quot;session-2&quot;
+&quot;step_index&quot;: 0
+&quot;kind&quot;: &quot;resource&quot;
+&quot;name&quot;: &quot;CPU workspace&quot;
+&quot;layout_position&quot;:
+  [1]
+    0
+  [2]
+    0
+&quot;iteration&quot;: 2
+&quot;outcome&quot;: &quot;skipped&quot;
+&quot;skip_reason&quot;: &quot;resource_available&quot;
+&quot;active_seconds&quot;: 0.0
+&quot;execution_count&quot;: 0
+&quot;attempts&quot;:
+  (no retained entries)
+&quot;attempts_omitted&quot;: 0
+
+ARTIFACT HISTORY
+&quot;id&quot;: &quot;artifact-0&quot;
+&quot;availability&quot;: &quot;Not collected by dashboard&quot;
+&quot;history&quot;:
+  [1]
+    &quot;type&quot;: &quot;ArtifactRecord&quot;
+    &quot;state&quot;: &quot;registered&quot;
+    &quot;actor&quot;: &quot;entry&quot;
+    &quot;step_index&quot;: null
+    &quot;iteration&quot;: 1
+    &quot;retained_index&quot;: 1
+  [2]
+    &quot;type&quot;: &quot;ArtifactRecord&quot;
+    &quot;state&quot;: &quot;updated&quot;
+    &quot;actor&quot;: &quot;operator&quot;
+    &quot;step_index&quot;: 1
+    &quot;iteration&quot;: 1
+    &quot;retained_index&quot;: 2
+  [3]
+    &quot;type&quot;: &quot;ArtifactRecord&quot;
+    &quot;state&quot;: &quot;cleared&quot;
+    &quot;actor&quot;: &quot;internal&quot;
+    &quot;step_index&quot;: null
+    &quot;iteration&quot;: 1
+    &quot;retained_index&quot;: 3
+  [4]
+    &quot;type&quot;: &quot;ArtifactRecord&quot;
+    &quot;state&quot;: &quot;registered&quot;
+    &quot;actor&quot;: &quot;entry&quot;
+    &quot;step_index&quot;: null
+    &quot;iteration&quot;: 2
+    &quot;retained_index&quot;: 4
+  [5]
+    &quot;type&quot;: &quot;ArtifactRecord&quot;
+    &quot;state&quot;: &quot;updated&quot;
+    &quot;actor&quot;: &quot;operator&quot;
+    &quot;step_index&quot;: 1
+    &quot;iteration&quot;: 2
+    &quot;retained_index&quot;: 5
+&quot;history_omitted&quot;: 0
+&quot;history_coverage&quot;: &quot;Recorded lifecycle order; completeness unknown&quot;
+
+CONNECTION HISTORY REFERENCES
+&quot;id&quot;: &quot;edge-0&quot;
+&quot;artifact_id&quot;: &quot;artifact-0&quot;
+&quot;producer_step&quot;: null
+&quot;consumer_step&quot;: 1
+&quot;producer_history_indices&quot;:
+  (no retained entries)
+&quot;consumer_sessions&quot;:
+  [1]
+    &quot;session-1&quot;
+  [2]
+    &quot;session-3&quot;
+&quot;coverage&quot;: &quot;Verified producer-output identity and recorded entries only. No value continuity across discrete segments or consumer lifecycle attribution is inferred.&quot;
+
+&quot;id&quot;: &quot;edge-1&quot;
+&quot;artifact_id&quot;: &quot;artifact-0&quot;
+&quot;producer_step&quot;: 1
+&quot;consumer_step&quot;: null
+&quot;producer_history_indices&quot;:
+  [1]
+    2
+  [2]
+    5
+&quot;consumer_sessions&quot;:
+  (no retained entries)
+&quot;coverage&quot;: &quot;Verified producer-output identity and recorded entries only. No value continuity across discrete segments or consumer lifecycle attribution is inferred.&quot;
+
+CONTEXT RECORDS
+&quot;key&quot;: &quot;nullable&quot;
+&quot;sequence&quot;: &quot;4&quot;
+&quot;value&quot;: null
+&quot;value_type&quot;: &quot;NoneType&quot;
+&quot;numeric&quot;: false
+&quot;iteration&quot;: 2
+&quot;step_index&quot;: 1
+&quot;execution&quot;: 1
+&quot;attempt&quot;: 1
+&quot;generation&quot;: 0
+&quot;recorded_at&quot;: &quot;2026-09-27T13:04:12.974627+00:00&quot;
+
+&quot;key&quot;: &quot;result&quot;
+&quot;sequence&quot;: &quot;5&quot;
+&quot;value&quot;:
+  &quot;value&quot;: 2
+  &quot;source&quot;: &quot;actual execution&quot;
+&quot;value_type&quot;: &quot;mappingproxy&quot;
+&quot;numeric&quot;: false
+&quot;iteration&quot;: 2
+&quot;step_index&quot;: 1
+&quot;execution&quot;: 1
+&quot;attempt&quot;: 1
+&quot;generation&quot;: 0
+&quot;recorded_at&quot;: &quot;2026-09-27T13:04:12.974663+00:00&quot;
+
+&quot;key&quot;: &quot;numeric&quot;
+&quot;sequence&quot;: &quot;6&quot;
+&quot;value&quot;: 2
+&quot;value_type&quot;: &quot;int&quot;
+&quot;numeric&quot;: true
+&quot;iteration&quot;: 2
+&quot;step_index&quot;: 1
+&quot;execution&quot;: 1
+&quot;attempt&quot;: 1
+&quot;generation&quot;: 0
+&quot;recorded_at&quot;: &quot;2026-09-27T13:04:12.974702+00:00&quot;
+
+LIFECYCLE HISTORY
+&quot;type&quot;: &quot;StateTransition&quot;
+&quot;actor&quot;:
+  &quot;availability&quot;: &quot;unsupported&quot;
+  &quot;type&quot;: &quot;RuntimeModuleOrigin&quot;
+&quot;previous_state&quot;: &quot;submitted&quot;
+&quot;next_state&quot;: &quot;validating&quot;
+&quot;recorded_at&quot;: &quot;2026-09-27T13:04:12.960960+00:00&quot;
+&quot;revision&quot;: 1
+
+&quot;type&quot;: &quot;StateTransition&quot;
+&quot;actor&quot;:
+  &quot;availability&quot;: &quot;unsupported&quot;
+  &quot;type&quot;: &quot;RuntimeModuleOrigin&quot;
+&quot;previous_state&quot;: &quot;validating&quot;
+&quot;next_state&quot;: &quot;validated&quot;
+&quot;recorded_at&quot;: &quot;2026-09-27T13:04:12.961026+00:00&quot;
+&quot;revision&quot;: 2
+
+&quot;type&quot;: &quot;StateTransition&quot;
+&quot;actor&quot;:
+  &quot;availability&quot;: &quot;unsupported&quot;
+  &quot;type&quot;: &quot;RuntimeModuleOrigin&quot;
+&quot;previous_state&quot;: &quot;validated&quot;
+&quot;next_state&quot;: &quot;queued&quot;
+&quot;recorded_at&quot;: &quot;2026-09-27T13:04:12.961083+00:00&quot;
+&quot;revision&quot;: 3
+
+&quot;type&quot;: &quot;StateTransition&quot;
+&quot;actor&quot;:
+  &quot;availability&quot;: &quot;unsupported&quot;
+  &quot;type&quot;: &quot;RuntimeModuleOrigin&quot;
+&quot;previous_state&quot;: &quot;queued&quot;
+&quot;next_state&quot;: &quot;running&quot;
+&quot;recorded_at&quot;: &quot;2026-09-27T13:04:12.961988+00:00&quot;
+&quot;revision&quot;: 4
+
+&quot;type&quot;: &quot;IterationStarted&quot;
+&quot;actor&quot;:
+  &quot;availability&quot;: &quot;unsupported&quot;
+  &quot;type&quot;: &quot;RuntimeModuleOrigin&quot;
+&quot;iteration&quot;: 1
+&quot;recorded_at&quot;: &quot;2026-09-27T13:04:12.962037+00:00&quot;
+&quot;revision&quot;: 5
+
+&quot;type&quot;: &quot;IterationStarted&quot;
+&quot;actor&quot;:
+  &quot;availability&quot;: &quot;unsupported&quot;
+  &quot;type&quot;: &quot;ContextOrigin&quot;
+&quot;iteration&quot;: 2
+&quot;recorded_at&quot;: &quot;2026-09-27T13:04:12.974493+00:00&quot;
+&quot;revision&quot;: 6
+
+&quot;type&quot;: &quot;StateTransition&quot;
+&quot;actor&quot;:
+  &quot;availability&quot;: &quot;unsupported&quot;
+  &quot;type&quot;: &quot;ContextOrigin&quot;
+&quot;previous_state&quot;: &quot;running&quot;
+&quot;next_state&quot;: &quot;finished&quot;
+&quot;recorded_at&quot;: &quot;2026-09-27T13:04:12.975181+00:00&quot;
+&quot;revision&quot;: 7
+&lt;/pre&gt;&lt;/div&gt;&lt;div class=&quot;workspace-body inactive&quot; data-view=&quot;activity&quot; inert=&quot;&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;inline evidence-stamp&quot;&gt;&lt;small&gt;Evidence sampled: Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/small&gt;&lt;/div&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h2&gt;Recorded lifecycle and controls&lt;/h2&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;evidence.activity&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About recorded activity&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;p class=&quot;notice&quot;&gt;Recorded order only; no inferred global timeline.&lt;/p&gt;&lt;p class=&quot;notice&quot;&gt;0 lifecycle entries omitted by the display bound; missing/pruned events cannot be reconstructed.&lt;/p&gt;&lt;h3&gt;Retained lifecycle&lt;/h3&gt;&lt;div class=&quot;activity-list&quot;&gt;&lt;section class=&quot;box activity-entry&quot;&gt;&lt;h3&gt;StateTransition · submitted → validating · Revision 1 · Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/h3&gt;&lt;details&gt;&lt;summary&gt;Full retained fields&lt;/summary&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;StateTransition&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;actor&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;availability&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;unsupported&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;RuntimeModuleOrigin&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;dt&gt;previous state&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;submitted&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;next state&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;validating&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;recorded at&lt;/dt&gt;&lt;dd&gt;&lt;span title=&quot;2026-09-27T13:04:12.960960+00:00&quot;&gt;Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;revision&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;1&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/details&gt;&lt;/section&gt;&lt;section class=&quot;box activity-entry&quot;&gt;&lt;h3&gt;StateTransition · validating → validated · Revision 2 · Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/h3&gt;&lt;details&gt;&lt;summary&gt;Full retained fields&lt;/summary&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;StateTransition&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;actor&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;availability&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;unsupported&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;RuntimeModuleOrigin&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;dt&gt;previous state&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;validating&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;next state&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;validated&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;recorded at&lt;/dt&gt;&lt;dd&gt;&lt;span title=&quot;2026-09-27T13:04:12.961026+00:00&quot;&gt;Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;revision&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;2&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/details&gt;&lt;/section&gt;&lt;section class=&quot;box activity-entry&quot;&gt;&lt;h3&gt;StateTransition · validated → queued · Revision 3 · Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/h3&gt;&lt;details&gt;&lt;summary&gt;Full retained fields&lt;/summary&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;StateTransition&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;actor&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;availability&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;unsupported&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;RuntimeModuleOrigin&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;dt&gt;previous state&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;validated&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;next state&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;queued&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;recorded at&lt;/dt&gt;&lt;dd&gt;&lt;span title=&quot;2026-09-27T13:04:12.961083+00:00&quot;&gt;Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;revision&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;3&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/details&gt;&lt;/section&gt;&lt;section class=&quot;box activity-entry&quot;&gt;&lt;h3&gt;StateTransition · queued → running · Revision 4 · Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/h3&gt;&lt;details&gt;&lt;summary&gt;Full retained fields&lt;/summary&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;StateTransition&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;actor&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;availability&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;unsupported&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;RuntimeModuleOrigin&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;dt&gt;previous state&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;queued&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;next state&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;running&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;recorded at&lt;/dt&gt;&lt;dd&gt;&lt;span title=&quot;2026-09-27T13:04:12.961988+00:00&quot;&gt;Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;revision&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;4&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/details&gt;&lt;/section&gt;&lt;section class=&quot;box activity-entry&quot;&gt;&lt;h3&gt;IterationStarted · Iteration 1 · Revision 5 · Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/h3&gt;&lt;details&gt;&lt;summary&gt;Full retained fields&lt;/summary&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;IterationStarted&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;actor&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;availability&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;unsupported&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;RuntimeModuleOrigin&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;dt&gt;iteration&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;1&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;recorded at&lt;/dt&gt;&lt;dd&gt;&lt;span title=&quot;2026-09-27T13:04:12.962037+00:00&quot;&gt;Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;revision&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;5&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/details&gt;&lt;/section&gt;&lt;section class=&quot;box activity-entry&quot;&gt;&lt;h3&gt;IterationStarted · Iteration 2 · Revision 6 · Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/h3&gt;&lt;details&gt;&lt;summary&gt;Full retained fields&lt;/summary&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;IterationStarted&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;actor&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;availability&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;unsupported&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;ContextOrigin&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;dt&gt;iteration&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;2&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;recorded at&lt;/dt&gt;&lt;dd&gt;&lt;span title=&quot;2026-09-27T13:04:12.974493+00:00&quot;&gt;Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;revision&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;6&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/details&gt;&lt;/section&gt;&lt;section class=&quot;box activity-entry&quot;&gt;&lt;h3&gt;StateTransition · running → finished · Revision 7 · Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/h3&gt;&lt;details&gt;&lt;summary&gt;Full retained fields&lt;/summary&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;StateTransition&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;actor&lt;/dt&gt;&lt;dd&gt;&lt;dl class=&quot;tree&quot;&gt;&lt;dt&gt;availability&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;unsupported&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;type&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;ContextOrigin&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/dd&gt;&lt;dt&gt;previous state&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;running&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;next state&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;finished&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;recorded at&lt;/dt&gt;&lt;dd&gt;&lt;span title=&quot;2026-09-27T13:04:12.975181+00:00&quot;&gt;Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/span&gt;&lt;/dd&gt;&lt;dt&gt;revision&lt;/dt&gt;&lt;dd&gt;&lt;span&gt;7&lt;/span&gt;&lt;/dd&gt;&lt;/dl&gt;&lt;/details&gt;&lt;/section&gt;&lt;/div&gt;&lt;h3&gt;Observed control requests · separate retained order&lt;/h3&gt;&lt;div class=&quot;activity-list&quot;&gt;&lt;p class=&quot;notice&quot;&gt;No retained entries; absence does not establish complete observation.&lt;/p&gt;&lt;/div&gt;&lt;/div&gt;&lt;/section&gt;&lt;/section&gt;&lt;section data-preview-page=&quot;overview&quot; hidden&gt;&lt;div class=&quot;section-heading overview-page-heading&quot;&gt;&lt;div class=&quot;overview-heading-copy&quot;&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h1&gt;Overview&lt;/h1&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;dashboard.overview&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About Overview evidence&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;p class=&quot;subhead&quot;&gt;Current authorized work and retained outcomes visible to this dashboard.&lt;/p&gt;&lt;/div&gt;&lt;button class=&quot;overview-engines&quot; data-help=&quot;dashboard.engines&quot; aria-label=&quot;Open Engines&quot; disabled=&quot;&quot;&gt;&lt;span&gt;Observed engines&lt;/span&gt;&lt;strong&gt;1&lt;/strong&gt;&lt;small&gt;Open Engines →&lt;/small&gt;&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;page-notification&quot;&gt;&lt;div class=&quot;stale-banner&quot; hidden=&quot;&quot; title=&quot;&quot;&gt;&lt;span role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;/span&gt;&lt;button disabled=&quot;&quot;&gt;Retry&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;section class=&quot;box overview-section active-overview&quot;&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h2&gt;Current authorized active contexts&lt;/h2&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;dashboard.active&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About Current authorized active contexts&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;cards&quot; data-scope=&quot;active&quot;&gt;&lt;button class=&quot;card state-running&quot; data-state=&quot;running&quot; aria-label=&quot;running contexts&quot; disabled=&quot;&quot;&gt;&lt;span class=&quot;card-label&quot;&gt;&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path fill=&quot;currentColor&quot; d=&quot;M7 3v18l15-9z&quot;&gt;&lt;/path&gt;&lt;/svg&gt;running&lt;/span&gt;&lt;strong&gt;0&lt;/strong&gt;&lt;/button&gt;&lt;button class=&quot;card state-paused&quot; data-state=&quot;paused&quot; aria-label=&quot;paused contexts&quot; disabled=&quot;&quot;&gt;&lt;span class=&quot;card-label&quot;&gt;&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path fill=&quot;currentColor&quot; d=&quot;M6 4h4v16H6zM14 4h4v16h-4z&quot;&gt;&lt;/path&gt;&lt;/svg&gt;paused&lt;/span&gt;&lt;strong&gt;0&lt;/strong&gt;&lt;/button&gt;&lt;button class=&quot;card state-queued&quot; data-state=&quot;queued&quot; aria-label=&quot;queued contexts&quot; disabled=&quot;&quot;&gt;&lt;span class=&quot;card-label&quot;&gt;&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path fill=&quot;currentColor&quot; d=&quot;M3 4h18v3H3zM3 10h18v3H3zM3 16h12v3H3z&quot;&gt;&lt;/path&gt;&lt;/svg&gt;queued&lt;/span&gt;&lt;strong&gt;0&lt;/strong&gt;&lt;/button&gt;&lt;button class=&quot;card state-routing&quot; data-state=&quot;routing&quot; aria-label=&quot;routing contexts&quot; disabled=&quot;&quot;&gt;&lt;span class=&quot;card-label&quot;&gt;&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path fill=&quot;currentColor&quot; d=&quot;M3 4h10v3H6v10h7v-3l8 5-8 5v-4H3z&quot;&gt;&lt;/path&gt;&lt;/svg&gt;routing&lt;/span&gt;&lt;strong&gt;0&lt;/strong&gt;&lt;/button&gt;&lt;button class=&quot;card state-placement_waiting&quot; data-state=&quot;placement_waiting&quot; aria-label=&quot;placement_waiting contexts&quot; disabled=&quot;&quot;&gt;&lt;span class=&quot;card-label&quot;&gt;&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path fill=&quot;currentColor&quot; d=&quot;M4 3h16v6l-6 3 6 3v6H4v-6l6-3-6-3z&quot;&gt;&lt;/path&gt;&lt;/svg&gt;placement waiting&lt;/span&gt;&lt;strong&gt;0&lt;/strong&gt;&lt;/button&gt;&lt;/div&gt;&lt;p class=&quot;muted&quot;&gt;&lt;/p&gt;&lt;/section&gt;&lt;section class=&quot;box overview-section history-overview&quot;&gt;&lt;div class=&quot;overview-section-header history-heading&quot;&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h2&gt;Retained history outcomes&lt;/h2&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;dashboard.history-outcomes&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About retained history outcomes&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;overview-heading-actions&quot;&gt;&lt;small class=&quot;history-read&quot;&gt;&lt;/small&gt;&lt;button aria-label=&quot;Refresh retained history&quot; data-help=&quot;dashboard.refresh-unavailable&quot; class=&quot;history-refresh&quot; disabled=&quot;&quot; aria-busy=&quot;true&quot;&gt;Refresh&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;cards&quot; data-scope=&quot;outcomes&quot;&gt;&lt;button class=&quot;card state-finished&quot; data-state=&quot;finished&quot; aria-label=&quot;finished contexts&quot; disabled=&quot;&quot;&gt;&lt;span class=&quot;card-label&quot;&gt;&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path fill=&quot;currentColor&quot; d=&quot;m2 12 4-4 5 5 9-9 4 4-13 13z&quot;&gt;&lt;/path&gt;&lt;/svg&gt;finished&lt;/span&gt;&lt;strong&gt;—&lt;/strong&gt;&lt;/button&gt;&lt;button class=&quot;card state-failed&quot; data-state=&quot;failed&quot; aria-label=&quot;failed contexts&quot; disabled=&quot;&quot;&gt;&lt;span class=&quot;card-label&quot;&gt;&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path fill=&quot;currentColor&quot; d=&quot;M10 3h4v12h-4zM10 18h4v4h-4z&quot;&gt;&lt;/path&gt;&lt;/svg&gt;failed&lt;/span&gt;&lt;strong&gt;—&lt;/strong&gt;&lt;/button&gt;&lt;button class=&quot;card state-aborted&quot; data-state=&quot;aborted&quot; aria-label=&quot;aborted contexts&quot; disabled=&quot;&quot;&gt;&lt;span class=&quot;card-label&quot;&gt;&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path fill=&quot;currentColor&quot; d=&quot;m5 2 7 7 7-7 3 3-7 7 7 7-3 3-7-7-7 7-3-3 7-7-7-7z&quot;&gt;&lt;/path&gt;&lt;/svg&gt;aborted&lt;/span&gt;&lt;strong&gt;—&lt;/strong&gt;&lt;/button&gt;&lt;button class=&quot;card state-rejected&quot; data-state=&quot;rejected&quot; aria-label=&quot;rejected contexts&quot; disabled=&quot;&quot;&gt;&lt;span class=&quot;card-label&quot;&gt;&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path fill=&quot;currentColor&quot; d=&quot;M3 10h18v4H3z&quot;&gt;&lt;/path&gt;&lt;/svg&gt;rejected&lt;/span&gt;&lt;strong&gt;—&lt;/strong&gt;&lt;/button&gt;&lt;/div&gt;&lt;p role=&quot;status&quot; class=&quot;overview-refresh-status&quot;&gt;Database refresh unavailable. Showing retained observations.&lt;/p&gt;&lt;p class=&quot;muted&quot; hidden=&quot;&quot;&gt;&lt;/p&gt;&lt;/section&gt;&lt;div class=&quot;split overview-tables&quot;&gt;&lt;section class=&quot;box overview-table-card&quot;&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h2&gt;Recent failures&lt;/h2&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;dashboard.failures&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About Recent failures&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;overview-table-body&quot;&gt;&lt;div class=&quot;table-wrap overview-table&quot; aria-label=&quot;Recent failures&quot;&gt;&lt;table&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;Context / graph&lt;/th&gt;&lt;th&gt;Failure&lt;/th&gt;&lt;th&gt;Completed&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;div class=&quot;overview-empty&quot; role=&quot;status&quot;&gt;No retained failures.&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/section&gt;&lt;section class=&quot;box overview-table-card&quot;&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h2&gt;Recent control outcomes&lt;/h2&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;dashboard.control-outcomes&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About Recent control outcomes&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;overview-table-body&quot;&gt;&lt;div class=&quot;table-wrap overview-table&quot; aria-label=&quot;Recent control outcomes&quot;&gt;&lt;table&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;Context / action&lt;/th&gt;&lt;th&gt;Request outcome&lt;/th&gt;&lt;th&gt;Submitted&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;div class=&quot;overview-empty&quot; role=&quot;status&quot;&gt;No control requests observed.&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/section&gt;&lt;/div&gt;&lt;div&gt;&lt;/div&gt;&lt;p&gt;&lt;button data-open-run&gt;Open captured run&lt;/button&gt;&lt;/p&gt;&lt;/section&gt;&lt;section data-preview-page=&quot;engines&quot; hidden&gt;&lt;section class=&quot;data-view engines-view&quot;&gt;&lt;div class=&quot;data-header&quot;&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h1&gt;Engines&lt;/h1&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;dashboard.engines&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About Engines&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;p class=&quot;subhead&quot;&gt;Observed execution engines and reported runtime pressure&lt;/p&gt;&lt;/div&gt;&lt;div class=&quot;page-notification&quot;&gt;&lt;div class=&quot;stale-banner&quot; hidden=&quot;&quot; title=&quot;&quot;&gt;&lt;span role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;/span&gt;&lt;button disabled=&quot;&quot;&gt;Retry&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;data-content&quot;&gt;&lt;div class=&quot;control-deck&quot;&gt;&lt;div class=&quot;data-utility&quot;&gt;&lt;div class=&quot;engine-tabs&quot; role=&quot;tablist&quot; aria-label=&quot;Engine data&quot;&gt;&lt;button id=&quot;engines-pressure-tab&quot; role=&quot;tab&quot; aria-controls=&quot;engines-pressure-view&quot; aria-selected=&quot;true&quot; tabindex=&quot;0&quot; disabled=&quot;&quot;&gt;Pressure&lt;/button&gt;&lt;button id=&quot;engines-work-tab&quot; role=&quot;tab&quot; aria-controls=&quot;engines-work-view&quot; aria-selected=&quot;false&quot; tabindex=&quot;-1&quot; disabled=&quot;&quot;&gt;Observed work&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;filters data-filters engines-toolbar&quot;&gt;&lt;input type=&quot;search&quot; placeholder=&quot;Search engine identity&quot; aria-label=&quot;Search engine identity&quot; value=&quot;&quot; disabled=&quot;&quot;&gt;&lt;div class=&quot;engine-filter-slots&quot;&gt;&lt;label&gt;Memory&lt;select aria-label=&quot;Memory&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;&quot; selected=&quot;&quot;&gt;Any memory&lt;/option&gt;&lt;option value=&quot;pressured&quot;&gt;Pressured&lt;/option&gt;&lt;option value=&quot;clear&quot;&gt;No pressure&lt;/option&gt;&lt;option value=&quot;unknown&quot;&gt;Unknown&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;label&gt;Report&lt;select aria-label=&quot;Report&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;&quot; selected=&quot;&quot;&gt;Any report&lt;/option&gt;&lt;option value=&quot;reported&quot;&gt;Reported&lt;/option&gt;&lt;option value=&quot;older&quot;&gt;Older sample&lt;/option&gt;&lt;option value=&quot;missing&quot;&gt;Not reported&lt;/option&gt;&lt;option value=&quot;unknown&quot;&gt;Age unknown / time mismatch&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;label&gt;Sort&lt;select aria-label=&quot;Sort&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;&quot; selected=&quot;&quot;&gt;Engine identity&lt;/option&gt;&lt;option value=&quot;occupied_tasks&quot;&gt;Tasks in use&lt;/option&gt;&lt;option value=&quot;pending_placements&quot;&gt;Pending placements&lt;/option&gt;&lt;option value=&quot;task_capacity&quot;&gt;Ordinary capacity&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;/div&gt;&lt;div class=&quot;engine-filter-slots&quot; hidden=&quot;&quot;&gt;&lt;label&gt;State&lt;select aria-label=&quot;State&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;&quot; selected=&quot;&quot;&gt;Any state&lt;/option&gt;&lt;option value=&quot;running&quot;&gt;running&lt;/option&gt;&lt;option value=&quot;paused&quot;&gt;paused&lt;/option&gt;&lt;option value=&quot;queued&quot;&gt;queued&lt;/option&gt;&lt;option value=&quot;routing&quot;&gt;routing&lt;/option&gt;&lt;option value=&quot;placement_waiting&quot;&gt;placement waiting&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;label&gt;Pressure report&lt;select aria-label=&quot;Pressure report&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;&quot; selected=&quot;&quot;&gt;Any report&lt;/option&gt;&lt;option value=&quot;reported&quot;&gt;Reported&lt;/option&gt;&lt;option value=&quot;missing&quot;&gt;Not reported&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;label&gt;Sort&lt;select aria-label=&quot;Sort&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;&quot; selected=&quot;&quot;&gt;Engine identity&lt;/option&gt;&lt;option value=&quot;running&quot;&gt;running&lt;/option&gt;&lt;option value=&quot;paused&quot;&gt;paused&lt;/option&gt;&lt;option value=&quot;queued&quot;&gt;queued&lt;/option&gt;&lt;option value=&quot;routing&quot;&gt;routing&lt;/option&gt;&lt;option value=&quot;placement_waiting&quot;&gt;placement waiting&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;data-table-shell&quot;&gt;&lt;div class=&quot;table-stage data-table-stage engines-stage&quot;&gt;&lt;div class=&quot;table-wrap engine-scroll&quot; id=&quot;engines-pressure-view&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;engines-pressure-tab&quot; tabindex=&quot;-1&quot;&gt;&lt;table class=&quot;engine-table pressure-table&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th scope=&quot;col&quot;&gt;Engine&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Memory&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Tasks in use&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Ordinary capacity&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Supervising capacity&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Pending placements&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Sampled&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Report&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr tabindex=&quot;0&quot; data-engine_id=&quot;self@zlLMWhFASAyXbHJXdDMtCA&quot; aria-label=&quot;This engine: self@zlLMWhFASAyXbHJXdDMtCA&quot;&gt;&lt;td&gt;&lt;div class=&quot;engine-identity&quot;&gt;&lt;strong title=&quot;self@zlLMWhFASAyXbHJXdDMtCA&quot;&gt;This engine&lt;/strong&gt;&lt;small title=&quot;self@zlLMWhFASAyXbHJXdDMtCA&quot;&gt;self&lt;/small&gt;&lt;/div&gt;&lt;/td&gt;&lt;td&gt;No pressure&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1026&lt;/td&gt;&lt;td&gt;1026&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;&lt;time datetime=&quot;2026-09-27T13:04:14.290700+00:00&quot; title=&quot;2026-09-27T13:04:14.290700+00:00&quot;&gt;&lt;span&gt;Sep 27, 2026, 04:34:14 PM&lt;/span&gt;&lt;span&gt;GMT+3:30&lt;/span&gt;&lt;/time&gt;&lt;/td&gt;&lt;td&gt;&lt;span class=&quot;badge status-badge engine-report &quot; title=&quot;Reported · Based on producer timestamps relative to this engine&#x27;s sample clock. Remote clocks may differ; this does not establish that an engine is offline.&quot;&gt;Reported&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;div class=&quot;engine-empty&quot; role=&quot;status&quot; hidden=&quot;&quot;&gt;No engines match these filters.&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;table-wrap engine-scroll&quot; id=&quot;engines-work-view&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;engines-work-tab&quot; tabindex=&quot;-1&quot; hidden=&quot;&quot;&gt;&lt;table class=&quot;engine-table work-table&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th scope=&quot;col&quot;&gt;Engine&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Running&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Paused&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Queued&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Routing&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Placement waiting&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;div class=&quot;engine-empty&quot; role=&quot;status&quot;&gt;No engines match these filters.&lt;/div&gt;&lt;/div&gt;&lt;aside class=&quot;box quick engine-details&quot; aria-label=&quot;Selected engine details&quot; tabindex=&quot;-1&quot; hidden=&quot;&quot; inert=&quot;&quot;&gt;&lt;/aside&gt;&lt;/div&gt;&lt;div class=&quot;data-footer&quot;&gt;&lt;div class=&quot;engine-gap&quot; role=&quot;status&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/section&gt;&lt;/section&gt;&lt;section data-preview-page=&quot;contexts&quot; hidden&gt;&lt;section class=&quot;data-view contexts-view&quot;&gt;&lt;div class=&quot;data-header&quot;&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h1&gt;Contexts&lt;/h1&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;dashboard.contexts&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About Contexts&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;p class=&quot;subhead&quot;&gt;Current nonterminal work&lt;/p&gt;&lt;/div&gt;&lt;div class=&quot;page-notification&quot;&gt;&lt;div class=&quot;stale-banner&quot; hidden=&quot;&quot; title=&quot;&quot;&gt;&lt;span role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;/span&gt;&lt;button disabled=&quot;&quot;&gt;Retry&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;data-content&quot;&gt;&lt;div class=&quot;control-deck&quot;&gt;&lt;div class=&quot;data-utility&quot;&gt;&lt;label class=&quot;dashboard-switch&quot;&gt;Include this dashboard&lt;input type=&quot;checkbox&quot; role=&quot;switch&quot; data-dashboard-toggle=&quot;&quot; checked=&quot;&quot; value=&quot;on&quot; disabled=&quot;&quot;&gt;&lt;/label&gt;&lt;/div&gt;&lt;div class=&quot;filters data-filters&quot;&gt;&lt;input type=&quot;search&quot; placeholder=&quot;Search context identity or graph&quot; aria-label=&quot;Search contexts&quot; value=&quot;&quot; disabled=&quot;&quot;&gt;&lt;label&gt;State&lt;select aria-label=&quot;State&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;&quot; selected=&quot;&quot;&gt;Any state&lt;/option&gt;&lt;option value=&quot;queued&quot;&gt;queued&lt;/option&gt;&lt;option value=&quot;routing&quot;&gt;routing&lt;/option&gt;&lt;option value=&quot;running&quot;&gt;running&lt;/option&gt;&lt;option value=&quot;placement_waiting&quot;&gt;placement_waiting&lt;/option&gt;&lt;option value=&quot;paused&quot;&gt;paused&lt;/option&gt;&lt;option value=&quot;aborting&quot;&gt;aborting&lt;/option&gt;&lt;option value=&quot;failing&quot;&gt;failing&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;label&gt;Graph/version&lt;select aria-label=&quot;Graph/version&quot; data-signature=&quot;[[[&amp;quot;&amp;quot;,&amp;quot;All captured graphs&amp;quot;],[&amp;quot;local:8027b3a09abd486f927dec767ec8fdbe&amp;quot;,&amp;quot;Local definition · 1&amp;quot;]],&amp;quot;&amp;quot;]&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;&quot; title=&quot;&quot; selected=&quot;&quot;&gt;All captured graphs&lt;/option&gt;&lt;option value=&quot;local:8027b3a09abd486f927dec767ec8fdbe&quot; title=&quot;local:8027b3a09abd486f927dec767ec8fdbe&quot;&gt;Local definition · 1&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;label&gt;Cross-context access&lt;select aria-label=&quot;Cross-context access&quot; data-help=&quot;evidence.access&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;&quot; selected=&quot;&quot;&gt;Any capability&lt;/option&gt;&lt;option value=&quot;unknown&quot;&gt;Unknown&lt;/option&gt;&lt;option value=&quot;observes&quot;&gt;Observes&lt;/option&gt;&lt;option value=&quot;controls&quot;&gt;Controls&lt;/option&gt;&lt;option value=&quot;neither&quot;&gt;Neither&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;label&gt;Sort&lt;select aria-label=&quot;Sort&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;oldest&quot; selected=&quot;&quot;&gt;Oldest first&lt;/option&gt;&lt;option value=&quot;newest&quot;&gt;Newest first&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;data-table-shell&quot;&gt;&lt;div class=&quot;table-stage data-table-stage&quot;&gt;&lt;div class=&quot;table-wrap&quot; tabindex=&quot;-1&quot; aria-label=&quot;Context results&quot;&gt;&lt;table&gt;&lt;thead&gt;&lt;tr&gt;&lt;th scope=&quot;col&quot;&gt;Context&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Graph / version&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Execution location&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;State&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Cross-context access&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Estimated progress&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Iteration&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr tabindex=&quot;0&quot; data-context=&quot;3571174985996562445&quot;&gt;&lt;td&gt;&lt;div class=&quot;identity-cell&quot;&gt;&lt;span class=&quot;history-identity-region&quot;&gt;&lt;span class=&quot;context-identity&quot; title=&quot;3571174985996562445&quot;&gt;3571174985996562445&lt;/span&gt;&lt;span class=&quot;badge&quot;&gt;This dashboard&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;&lt;/td&gt;&lt;td&gt;Dashboard service · Unavailable&lt;/td&gt;&lt;td&gt;&lt;div class=&quot;provenance&quot; title=&quot;self@zlLMWhFASAyXbHJXdDMtCA
+Captured engine incarnation (routing owner); physical host unknown&quot;&gt;&lt;span&gt;self&lt;/span&gt;&lt;small&gt;Physical host unknown&lt;/small&gt;&lt;/div&gt;&lt;/td&gt;&lt;td&gt;&lt;span class=&quot;state-summary state-cell&quot;&gt;&lt;span class=&quot;state-primary&quot;&gt;&lt;span class=&quot;badge state-unknown status-badge&quot; title=&quot;SERVING&quot;&gt;SERVING&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;state-secondary&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Observes: Yes · Controls: Yes&lt;/td&gt;&lt;td&gt;&lt;div class=&quot;context-progress compact&quot; data-state=&quot;unknown&quot;&gt;&lt;small&gt;Context progress estimate unavailable&lt;/small&gt;&lt;div class=&quot;progress-track unavailable&quot; role=&quot;progressbar&quot; aria-label=&quot;Whole context progress&quot; aria-valuemin=&quot;0&quot; aria-valuemax=&quot;100&quot; aria-valuetext=&quot;Context progress estimate unavailable&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/td&gt;&lt;td&gt;Unavailable&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;&lt;aside class=&quot;box quick&quot; hidden=&quot;&quot; aria-label=&quot;Selected context details&quot; tabindex=&quot;-1&quot; inert=&quot;&quot;&gt;&lt;p class=&quot;notice&quot;&gt;Select a row for a quick summary. Use Open context for the full workspace.&lt;/p&gt;&lt;/aside&gt;&lt;/div&gt;&lt;div class=&quot;data-footer&quot;&gt;&lt;div class=&quot;data-notices&quot;&gt;&lt;p class=&quot;muted list-coverage&quot; role=&quot;status&quot;&gt;&lt;/p&gt;&lt;p class=&quot;session-notice&quot; role=&quot;status&quot;&gt;&lt;/p&gt;&lt;/div&gt;&lt;div class=&quot;pager&quot;&gt;&lt;button disabled=&quot;&quot;&gt;Previous&lt;/button&gt;&lt;span&gt;1–1 of 1&lt;/span&gt;&lt;button disabled=&quot;&quot;&gt;Next&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/section&gt;&lt;p&gt;&lt;button data-open-run&gt;Open captured run&lt;/button&gt;&lt;/p&gt;&lt;/section&gt;&lt;section data-preview-page=&quot;graphs&quot; hidden&gt;&lt;section class=&quot;data-view graphs-view&quot;&gt;&lt;div class=&quot;data-header&quot;&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h1&gt;Graphs&lt;/h1&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;dashboard.graphs&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About Graphs&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;p class=&quot;subhead&quot;&gt;Captured definitions available to this dashboard&lt;/p&gt;&lt;/div&gt;&lt;div class=&quot;page-notification&quot;&gt;&lt;div class=&quot;stale-banner&quot; hidden=&quot;&quot; title=&quot;&quot;&gt;&lt;span role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;/span&gt;&lt;button disabled=&quot;&quot;&gt;Retry&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;data-content graph-browser&quot;&gt;&lt;div class=&quot;control-deck&quot;&gt;&lt;div class=&quot;data-utility&quot;&gt;&lt;p class=&quot;muted graph-catalog-summary&quot;&gt;1 captured definition · Structural views, not execution results.&lt;/p&gt;&lt;/div&gt;&lt;div class=&quot;filters data-filters graph-filters&quot;&gt;&lt;input type=&quot;search&quot; placeholder=&quot;Search graph name or identity&quot; aria-label=&quot;Search graph name or identity&quot; value=&quot;&quot; disabled=&quot;&quot;&gt;&lt;label&gt;Registration&lt;select aria-label=&quot;Registration&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;&quot; selected=&quot;&quot;&gt;Any status&lt;/option&gt;&lt;option value=&quot;false&quot;&gt;Local · unregistered&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;label&gt;Sort&lt;select aria-label=&quot;Sort&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;name-asc&quot; selected=&quot;&quot;&gt;Graph name A–Z&lt;/option&gt;&lt;option value=&quot;name-desc&quot;&gt;Graph name Z–A&lt;/option&gt;&lt;option value=&quot;version-asc&quot;&gt;Version ascending&lt;/option&gt;&lt;option value=&quot;version-desc&quot;&gt;Version descending&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;data-table-shell&quot;&gt;&lt;div class=&quot;table-stage data-table-stage&quot;&gt;&lt;div class=&quot;table-wrap graph-catalog&quot; tabindex=&quot;0&quot; aria-label=&quot;Captured graph definitions&quot;&gt;&lt;table&gt;&lt;thead&gt;&lt;tr&gt;&lt;th scope=&quot;col&quot;&gt;Graph&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Version&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Registration&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Actions&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr data-graph-id=&quot;local:8027b3a09abd486f927dec767ec8fdbe&quot;&gt;&lt;td&gt;&lt;strong&gt;Local definition&lt;/strong&gt;&lt;small class=&quot;graph-capture-reference&quot;&gt;Capture reference: local:8027b3a09abd486f927dec767ec8fdbe&lt;/small&gt;&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;&lt;span class=&quot;badge status-badge&quot; title=&quot;Local · unregistered&quot;&gt;Local · unregistered&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;div class=&quot;graph-actions&quot;&gt;&lt;button disabled=&quot;&quot;&gt;Open definition&lt;/button&gt;&lt;button disabled=&quot;&quot;&gt;Related contexts&lt;/button&gt;&lt;/div&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;p class=&quot;engine-empty&quot; role=&quot;status&quot; hidden=&quot;&quot;&gt;No definitions match these filters.&lt;/p&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;data-footer&quot;&gt;&lt;div class=&quot;data-notices&quot; tabindex=&quot;0&quot; aria-label=&quot;Graph capture coverage&quot;&gt;&lt;p&gt;Definitions captured from authorized active runs; zero-run registry discovery is unavailable.&lt;/p&gt;&lt;/div&gt;&lt;span&gt;1 of 1 captured definitions&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/section&gt;&lt;/section&gt;&lt;section data-preview-page=&quot;history&quot; hidden&gt;&lt;section class=&quot;data-view history-list&quot;&gt;&lt;div class=&quot;data-header&quot;&gt;&lt;div class=&quot;section-heading&quot;&gt;&lt;h1&gt;History&lt;/h1&gt;&lt;button type=&quot;button&quot; class=&quot;help-button&quot; data-help=&quot;dashboard.history&quot; data-help-variant=&quot;&quot; data-help-button=&quot;&quot; aria-label=&quot;About History&quot; disabled=&quot;&quot;&gt;i&lt;/button&gt;&lt;/div&gt;&lt;p class=&quot;subhead&quot;&gt;Retained terminal evidence · read-only&lt;/p&gt;&lt;/div&gt;&lt;div class=&quot;page-notification&quot;&gt;&lt;div class=&quot;stale-banner&quot; hidden=&quot;&quot; title=&quot;&quot;&gt;&lt;span role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;/span&gt;&lt;button disabled=&quot;&quot;&gt;Retry&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;data-content&quot;&gt;&lt;div class=&quot;control-deck&quot;&gt;&lt;div class=&quot;data-utility&quot;&gt;&lt;div class=&quot;session-filter&quot;&gt;&lt;label&gt;Session&lt;select aria-label=&quot;Session&quot; data-help=&quot;dashboard.session&quot; data-signature=&quot;[[[&amp;quot;&amp;quot;,&amp;quot;All retained sessions&amp;quot;],[&amp;quot;self@zlLMWhFASAyXbHJXdDMtCA&amp;quot;,&amp;quot;Engine session · self@zlLMWhFASAyXbHJXdDMtCA&amp;quot;]],&amp;quot;&amp;quot;]&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;&quot; title=&quot;&quot; selected=&quot;&quot;&gt;All retained sessions&lt;/option&gt;&lt;option value=&quot;self@zlLMWhFASAyXbHJXdDMtCA&quot; title=&quot;self@zlLMWhFASAyXbHJXdDMtCA&quot;&gt;Engine session · self@zlLMWhFASAyXbHJXdDMtCA&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;button aria-label=&quot;Inspect engine sessions&quot; title=&quot;Inspect engine sessions&quot; disabled=&quot;&quot;&gt;Inspect&lt;/button&gt;&lt;/div&gt;&lt;label&gt;Since date&lt;input type=&quot;date&quot; aria-label=&quot;Since date&quot; value=&quot;&quot; disabled=&quot;&quot;&gt;&lt;/label&gt;&lt;/div&gt;&lt;div class=&quot;filters data-filters&quot;&gt;&lt;input type=&quot;search&quot; placeholder=&quot;Search context identity or graph&quot; aria-label=&quot;Search contexts&quot; value=&quot;&quot; disabled=&quot;&quot;&gt;&lt;label&gt;State&lt;select aria-label=&quot;State&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;&quot; selected=&quot;&quot;&gt;Any state&lt;/option&gt;&lt;option value=&quot;finished&quot;&gt;finished&lt;/option&gt;&lt;option value=&quot;failed&quot;&gt;failed&lt;/option&gt;&lt;option value=&quot;aborted&quot;&gt;aborted&lt;/option&gt;&lt;option value=&quot;rejected&quot;&gt;rejected&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;label&gt;Graph/version&lt;select aria-label=&quot;Graph/version&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;&quot; selected=&quot;&quot;&gt;All captured graphs&lt;/option&gt;&lt;option value=&quot;jrg1:83598e73626c3a1c6bc3ef46bdbfe482093d58d414bf9da377f9cd6721772692&quot; title=&quot;jrg1:83598e73626c3a1c6bc3ef46bdbfe482093d58d414bf9da377f9cd6721772692&quot;&gt;83598e73626c · v1 · 1&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;label&gt;Cross-context access&lt;select aria-label=&quot;Cross-context access&quot; data-help=&quot;evidence.access&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;&quot; selected=&quot;&quot;&gt;Any capability&lt;/option&gt;&lt;option value=&quot;unknown&quot;&gt;Unknown&lt;/option&gt;&lt;option value=&quot;observes&quot;&gt;Observes&lt;/option&gt;&lt;option value=&quot;controls&quot;&gt;Controls&lt;/option&gt;&lt;option value=&quot;neither&quot;&gt;Neither&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;label&gt;Sort&lt;select aria-label=&quot;Sort&quot; disabled=&quot;&quot;&gt;&lt;option value=&quot;oldest&quot; selected=&quot;&quot;&gt;Oldest first&lt;/option&gt;&lt;option value=&quot;newest&quot;&gt;Newest first&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;data-table-shell&quot;&gt;&lt;div class=&quot;table-stage data-table-stage&quot;&gt;&lt;div class=&quot;table-wrap&quot; tabindex=&quot;-1&quot; aria-label=&quot;History results&quot;&gt;&lt;table&gt;&lt;thead&gt;&lt;tr&gt;&lt;th scope=&quot;col&quot;&gt;Context&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Engine session&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Graph&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Outcome&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Completed&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Elapsed&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Details&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr tabindex=&quot;0&quot; data-context=&quot;4288634963145949227&quot;&gt;&lt;td&gt;&lt;div class=&quot;identity-cell history-context-cell&quot;&gt;&lt;span class=&quot;history-identity-region&quot;&gt;&lt;span class=&quot;context-identity&quot; title=&quot;C-a7421f66b159&quot;&gt;C-a7421f66b159&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;history-source-region&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/td&gt;&lt;td&gt;&lt;div class=&quot;provenance&quot; title=&quot;Engine session: self@zlLMWhFASAyXbHJXdDMtCA
+Recording engine session: self@zlLMWhFASAyXbHJXdDMtCA&quot;&gt;&lt;span&gt;self@zlLMWhFASAyXbHJXdDMtCA&lt;/span&gt;&lt;small&gt;Physical host unknown&lt;/small&gt;&lt;/div&gt;&lt;/td&gt;&lt;td title=&quot;jrg1:83598e73626c3a1c6bc3ef46bdbfe482093d58d414bf9da377f9cd6721772692&quot;&gt;83598e73626c · v1&lt;/td&gt;&lt;td&gt;&lt;span class=&quot;state-summary history-outcome state-cell&quot;&gt;&lt;span class=&quot;state-primary&quot;&gt;&lt;span class=&quot;badge state-finished status-badge&quot; title=&quot;FINISHED&quot;&gt;FINISHED&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;state-secondary&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt;&lt;td title=&quot;2026-09-27T13:04:12.975181+00:00&quot;&gt;Sep 27, 2026, 04:34:12 PM GMT+3:30&lt;/td&gt;&lt;td&gt;14.4 ms&lt;/td&gt;&lt;td&gt;&lt;button disabled=&quot;&quot;&gt;View summary&lt;/button&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;&lt;aside class=&quot;box quick&quot; hidden=&quot;&quot; aria-label=&quot;Selected context details&quot; tabindex=&quot;-1&quot; inert=&quot;&quot;&gt;&lt;p class=&quot;notice&quot;&gt;Select a row for a quick summary. Use View summary for the full workspace.&lt;/p&gt;&lt;/aside&gt;&lt;/div&gt;&lt;div class=&quot;data-footer&quot;&gt;&lt;div class=&quot;data-notices&quot;&gt;&lt;p class=&quot;muted list-coverage&quot; role=&quot;status&quot;&gt;&lt;/p&gt;&lt;p class=&quot;session-notice&quot; role=&quot;status&quot;&gt;&lt;/p&gt;&lt;/div&gt;&lt;div class=&quot;pager&quot;&gt;&lt;button disabled=&quot;&quot;&gt;Previous&lt;/button&gt;&lt;span&gt;1–1 of 1&lt;/span&gt;&lt;button disabled=&quot;&quot;&gt;Next&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/section&gt;&lt;/section&gt;&lt;/main&gt;&lt;/div&gt;
+&lt;dialog id=&quot;about&quot; aria-labelledby=&quot;about-version&quot;&gt;&lt;button id=&quot;about-close&quot; aria-label=&quot;Close Help / About&quot; disabled=&quot;&quot;&gt;Close&lt;/button&gt;&lt;h2 id=&quot;about-version&quot;&gt;Jayrun&lt;/h2&gt;&lt;p&gt;Observe captured execution evidence. Archive visibility follows the hosting application; stored IDs do not grant access.&lt;/p&gt;&lt;h3&gt;Keyboard shortcuts&lt;/h3&gt;&lt;dl&gt;&lt;dt&gt;Workspace tabs&lt;/dt&gt;&lt;dd&gt;Arrow keys, Home and End move focus. Enter or Space opens the selected tab.&lt;/dd&gt;&lt;dt&gt;Context tables&lt;/dt&gt;&lt;dd&gt;Enter or Space opens quick details. Escape closes them.&lt;/dd&gt;&lt;dt&gt;Graph&lt;/dt&gt;&lt;dd&gt;Tab focuses components and controls. Enter selects. Escape clears selection and closes component details.&lt;/dd&gt;&lt;dt&gt;Help&lt;/dt&gt;&lt;dd&gt;Focus or hover marked controls for explanations. Use the contextual i controls for longer, touch-accessible help. Escape closes help before changing the underlying view.&lt;/dd&gt;&lt;/dl&gt;&lt;h3&gt;Evidence boundaries&lt;/h3&gt;&lt;p&gt;Engine sessions are routing incarnations, not physical hosts. Observations and archives may be incomplete. Historical evidence is read-only, not a resumable checkpoint.&lt;/p&gt;&lt;/dialog&gt;
+&lt;dialog id=&quot;confirmation&quot;&gt;&lt;h2 id=&quot;confirm-title&quot;&gt;&lt;/h2&gt;&lt;p id=&quot;confirm-text&quot;&gt;&lt;/p&gt;&lt;div class=&quot;controls&quot;&gt;&lt;button id=&quot;confirm-cancel&quot; disabled=&quot;&quot;&gt;Cancel&lt;/button&gt;&lt;button id=&quot;confirm-yes&quot; class=&quot;danger&quot; disabled=&quot;&quot;&gt;Confirm&lt;/button&gt;&lt;/div&gt;&lt;/dialog&gt;
+&lt;style&gt;/* Inherit each surface&#x27;s existing palette; no separate help color system. */
+.context-help{position:fixed;inset:auto;margin:0;z-index:1000;box-sizing:border-box;width:max-content;max-width:min(380px,calc(100vw - 16px));max-height:calc(100dvh - 16px);padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow,0 6px 18px #0002);font:13px/1.5 system-ui,sans-serif;overflow:auto;overflow-wrap:anywhere;pointer-events:none;text-align:left}
+.context-help[hidden]{display:none!important}
+.context-help p{margin:0;white-space:pre-wrap}
+.context-help.help-pinned{pointer-events:auto}
+.context-help button{display:block;position:sticky;top:0;margin:0 0 8px auto;min-height:36px;font:inherit;border:1px solid var(--line);border-radius:6px;padding:5px 10px;background:var(--surface);color:var(--ink);cursor:pointer}
+.context-help button[hidden]{display:none}
+.help-button{display:inline-grid;place-items:center;box-sizing:border-box;min-width:26px;min-height:26px;max-width:26px;max-height:26px;width:26px;height:26px;aspect-ratio:1;padding:0;flex:none;font:600 12px/1 system-ui,sans-serif;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--muted);cursor:pointer;vertical-align:middle}
+.help-button:hover,.context-help button:hover{background:var(--selected)}
+.help-button:focus-visible,.context-help button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.context-help,.help-button{animation:none!important;transition:none!important}}
+&lt;/style&gt;&lt;script&gt;
+        const tabs = [...document.querySelectorAll(&#x27;[data-preview-page=run] [role=&quot;tab&quot;]&#x27;)];
+        function select(tab, focus = false) {
+            for (const item of tabs) {
+                const selected = item === tab;
+                item.setAttribute(&#x27;aria-selected&#x27;, String(selected));
+                item.tabIndex = selected ? 0 : -1;
+            }
+            for (const panel of document.querySelectorAll(&#x27;.workspace-body&#x27;)) {
+                const selected = panel.dataset.view === tab.dataset.tab;
+                panel.classList.toggle(&#x27;inactive&#x27;, !selected);
+                panel.hidden = !selected;
+                panel.inert = !selected;
+                panel.setAttribute(&#x27;aria-hidden&#x27;, String(!selected));
+            }
+            document.querySelector(&#x27;#workspace-panel&#x27;).setAttribute(&#x27;aria-labelledby&#x27;, tab.id);
+            if (focus) { tab.focus(); tab.scrollIntoView({block:&#x27;nearest&#x27;,inline:&#x27;nearest&#x27;}); }
+        }
+        for (const tab of tabs) {
+            tab.addEventListener(&#x27;click&#x27;, () =&gt; select(tab));
+            tab.addEventListener(&#x27;keydown&#x27;, event =&gt; {
+                const i = tabs.indexOf(tab);
+                const next = event.key === &#x27;ArrowRight&#x27; ? (i+1)%tabs.length :
+                             event.key === &#x27;ArrowLeft&#x27; ? (i+tabs.length-1)%tabs.length :
+                             event.key === &#x27;Home&#x27; ? 0 : event.key === &#x27;End&#x27; ? tabs.length-1 : -1;
+                if (next &gt;= 0) { event.preventDefault(); select(tabs[next], true); }
+            });
+        }
+        select(tabs[0]);&lt;/script&gt;
+    &lt;script&gt;
+    const navigation = [...document.querySelectorAll(&#x27;nav.sidebar a&#x27;)];
+    function showPage(name) {
+        for (const page of document.querySelectorAll(&#x27;[data-preview-page]&#x27;)) page.hidden = page.dataset.previewPage !== name;
+        for (const link of navigation) {
+            if (link.dataset.page === name) link.setAttribute(&#x27;aria-current&#x27;,&#x27;page&#x27;);
+            else link.removeAttribute(&#x27;aria-current&#x27;);
+        }
+    }
+    const names = [&#x27;overview&#x27;,&#x27;engines&#x27;,&#x27;contexts&#x27;,&#x27;graphs&#x27;,&#x27;history&#x27;];
+    navigation.forEach((link, index) =&gt; {
+        link.dataset.page = names[index];
+        link.href = &#x27;#preview-&#x27; + names[index];
+        link.removeAttribute(&#x27;aria-disabled&#x27;);
+        link.addEventListener(&#x27;click&#x27;, event =&gt; {event.preventDefault();showPage(names[index]);});
+    });
+    document.querySelectorAll(&#x27;[data-open-run]&#x27;).forEach(button =&gt; button.addEventListener(&#x27;click&#x27;, () =&gt; showPage(&#x27;run&#x27;)));
+    const back = document.querySelector(&#x27;.workspace-back&#x27;);
+    back.disabled = false;
+    back.addEventListener(&#x27;click&#x27;, () =&gt; showPage(&#x27;contexts&#x27;));
+    &lt;/script&gt;
+    &lt;script data-preview-theme&gt;
+const themeChoices = [...document.querySelectorAll(&#x27;.visualization-appearance input[name=theme]&#x27;)];
+function previewTheme(value) {
+ document.documentElement.dataset.theme = value;
+ document.querySelectorAll(&#x27;jayrun-graph&#x27;).forEach(graph =&gt; graph.setAttribute(&#x27;theme&#x27;, value));
+ themeChoices.forEach(input =&gt; input.checked = input.value === value);
+}
+themeChoices.forEach(input =&gt; {
+ input.disabled = false;
+ input.addEventListener(&#x27;change&#x27;, () =&gt; { if (input.checked) previewTheme(input.value); });
+});
+&lt;/script&gt;&lt;/body&gt;&lt;/html&gt;"></iframe></div><script>const frame=document.querySelector('iframe');function fit(){frame.style.transform='scale('+Math.min(innerWidth/1600,innerHeight/1000)+')';}addEventListener('resize',fit);fit();</script></body></html>

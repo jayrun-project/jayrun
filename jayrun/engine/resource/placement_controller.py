@@ -5,7 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import count
 from queue import Empty, SimpleQueue
-from threading import Lock
+from threading import RLock
 from weakref import ReferenceType, WeakMethod, finalize, ref
 
 from ..settings.engine import RuntimeDevice
@@ -57,7 +57,9 @@ class PlacementController:
         runtime_devices: tuple[RuntimeDevice, ...],
         capacity_released: Callable[[], None] | None = None,
     ) -> None:
-        self._lock = Lock()
+        self._lock = RLock()
+        self._release_notification_lock = RLock()
+        self._release_notifications_open = True
         self._routes: dict[
             tuple[Device, Backend],
             tuple[DeviceAllocator, ...],
@@ -243,6 +245,12 @@ class PlacementController:
 
     def close(self) -> None:
         with self._lock:
+            # Lock order: placement state -> notification authority. Finalizers
+            # take only the notification lock; the callback must only enqueue
+            # reconciliation, never acquire placement state. Release the fence
+            # before destroying grants, which may synchronously run finalizers.
+            with self._release_notification_lock:
+                self._release_notifications_open = False
             self._grants.clear()
             self._collect_released()
             self._placements.clear()
@@ -356,6 +364,15 @@ class PlacementController:
             return False
         if not available:
             return True
+        if not released_owners and not allocator.requires_exclusive(request):
+            # Ordinary checks use the same accounting updated by reserve/release
+            # under this controller's lock. Hypothetical releases still need the
+            # owner-filtered records below, as does exact exclusive occupancy
+            # (a grouped reservation may contain a zero-byte allocation).
+            return (
+                not allocator.exclusively_reserved
+                and memory_bytes <= allocator.capacity_bytes - allocator.reserved_bytes
+            )
         records = tuple(
             (record, allocation)
             for _, record, allocation in self._records_for_allocator(allocator)
@@ -373,6 +390,8 @@ class PlacementController:
         allocator: DeviceAllocator,
         released_owners: set[_SessionKey] | frozenset[_SessionKey],
     ) -> int:
+        if not released_owners:
+            return allocator.capacity_bytes - allocator.reserved_bytes
         return allocator.capacity_bytes - sum(
             allocation.memory_bytes
             for _, record, allocation in self._records_for_allocator(allocator)
@@ -417,8 +436,7 @@ class PlacementController:
             finalize(
                 lease,
                 self._release_later,
-                self._released_reservations,
-                self._capacity_released,
+                ref(self),
                 reservation_id,
             )
         except BaseException:
@@ -629,20 +647,28 @@ class PlacementController:
 
     @staticmethod
     def _release_later(
-        released_reservations: SimpleQueue[int],
-        capacity_released: ReferenceType[Callable[[], None]] | None,
+        controller_ref: ReferenceType[PlacementController],
         reservation_id: int,
     ) -> None:
-        released_reservations.put(reservation_id)
-        if capacity_released is None:
+        controller = controller_ref()
+        if controller is None:
             return
-        callback = capacity_released()
-        if callback is None:
-            return
-        try:
-            callback()
-        except BaseException:
-            pass
+        # Do not wait for placement state: resolution may be in progress and
+        # must collect this queued release on its next turn. The separate fence
+        # lets a winning notification finish before close revokes authority.
+        with controller._release_notification_lock:
+            if not controller._release_notifications_open:
+                return
+            controller._released_reservations.put(reservation_id)
+            if controller._capacity_released is None:
+                return
+            callback = controller._capacity_released()
+            if callback is None:
+                return
+            try:
+                callback()
+            except BaseException:
+                pass
 
     def _supported_allocators(
         self,

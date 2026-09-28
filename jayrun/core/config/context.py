@@ -6,84 +6,98 @@ from ..context.base import DataContext
 from ..context.runtime_data import Data
 from ..graph.definition.field import ConfigDefinition
 from ..graph.graph_definition import GraphDefinition
+from ..graph.registry.config import ConfigRegistry
 from .field import ConfigField
+from .values import validate_config_value, yaml_config_value
 
 
-class ConfigContext(DataContext[ConfigField, Data]):
-    """Hold configuration values for one graph submission.
+_ConfigReference = int | ConfigField | ConfigDefinition
+
+
+class ConfigContext(DataContext[_ConfigReference, Data[object]]):
+    """Build the configuration values for one graph submission.
+
+    Builder contexts are graph-independent. References are resolved against the
+    explicit graph during submission; before then, only exact
+    :class:`~jayrun.ConfigField` declarations support lookup. Submission creates a
+    separate, sealed context that additionally supports graph-local definitions and
+    IDs.
 
     Args:
-        graph: Confirmed graph whose configuration fields the context accepts.
+        configs: Optional initial values, using the same rules as :meth:`set`.
         name: Optional name for diagnostics.
         description: Optional description for diagnostics.
-
-    Raises:
-        TypeError: If ``graph`` is not a :class:`~jayrun.GraphDefinition`.
-        RuntimeError: If the graph has not been confirmed.
     """
 
     def __init__(
         self,
+        configs: Mapping[_ConfigReference, object] | None = None,
         *,
-        graph: GraphDefinition,
         name: str | None = None,
         description: str | None = None,
     ) -> None:
         super().__init__(name=name, description=description)
-
-        if not isinstance(graph, GraphDefinition):
-            raise TypeError("graph must be a GraphDefinition instance")
-        if not graph.confirmed:
-            raise RuntimeError("The graph must be confirmed.")
-        self._graph = graph
-        self._registry = graph._specification.configs
-        self._definitions_by_id = {
-            definition.config_id: definition
-            for definition in self._registry.definitions
-        }
+        self._registry: ConfigRegistry | None = None
+        if configs is not None:
+            self.set(configs)
 
     def set(
         self,
-        configs: Mapping[int | ConfigField | ConfigDefinition, object],
+        configs: Mapping[_ConfigReference, object],
     ) -> None:
         """Set or replace configuration values.
 
+        Builder keys may be exact declarations or graph-relative references. All values are checked against the portable value contract immediately.
+        Exact declaration types are checked immediately; graph-relative field
+        types are checked when the submission graph resolves them. Assignments
+        retain call order, and the last reference resolving to a field supplies its
+        submitted value.
+
         Args:
-            configs: Mapping from config IDs, fields, or inspected definitions to
-                values.
+            configs: Mapping from configuration references to values.
 
         Raises:
-            KeyError: If a key does not belong to this graph.
-            TypeError: If a value does not match its field type.
-            ValueError: If a required value is ``None`` or keys are ambiguous.
+            RuntimeError: If the context is sealed.
+            TypeError: If the mapping, reference, or value type is invalid.
+            ValueError: If a required exact-declaration value is ``None``.
         """
+        self._require_mutable()
         if not isinstance(configs, Mapping):
             raise TypeError(
                 "Expected a mapping of config IDs, ConfigField, or "
                 "ConfigDefinition to values."
             )
 
-        instances: dict[ConfigField, Data] = {}
+        instances: dict[_ConfigReference, Data[object]] = {}
 
         for key, value in configs.items():
-            field = self._resolve_field(key)
+            self._validate_reference(key)
+            if isinstance(key, ConfigField):
+                self._validate_value(key, value)
+            else:
+                validate_config_value(value, path="config value")
+            instances[key] = Data(value=value)
 
-            if field in instances:
-                raise ValueError(
-                    "Multiple config keys resolve to the same ConfigField."
-                )
-
-            self._validate_value(field, value)
-            instances[field] = Data(value=value)
-
-        self._update_instances(instances)
+        self._update_ordered_instances(instances)
 
     def get(
         self,
-        config: int | ConfigField | ConfigDefinition,
-    ) -> Data | None:
-        """Return a configured or default value wrapped in :class:`~jayrun.Data`."""
-        field = self._resolve_field(config)
+        config: _ConfigReference,
+    ) -> Data[object] | None:
+        """Return a configured or default value wrapped in :class:`~jayrun.Data`.
+
+        Before submission, ``config`` must be the exact declaration object used
+        with :meth:`set`. Definitions and integer IDs become available only on the
+        normalized submission context.
+        """
+        if self._registry is None:
+            if isinstance(config, ConfigField):
+                field = config
+            else:
+                self._validate_reference(config)
+                self._require_registry()
+        else:
+            field = self._resolve_field(config)
 
         if field in self._instances:
             return self._instances[field]
@@ -93,31 +107,57 @@ class ConfigContext(DataContext[ConfigField, Data]):
 
         return Data(value=field.default)
 
-    def validate(self) -> bool:
-        """Return whether every required configuration field has a value."""
+    def clear(self) -> None:
+        """Remove every configured value from this mutable builder context."""
+        self._require_mutable()
+        self._instances.clear()
+
+    def _validate(self) -> bool:
+        """Return whether required values exist in a normalized context.
+
+        This is available on a submitted run's context, not on a mutable builder.
+        Submission validates builder values against its explicit graph.
+
+        Raises:
+            RuntimeError: If called before submission normalization.
+        """
+        registry = self._require_registry()
         return all(
             self.get(definition) is not None
-            for definition in self._registry.definitions
+            for definition in registry.definitions
             if definition.required
         )
 
-    def _fork(self) -> ConfigContext:
-        context = ConfigContext(
-            graph=self.graph,
-            name=self.name,
-            description=self.description,
-        )
-        context._instances = dict(self._instances)
-        return context
+    def to_yaml(self, graph: GraphDefinition) -> str:
+        """Serialize graph configuration metadata and current values as YAML.
 
-    def to_yaml(self) -> str:
-        """Serialize graph configuration metadata and current values as YAML."""
+        Args:
+            graph: Confirmed graph used to resolve configuration IDs and metadata.
+
+        Raises:
+            TypeError: If ``graph`` is not a :class:`~jayrun.GraphDefinition`.
+            RuntimeError: If the graph is unconfirmed.
+            KeyError: If this context contains a field outside ``graph``.
+        """
         import yaml
 
+        registry = self._registry_for_graph(graph)
+        instances: dict[ConfigField, Data[object]] = {}
+        for reference, data in self._instances.items():
+            field = self._resolve_with_registry(reference, registry)
+            instances[field] = data
+
+        for field, data in instances.items():
+            self._validate_value(field, data.value)
+
         configs = {
-            definition.config_id: self._yaml_entry(definition)
+            definition.config_id: self._yaml_entry(
+                definition,
+                registry,
+                instances,
+            )
             for definition in sorted(
-                self._registry.definitions,
+                registry.definitions,
                 key=lambda definition: definition.config_id,
             )
         }
@@ -128,20 +168,37 @@ class ConfigContext(DataContext[ConfigField, Data]):
             allow_unicode=True,
         )
 
-    def load_yaml(self, content: str) -> None:
-        """Load values from YAML produced by :meth:`to_yaml`.
+    def load_yaml(self, content: str, graph: GraphDefinition) -> None:
+        """Load graph-resolved values from YAML produced by :meth:`to_yaml`.
 
-        Existing values not present in ``content`` are preserved.
+        Existing values not present in ``content`` are preserved. Loaded values
+        participate in normal assignment order, so later :meth:`set` calls override
+        them during submission normalization.
 
         Args:
             content: YAML document containing a top-level ``configs`` mapping.
+            graph: Confirmed graph used to resolve graph-local configuration IDs.
+
+        Raises:
+            TypeError: If the content, graph, or YAML structure is invalid.
+            RuntimeError: If the context is sealed or the graph is unconfirmed.
+            KeyError: If the YAML contains an unknown configuration ID.
+            ValueError: If a configuration entry has no value.
         """
         import yaml
+
+        self._require_mutable()
+        registry = self._registry_for_graph(graph)
 
         if not isinstance(content, str):
             raise TypeError("content must be str")
 
-        document = yaml.safe_load(content)
+        if len(content.encode("utf-8")) > 8 * 1024 * 1024:
+            raise ValueError("config YAML exceeds 8 MiB")
+        try:
+            document = yaml.safe_load(content)
+        except RecursionError as error:
+            raise ValueError("config YAML nesting exceeds supported depth") from error
 
         if document is None:
             return
@@ -154,11 +211,19 @@ class ConfigContext(DataContext[ConfigField, Data]):
         if not isinstance(configs, Mapping):
             raise TypeError("'configs' must be a mapping")
 
-        values: dict[int, object] = {}
+        definitions_by_id = {
+            definition.config_id: definition for definition in registry.definitions
+        }
+        values: dict[ConfigField, object] = {}
 
         for config_id, config in configs.items():
             if type(config_id) is not int:
                 raise TypeError("Config IDs in YAML must be integers")
+
+            try:
+                definition = definitions_by_id[config_id]
+            except KeyError:
+                raise KeyError(f"Unknown config ID: {config_id!r}.") from None
 
             if not isinstance(config, Mapping):
                 raise TypeError(f"Config {config_id!r} must be a mapping")
@@ -166,16 +231,34 @@ class ConfigContext(DataContext[ConfigField, Data]):
             if "value" not in config:
                 raise ValueError(f"Config {config_id!r} is missing 'value'")
 
-            values[config_id] = config["value"]
+            values[registry.source_for(definition)] = yaml_config_value(config["value"])
 
         self.set(values)
+
+    @classmethod
+    def _from_normalized(
+        cls,
+        source: ConfigContext,
+        registry: ConfigRegistry,
+        instances: Mapping[ConfigField, Data[object]],
+    ) -> ConfigContext:
+        context = cls(name=source.name, description=source.description)
+        context._registry = registry
+        context._instances = dict(instances)
+        context._seal()
+        return context
+
+    def _is_normalized_for(self, registry: ConfigRegistry) -> bool:
+        return self._is_sealed and self._registry is registry
 
     def _yaml_entry(
         self,
         definition: ConfigDefinition,
+        registry: ConfigRegistry,
+        instances: Mapping[ConfigField, Data[object]],
     ) -> dict[str, object]:
-        field = self._registry.source_for(definition)
-        instance = self._instances.get(field)
+        field = registry.source_for(definition)
+        instance = instances.get(field)
 
         return {
             "name": definition.name,
@@ -189,34 +272,66 @@ class ConfigContext(DataContext[ConfigField, Data]):
             "value": instance.value if instance is not None else definition.default,
         }
 
+    def _require_registry(self) -> ConfigRegistry:
+        if self._registry is None:
+            raise RuntimeError(
+                "graph-relative config access is unavailable before submission "
+                "normalization"
+            )
+        return self._registry
+
     def _resolve_field(
         self,
-        config: int | ConfigField | ConfigDefinition,
+        config: _ConfigReference,
     ) -> ConfigField:
-        if type(config) is int:
-            try:
-                definition = self._definitions_by_id[config]
-            except KeyError:
-                raise KeyError(f"Unknown config ID: {config!r}.") from None
+        return self._resolve_with_registry(config, self._require_registry())
 
-            return self._registry.source_for(definition)
+    @staticmethod
+    def _resolve_with_registry(
+        config: _ConfigReference,
+        registry: ConfigRegistry,
+    ) -> ConfigField:
+        if isinstance(config, ConfigField):
+            if not registry._contains_source(config):
+                raise KeyError("The ConfigField does not belong to this graph.")
+            return config
+
+        if type(config) is int:
+            for definition in registry.definitions:
+                if definition.config_id == config:
+                    return registry.source_for(definition)
+            raise KeyError(f"Unknown config ID: {config!r}.")
 
         if isinstance(config, ConfigDefinition):
-            if config not in self._registry.definitions:
-                raise KeyError("The ConfigDefinition does not belong to this graph.")
-
-            return self._registry.source_for(config)
-
-        if isinstance(config, ConfigField):
-            if config not in self._registry.sources:
-                raise KeyError("The ConfigField does not belong to this graph.")
-
-            return config
+            for definition in registry.definitions:
+                if config is definition:
+                    return registry.source_for(definition)
+            raise KeyError("The ConfigDefinition does not belong to this graph.")
 
         raise TypeError(
             "Expected int, ConfigField, or ConfigDefinition, "
             f"got {type(config).__name__!r}."
         )
+
+    @staticmethod
+    def _validate_reference(config: object) -> None:
+        if (
+            type(config) is int
+            or isinstance(config, (ConfigField, ConfigDefinition))
+        ):
+            return
+        raise TypeError(
+            "Expected int, ConfigField, or ConfigDefinition, "
+            f"got {type(config).__name__!r}."
+        )
+
+    @staticmethod
+    def _registry_for_graph(graph: GraphDefinition) -> ConfigRegistry:
+        if not isinstance(graph, GraphDefinition):
+            raise TypeError("graph must be a GraphDefinition instance")
+        if not graph.confirmed:
+            raise RuntimeError("The graph must be confirmed.")
+        return graph._specification.configs
 
     @staticmethod
     def _validate_value(
@@ -228,12 +343,12 @@ class ConfigContext(DataContext[ConfigField, Data]):
                 raise ValueError("A required config cannot be None.")
             return
 
-        if not isinstance(value, field.value_type):
+        if type(value) is not field.value_type:
             raise TypeError(
                 f"Expected {field.value_type.__name__!r}, got {type(value).__name__!r}."
             )
 
-        hash(value)
+        validate_config_value(value, path=field.attribute_name or field.name or "config")
 
     @staticmethod
     def _type_name(value_type: type) -> str:
@@ -241,8 +356,3 @@ class ConfigContext(DataContext[ConfigField, Data]):
             return value_type.__qualname__
 
         return f"{value_type.__module__}.{value_type.__qualname__}"
-
-    @property
-    def graph(self) -> GraphDefinition:
-        """The confirmed graph associated with this context."""
-        return self._graph

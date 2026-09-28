@@ -1,0 +1,2 @@
+User: I cannot remember my password. Agent: Open account settings and reset your password.
+User: I want to see my invoice. Agent: Open billing history to download it.

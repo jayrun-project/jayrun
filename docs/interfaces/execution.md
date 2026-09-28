@@ -1,75 +1,52 @@
-(execution-interface)=
-# Execution Interface
+# self.execution
 
-`self.execution` describes the current operator or resource step session within one graph iteration.
+Use self.execution during execute/setup. log, metric and timers describe the current execution; repeat and number are operator-only. [Repetition guide](../guides/runs/iteration.md).
 
-## Logs, metrics, and timers
+Read [how to use self.execution](../guides/components/execution.md) for hook availability and a worked explanation. This is an injected handle, not an application constructor.
 
-```python
-self.execution.log("starting validation")
-self.execution.metric("accuracy", 0.94)
-
-self.execution.start_timer("validation")
-score = validate(model)
-self.execution.stop_timer("validation")
+```{py:class} ExecutionInterface
 ```
 
-These calls add structured records to the execution report when their categories are enabled. They do not configure Python logging, persist data externally, or enforce deadlines.
+```{py:method} ExecutionInterface.log(message)
 
-Stopping an unknown timer is harmless. Disabling a recording category changes only what appears in reports; component code does not need conditional guards.
-
-## Execution number
-
-Operators expose a one-based repetition number:
-
-```python
-number = self.execution.number
+Record a text log message for the current execution.
 ```
 
-The first execution is `1`. An accepted repetition increments the number. A retry starts another attempt of the same execution and does not increment it.
+[Source: log](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/execution.py)
 
-## Repetition
+```{py:method} ExecutionInterface.metric(name, value)
 
-An operator may request another execution of itself:
-
-```python
-def execute(self):
-    result = refine(self.input.value)
-    if not converged(result):
-        self.execution.repeat()
-    return result
-```
-
-`repeat()` records a request; it does not recurse. Jayrun evaluates the request after `execute()` returns. `ContextSettings.max_repeats` remains authoritative.
-
-Repetition belongs to one operator session. Whole-graph iteration is a context setting and is controlled with `ContextRun.stop()` or `self.context.stop()`.
-
-## API summary
-
-```{py:method} ExecutionInterface.log(message) -> None
-Record a user log message for the current execution.
-```
-
-```{py:method} ExecutionInterface.metric(name, value) -> None
 Record a numeric metric for the current execution.
 ```
 
-```{py:method} ExecutionInterface.start_timer(name) -> None
-Start or restart a named wall-clock timer.
+[Source: metric](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/execution.py)
+
+```{py:method} ExecutionInterface.start_timer(name)
+
+Start a named wall-clock timer for the current execution.
 ```
 
-```{py:method} ExecutionInterface.stop_timer(name) -> None
+[Source: start_timer](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/execution.py)
+
+```{py:method} ExecutionInterface.stop_timer(name)
+
 Stop a named timer and record its elapsed duration.
 ```
 
-```{py:attribute} OperatorExecutionInterface.number
-:type: int
+[Source: stop_timer](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/execution.py)
+
+```{py:method} ExecutionInterface.repeat()
+
+Request another execution after the current invocation returns.
+
+The context's `max_repeats` setting remains authoritative.
+```
+
+[Source: repeat](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/execution.py)
+
+```{py:attribute} ExecutionInterface.number
 
 One-based execution number within the current operator session.
 ```
 
-```{py:method} OperatorExecutionInterface.repeat() -> None
-Request another execution after the current invocation returns.
-```
-
-See {doc}`Observability and Inspection <../observability/observability-and-inspection>` for terminal reports. Continue with {doc}`Context Interface <context>` for values and lifecycle decisions that span executions.
+[Source: number](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/execution.py)

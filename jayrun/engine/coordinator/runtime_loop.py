@@ -9,7 +9,7 @@ from concurrent.futures import Future
 from typing import TypeVar
 
 from ..base.runtime_module import RuntimeModule
-from ..messages.runtime_message import RuntimeMessage
+from ..messages.runtime_message import _AcceptedRuntimeMessage
 
 T = TypeVar("T")
 
@@ -182,7 +182,7 @@ class RuntimeLoop(RuntimeModule):
         except asyncio.CancelledError:
             pass
 
-    def submit(self, message: RuntimeMessage) -> None:
+    def submit(self, message: _AcceptedRuntimeMessage) -> None:
         loop = self._require_loop()
         if self._closing:
             raise RuntimeError("runtime loop is closing")
@@ -194,7 +194,11 @@ class RuntimeLoop(RuntimeModule):
             message,
         )
 
-    def submit_after(self, message: RuntimeMessage, delay: float) -> bool:
+    def submit_after(
+        self,
+        message: _AcceptedRuntimeMessage,
+        delay: float,
+    ) -> bool:
         if not isinstance(delay, (int, float)):
             raise TypeError("delay must be int or float")
         if delay < 0:
@@ -227,10 +231,13 @@ class RuntimeLoop(RuntimeModule):
         loop.call_soon_threadsafe(self._run_callback_safely, schedule)
         return True
 
-    def _put_safely(self, message: RuntimeMessage) -> None:
+    def _put_safely(self, message: _AcceptedRuntimeMessage) -> None:
         try:
             self._engine_runtime.coordinator.put(message)
         except BaseException as failure:
+            self._engine_runtime.registry.release_ownership_reservation(message.ownership_reservation)
+            if message.history_capture is not None:
+                message.history_capture.discard()
             self._engine_runtime.gateway.notify_failed_state(failure)
 
     def _run_callback_safely(self, callback: Callable[[], None]) -> None:

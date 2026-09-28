@@ -5,7 +5,11 @@ from .data import DataDefinition
 
 
 class ArtifactRole(Enum):
-    """Structural role assigned to an artifact by graph construction."""
+    """Origin role assigned by graph construction, independent of exit status.
+
+    UNUSED is the historical name for produced artifacts without a consuming
+    flow. These are terminal outputs with ``is_exit=True`` and can be retained.
+    """
 
     ENTRY = "entry"
     INTERMEDIATE = "intermediate"

@@ -8,6 +8,9 @@ def _normalize_outputs(
     results: object,
     output_mask: tuple[bool, ...],
 ) -> tuple[object, ...]:
+    if not output_mask and results is None:
+        return ()
+
     normalized = results if isinstance(results, tuple) else (results,)
     if len(normalized) != len(output_mask):
         raise ValueError(

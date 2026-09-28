@@ -169,7 +169,8 @@ class ResourceManager(RuntimeModule):
                     return
                 self._reconciliation_pending = True
             accepted = self._engine_runtime.messenger.submit_after(
-                ReconcileContextsCommand(identity=self.identity),
+                ReconcileContextsCommand(),
+                self.capability,
                 delay=0,
             )
             if not accepted:

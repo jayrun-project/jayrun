@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ...history_budget import _HistoryBudget
+
 from ....core.artifact.base import Artifact
 from ...artifact.actor import ArtifactActor
 from .artifact_state import ArtifactState
@@ -14,12 +16,20 @@ class ArtifactRecorder:
         keep_history: bool,
     ) -> None:
         self._keep_history = keep_history
+        self._history_budget: _HistoryBudget | None = None
         self._state = RecorderState.PENDING
 
-    def initialize(self, artifacts: tuple[Artifact, ...]) -> None:
+    def initialize(
+        self,
+        artifacts: tuple[Artifact, ...],
+        *,
+        iteration: int = 1,
+    ) -> None:
         if self._state is RecorderState.RUNNING:
             raise RuntimeError("recorder is already running")
-        self._iteration = 1
+        if type(iteration) is not int or iteration < 1:
+            raise ValueError("iteration must be a positive int")
+        self._iteration = iteration
         self._state = RecorderState.RUNNING
         self._records: dict[Artifact, list[ArtifactRecord] | ArtifactRecord | None] = {}
 
@@ -129,6 +139,8 @@ class ArtifactRecorder:
             records = self._records[artifact]
             if not isinstance(records, list):
                 raise TypeError("artifact history store is invalid")
+            if self._history_budget is not None:
+                self._history_budget.account()
             records.append(record)
             return
 

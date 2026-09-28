@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from collections import deque
 
 from ...core.artifact.base import Artifact
@@ -24,8 +25,10 @@ from ..interfaces.runtime import RuntimeInterface
 from ..interfaces.services.accesses import ContextAccess, RuntimeAccess
 from ..recorders.context.recorder import ContextRecorder
 from ..recorders.execution.recorder import ExecutionRecorder
+from ..recorders.execution.records import ExecutionOutcome
+from ..progress import StepProgressState, _ProgressUpdate
 from ..registry.context_instance import ContextInstance
-from ..registry.identities import ContextIdentity
+from ..messages.origin import ContextOrigin
 from ..registry.runtime_registry import RuntimeRegistry
 from ..resource.placement_request import PlacementRequest
 from ..resource.resource_manager import ResourceManager
@@ -61,24 +64,31 @@ class ExecutionContext:
         self._settings = context_instance.settings
         self._max_repeats = context_instance.settings.max_repeats
         self._recorder = recorder
+        recorder._history_budget = context_instance._history_budget
         self._resource_manager = resource_manager
         self._runtime_access = runtime_access
         self._context_access = context_access
         self._registry = runtime_registry
-        self._identity = ContextIdentity(context_id=self.context_id)
+        self._origin = ContextOrigin(context_id=self.context_id)
         self._live_sessions: dict[int, ExecutionSession] = {}
         self._placement_waiting_sessions: dict[int, ExecutionSession] = {}
         self._ready_steps: deque[tuple[int, ExecutionMode]] = deque()
         self._rescheduled_sessions: deque[ExecutionSession] = deque()
         self._resource_pins: dict[ResourceKey, int] = {}
+        self._resolved_resource_keys: dict[tuple[int, int], ResourceKey] = {}
         self._outcome: ContextOutcome | None = None
+        self._progress_revision = 0
+        self._progress_lock = threading.Lock()
 
     def initialize(self) -> None:
         if not self._context.has_been_validated:
             raise RuntimeError("context has not been validated")
 
-        compiled_graph = self._graph.compiled_graph
+        compiled_graph = self._graph._compiled_graph
         self._compiled_steps: tuple[CompiledStep, ...] = compiled_graph.steps
+        self._execution_modes = frozenset(
+            step.execution_mode for step in self._compiled_steps
+        )
         self._artifact_store = ExecutionArtifactStore(
             artifacts=compiled_graph.artifacts,
             entry_artifacts=compiled_graph.entry_artifacts,
@@ -92,12 +102,25 @@ class ExecutionContext:
             artifact_context=self._artifact_context,
             recorder=self._recorder.create_artifact_recorder(),
             settings=self._settings,
+            iteration=self._context.completed_iterations + 1,
         )
+        self._recorder.restore(self._context._execution_reports)
         self._reset_iteration_state()
 
     def dispatch_next(self, mode: ExecutionMode) -> ExecutionSession | None:
         self.finalize_if_drained()
         if self.terminated or not self._context.can_dispatch:
+            return None
+        # An absent mode can only rotate both queues back to their starting
+        # order. Still perform the drain/lifecycle checks above on every call.
+        if mode not in self._execution_modes:
+            return None
+        if self._context._history_budget.exhausted and (
+            any(step_mode is mode for _, step_mode in self._ready_steps)
+            or any(session.execution_mode is mode for session in self._rescheduled_sessions)
+        ):
+            self._registry.fail_context(self.context_id, self._origin, self._context._history_budget.error())
+            self.finalize_if_drained()
             return None
 
         for _ in range(len(self._rescheduled_sessions)):
@@ -105,6 +128,8 @@ class ExecutionContext:
             if session.execution_mode is mode:
                 if self._live_sessions.get(session.step.index) is not session:
                     raise RuntimeError("rescheduled session is not live")
+                if not session._attempt_started:
+                    self._context._history_budget.account()
                 session.dispatch()
                 return session
             self._rescheduled_sessions.append(session)
@@ -160,6 +185,7 @@ class ExecutionContext:
             session._resource_registration_key = registration_key
             self._live_sessions[index] = session
             try:
+                self._context._history_budget.account()
                 session.dispatch()
             except BaseException as failure:
                 try:
@@ -215,7 +241,7 @@ class ExecutionContext:
     def _reset_iteration_state(self) -> None:
         if self._live_sessions:
             raise RuntimeError("cannot reset while sessions are live")
-        compiled_graph = self._graph.compiled_graph
+        compiled_graph = self._graph._compiled_graph
         self._pending_dependencies = list(compiled_graph.initial_dependency_counts)
         self._tracker = ExecutionTracker(len(self._compiled_steps))
         self._ready_steps: deque[tuple[int, ExecutionMode]] = deque()
@@ -357,6 +383,7 @@ class ExecutionContext:
                 execution_mode=step.execution_mode,
                 recorder=recorder,
                 supervising=self.is_supervising,
+                _started_reporter=self._execution_started,
             )
             session._resource_keys.extend(acquired_keys)
             return session
@@ -399,6 +426,7 @@ class ExecutionContext:
             execution_mode=step.execution_mode,
             recorder=recorder,
             supervising=self.is_supervising,
+            _started_reporter=self._execution_started,
         )
 
     def _create_execution_recorder(
@@ -414,10 +442,16 @@ class ExecutionContext:
             step_kind=step_kind,
             step_name=step_name,
             context_id=self.context_id,
-            iteration=self._context.iteration_count,
+            iteration=self._recording_iteration(),
             layout_position=layout_position,
         )
         return recorder
+
+    def _recording_iteration(self) -> int:
+        # Initial dependency preparation can skip an already loaded resource
+        # before ContextInstance publishes its first RUNNING transition. That
+        # work belongs to the first graph iteration, never to iteration zero.
+        return max(self._context.iteration_count, 1)
 
     def _create_proxy(self, mode: ExecutionMode) -> ExecutionProxy:
         if mode is ExecutionMode.EVENT_LOOP:
@@ -450,11 +484,25 @@ class ExecutionContext:
         )
 
     def _drain_session(self, session: ExecutionSession, index: int) -> None:
+        failures: list[BaseException] = []
+        step = self._compiled_steps[index]
+        if (
+            isinstance(step, CompiledResourceStep)
+            and session.finished
+            and session.result is not None
+            and session._resource_registration_key is not None
+        ):
+            # Abort can win before successful setup is collected. Adopt its
+            # returned value before discarding the session so the resource
+            # manager retains teardown ownership; finalization releases the pin.
+            try:
+                self._load_resource(session, step, session.result)
+            except BaseException as failure:
+                failures.append(failure)
         self._placement_waiting_sessions.pop(index, None)
         self._rescheduled_sessions = deque(
             queued for queued in self._rescheduled_sessions if queued is not session
         )
-        failures: list[BaseException] = []
         for cleanup in (
             lambda: self._release_session_resources(session),
             lambda: self._cancel_session_registration(session),
@@ -485,8 +533,9 @@ class ExecutionContext:
         self._placement_waiting_sessions[index] = session
         self._registry.register_placement_request(
             request=request,
-            identity=self._identity,
+            origin=self._origin,
         )
+        self._report_progress(session, StepProgressState.PLACEMENT_WAITING)
 
     def resolve_placement(self, request: PlacementRequest) -> bool:
         if self.terminated or self._context.is_draining:
@@ -500,6 +549,7 @@ class ExecutionContext:
         del self._placement_waiting_sessions[index]
         session.resume_placement(request)
         self._rescheduled_sessions.append(session)
+        self._report_progress(session, StepProgressState.PENDING)
         return True
 
     def revoke_placement(self, request: PlacementRequest) -> bool:
@@ -514,6 +564,7 @@ class ExecutionContext:
         del self._placement_waiting_sessions[index]
         session.restart_placements(request)
         self._rescheduled_sessions.append(session)
+        self._report_progress(session, StepProgressState.PENDING)
         return True
 
     def _drain_non_dispatched_sessions(self) -> None:
@@ -552,7 +603,7 @@ class ExecutionContext:
             try:
                 self._registry.fail_context(
                     context_id=self.context_id,
-                    identity=self._identity,
+                    origin=self._origin,
                     failure=context_failure,
                     failed_step=session.recorder.step_reference,
                 )
@@ -576,6 +627,7 @@ class ExecutionContext:
             self._store_repeated_result(session, index)
             session.repeat()
             self._rescheduled_sessions.append(session)
+            self._report_progress(session, StepProgressState.PENDING)
             return
 
         if session.result is None:
@@ -602,10 +654,12 @@ class ExecutionContext:
         retry_policy = self._settings.retry_policy
         if (
             isinstance(failure, retry_policy.retry_on)
+            and not self._context._history_budget.exhausted
             and session.attempt_count < retry_policy.max_attempts
         ):
             session.retry()
             self._rescheduled_sessions.append(session)
+            self._report_progress(session, StepProgressState.PENDING)
             return
 
         self._release_session_resources(session)
@@ -616,7 +670,7 @@ class ExecutionContext:
         del self._live_sessions[index]
         self._registry.fail_context(
             context_id=self.context_id,
-            identity=self._identity,
+            origin=self._origin,
             failure=failure,
             failed_step=session.recorder.step_reference,
         )
@@ -674,6 +728,8 @@ class ExecutionContext:
         index: int,
     ) -> None:
         for output, output_field in zip(result, step.output_fields, strict=True):
+            if output_field.artifact is None:
+                continue
             self._artifact_store.update(
                 artifact=output_field.artifact,
                 data=output,
@@ -704,6 +760,12 @@ class ExecutionContext:
             return
         self._recorder.record(session.report)
         session._report_recorded = True
+        states = {
+            ExecutionOutcome.FINISHED: StepProgressState.COMPLETED,
+            ExecutionOutcome.FAILED: StepProgressState.FAILED,
+            ExecutionOutcome.CANCELLED: StepProgressState.CANCELLED,
+        }
+        self._report_progress(session, states[session.report.outcome])
 
     def _release_session_artifacts(self, session: ExecutionSession) -> None:
         session.result = None
@@ -747,14 +809,19 @@ class ExecutionContext:
             raise
 
     def _finish_iteration(self) -> None:
-        if self._registry.reiterate_context(
+        executions = self._recorder.complete_iteration(
+            self._context.iteration_count,
+        )
+        if self._registry.complete_iteration(
             context_id=self.context_id,
-            identity=self._identity,
+            origin=self._origin,
+            executions=executions,
+            checkpoint=self._artifact_store.checkpoint,
         ):
             self._artifact_store.repeat()
             self._reset_iteration_state()
             return
-        self._finalize(retain_results=True)
+        self._finalize(retain_results=not self._context.is_draining)
 
     def _finalize(self, *, retain_results: bool) -> None:
         if self._outcome is not None:
@@ -777,7 +844,7 @@ class ExecutionContext:
         if failures:
             raise BaseExceptionGroup("context finalization failed", failures)
         self._outcome = ContextOutcome(
-            actor=self._identity,
+            actor=self._origin,
             executions=self._recorder.executions,
             artifacts=self._artifact_store.result,
             failure=self._context.failure,
@@ -796,6 +863,13 @@ class ExecutionContext:
         field: ResourceField,
         resource: BaseResource,
     ) -> ResourceKey:
+        # Compiled bindings and sealed config value references are fixed for this
+        # context. Retain the values themselves: neither their hash/equality nor
+        # resource availability is cached. Graph ownership keeps these IDs live.
+        binding = (id(field), id(resource))
+        cached = self._resolved_resource_keys.get(binding)
+        if cached is not None:
+            return cached
         configuration = []
 
         for config_field in resource.config_fields:
@@ -806,11 +880,13 @@ class ExecutionContext:
             value = None if config_data is None else config_data.value
             configuration.append((config_field.attribute_name, value))
 
-        return ResourceKey(
+        key = ResourceKey(
             resource_type=type(resource),
             configuration=tuple(configuration),
             parallel_safe=field.parallel_safe,
         )
+        self._resolved_resource_keys[binding] = key
+        return key
 
     def _record_resource_pin(self, key: ResourceKey) -> None:
         self._resource_pins[key] = self._resource_pins.get(key, 0) + 1
@@ -902,10 +978,53 @@ class ExecutionContext:
             step_name=step_name,
             layout_position=step.layout_position,
             context_id=self.context_id,
-            iteration=self._context.iteration_count,
+            iteration=self._recording_iteration(),
             reason=reason,
         )
         self._tracker.skipped()
+        self._submit_progress(
+            step_index=index,
+            state=StepProgressState.SKIPPED,
+            execution_count=0,
+            elapsed_seconds=0.0,
+        )
+
+    def _report_progress(
+        self,
+        session: ExecutionSession,
+        state: StepProgressState,
+    ) -> None:
+        self._submit_progress(
+            step_index=session.step.index,
+            state=state,
+            execution_count=session.recorder.execution,
+            elapsed_seconds=session.active_seconds,
+        )
+
+    def _execution_started(self, session: ExecutionSession) -> None:
+        self._report_progress(session, StepProgressState.RUNNING)
+
+    def _submit_progress(
+        self,
+        *,
+        step_index: int,
+        state: StepProgressState,
+        execution_count: int,
+        elapsed_seconds: float,
+    ) -> None:
+        with self._progress_lock:
+            self._progress_revision += 1
+            self._registry.report_progress(
+                _ProgressUpdate(
+                    context_id=self.context_id,
+                    revision=self._progress_revision,
+                    step_index=step_index,
+                    state=state,
+                    iteration=self._context.iteration_count,
+                    execution_count=execution_count,
+                    elapsed_seconds=elapsed_seconds,
+                )
+            )
 
     def _release_operator_artifacts(
         self,

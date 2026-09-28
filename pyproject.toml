@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jayrun"
-version = "0.2.0"
+version = "0.3.0"
 description = "Artifact-centric execution for iterative graphs, shared resources, and placement-aware workloads"
 readme = {file = "README.md", content-type = "text/markdown"}
 license = "Apache-2.0"
@@ -13,7 +13,7 @@ authors = [
     {name = "Masoud Yavari"},
 ]
 requires-python = ">=3.11"
-dependencies = ["packaging>=23.2"]
+dependencies = ["packaging>=25"]
 keywords = [
     "artifacts",
     "dag",
@@ -40,7 +40,7 @@ classifiers = [
 
 [project.optional-dependencies]
 yaml = ["PyYAML>=6.0"]
-plotting = ["pyvis>=0.3.2"]
+plotting = []
 
 [project.urls]
 Homepage = "https://github.com/jayrun-project/jayrun"
@@ -57,3 +57,6 @@ exclude = ["examples*", "tests*"]
 
 [tool.setuptools.package-data]
 jayrun = ["py.typed"]
+
+"jayrun.visualization" = ["viewer.js", "viewer.css", "_copy.js", "_workspace.js", "_workspace.css", "_run.js", "_theme.css"]
+"jayrun.visualization._help" = ["content.js", "controller.js", "style.css"]

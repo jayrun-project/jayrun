@@ -21,10 +21,13 @@ if TYPE_CHECKING:
 class BaseOperator(GraphComponent, ABC):
     """Base class for synchronous or asynchronous graph operations.
 
-    Subclasses declare artifact, config, and resource fields in ``__init__`` and
+    Direct subclasses declare artifact, config, and resource fields in ``__init__`` and
     implement :meth:`execute`. During execution Jayrun injects ``execution``,
     ``placement``, ``context``, and ``runtime`` interfaces. Operator instances become
-    immutable after construction.
+    immutable after construction. Subclassing a concrete operator or using multiple
+    inheritance is unsupported. Every declared input must be supplied explicitly;
+    pass ``None`` to intentionally disconnect an optional input. Constructor defaults
+    do not replace explicit artifact bindings.
 
     Args:
         name: Optional name used in graph inspection and runtime records.
@@ -58,6 +61,12 @@ class BaseOperator(GraphComponent, ABC):
         super().__init__(name=name, description=description)
 
     def __init_subclass__(cls, **kwargs: object) -> None:
+        if cls.__bases__ != (BaseOperator,):
+            parents = ", ".join(base.__name__ for base in cls.__bases__)
+            raise TypeError(
+                f"{cls.__name__} cannot use bases ({parents}); "
+                "operators must inherit directly and only from BaseOperator."
+            )
         super().__init_subclass__(**kwargs)
 
         declared_names = set(cls.__dict__)
@@ -118,6 +127,11 @@ class BaseOperator(GraphComponent, ABC):
                 raise RuntimeError("ArtifactField is not registered")
 
             if attribute_name not in arguments:
+                if not field.required:
+                    raise TypeError(
+                        f"Optional artifact input {attribute_name!r} was not supplied. "
+                        "Pass an Artifact, or explicitly pass None to leave it disconnected."
+                    )
                 raise TypeError(f"Missing artifact argument {attribute_name!r}")
 
             field.bind(arguments[attribute_name])
@@ -125,7 +139,7 @@ class BaseOperator(GraphComponent, ABC):
         self._validate_artifact_group(
             input_fields,
             group_name="input",
-            require_connected=True,
+            require_connected=bool(input_fields),
         )
 
     def _bind_output_artifacts(
@@ -267,7 +281,8 @@ class BaseOperator(GraphComponent, ABC):
 
         Implementations may be regular or ``async`` methods. Return one value per
         declared output field; values corresponding to outputs bound to ``None`` are
-        ignored by the runtime.
+        ignored by the runtime. An operator with no output fields may return ``None``
+        or an empty tuple.
         """
         raise NotImplementedError
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import threading
 
 from ..base.runtime_module import RuntimeModule
@@ -113,7 +114,9 @@ class ExecutorManager(RuntimeModule):
                     execution_failure.__cause__ = failure
                 try:
                     session.collect(execution_failure)
-                    self._engine_runtime.context_manager.release(session)
+                    with self._completed_lock:
+                        self._completed_sessions[id(session)] = session
+                    self.retrieve_session(id(session))
                 except BaseException as recovery_failure:
                     self._engine_runtime.gateway.notify_failed_state(
                         recovery_failure
@@ -125,20 +128,20 @@ class ExecutorManager(RuntimeModule):
 
     def retrieve_session(
         self,
-        session: ExecutionSession,
+        session_id: int,
         coordinated: bool = True,
     ) -> None:
-        session_key = id(session)
         with self._completed_lock:
-            if self._completed_sessions.get(session_key) is not session:
+            session = self._completed_sessions.get(session_id)
+            if session is None:
                 return
         self._engine_runtime.context_manager.release(
             session,
             coordinated=coordinated,
         )
         with self._completed_lock:
-            if self._completed_sessions.get(session_key) is session:
-                del self._completed_sessions[session_key]
+            if self._completed_sessions.get(session_id) is session:
+                del self._completed_sessions[session_id]
 
     def recover_completed_sessions(self) -> None:
         failures: list[BaseException] = []
@@ -146,7 +149,7 @@ class ExecutorManager(RuntimeModule):
             sessions = tuple(self._completed_sessions.values())
         for session in sessions:
             try:
-                self.retrieve_session(session, coordinated=False)
+                self.retrieve_session(id(session), coordinated=False)
             except BaseException as failure:
                 failures.append(failure)
         if failures:
@@ -182,18 +185,30 @@ class ExecutorManager(RuntimeModule):
 
     def _queue_completed_session(self, session: ExecutionSession) -> None:
         with self._completed_lock:
-            if not self._accepting_completions:
-                return
             self._completed_sessions[id(session)] = session
+            notify = self._accepting_completions
+        if not notify:
+            return
         try:
             self._engine_runtime.messenger.submit(
                 RetrieveSessionCommand(
-                    session=session,
-                    identity=self.identity,
-                )
+                    session_id=id(session),
+                ),
+                self.capability,
             )
         except BaseException as failure:
             self._engine_runtime.gateway.notify_failed_state(failure)
+
+    async def _drain(self) -> None:
+        """Keep collection ownership while cooperative executors finish."""
+        with self._completed_lock:
+            self._accepting_completions = False
+        for executor in tuple(self._executors.values()):
+            if isinstance(executor, AsyncExecutor):
+                await executor._drain()
+            else:
+                await asyncio.to_thread(executor.shutdown, wait=True)
+        self.recover_completed_sessions()
 
     def _completed_counts(self) -> dict[tuple[ExecutionMode, bool], int]:
         counts: dict[tuple[ExecutionMode, bool], int] = {}

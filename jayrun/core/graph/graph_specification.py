@@ -5,12 +5,16 @@ from ..config.field import ConfigField
 from ..operator.base import BaseOperator
 from ..resource.base import BaseResource
 from ..resource.field import ResourceField
+from ..serializer.base import BaseSerializer
 from .definition import (
     ArtifactDefinition,
+    ArtifactRole,
     ConfigDefinition,
     RequirementDefinition,
     ResourceDefinition,
+    SerializerDefinition,
 )
+from ._identity import declaration_tokens
 from .graph_layout import GraphLayout
 from .operator_reference import OperatorReference
 from .registry import ArtifactRegistry, ConfigRegistry, ResourceRegistry
@@ -23,11 +27,17 @@ class GraphSpecification:
         layout: GraphLayout,
         artifacts: Mapping[Artifact, ArtifactDefinition],
     ) -> None:
-        self._operators = self._extract_operators(layout)
+        self._operators, occurrences = self._extract_operators(layout)
         self._artifacts = ArtifactRegistry(artifacts)
         self._resources = self._extract_resources()
         self._operator_requirements = self._extract_operator_requirements()
+        self._identity_tokens = declaration_tokens(
+            self._operators, occurrences, artifacts, self._operator_requirements,
+        )
         self._resource_requirements: tuple[RequirementDefinition, ...] | None = None
+        self._serializer_requirements: tuple[RequirementDefinition, ...] = ()
+        self._serializer_definitions: tuple[SerializerDefinition, ...] = ()
+        self._serializers_bound = False
         self._requirements: tuple[RequirementDefinition, ...] | None = None
         self._operator_requirements_by_id: (
             dict[
@@ -63,7 +73,11 @@ class GraphSpecification:
         resource_requirements = self._extract_resource_requirements(resources)
         requirements = merge_requirements(
             str(requirement)
-            for requirement in (*self._operator_requirements, *resource_requirements)
+            for requirement in (
+                *self._operator_requirements,
+                *resource_requirements,
+                *self._serializer_requirements,
+            )
         )
         operator_requirements_by_id = {
             id(reference.operator): self._select_requirement_definitions(
@@ -87,38 +101,111 @@ class GraphSpecification:
         self._resource_requirements_by_id = resource_requirements_by_id
         self._configs = configs
 
+    def bind_serializers(
+        self,
+        serializers: Mapping[Artifact, BaseSerializer],
+    ) -> None:
+        if self._serializers_bound:
+            raise RuntimeError("Serializers are already bound.")
+
+        declarations = tuple(
+            requirement
+            for serializer in serializers.values()
+            for requirement in serializer.requirements
+        )
+        serializer_requirements = merge_requirements(declarations)
+        base_requirements = (
+            self._operator_requirements
+            if self._resource_requirements is None
+            else (*self._operator_requirements, *self._resource_requirements)
+        )
+        requirements = merge_requirements(
+            (
+                *(str(requirement) for requirement in base_requirements),
+                *declarations,
+            )
+        )
+        definitions = tuple(
+            self._create_serializer_definition(
+                artifact=artifact,
+                serializer=serializer,
+                serializer_requirements=serializer_requirements,
+            )
+            for artifact, serializer in serializers.items()
+        )
+        operator_requirements_by_id = {
+            key: self._select_requirement_definitions(map(str, values), requirements)
+            for key, values in (self._operator_requirements_by_id or {}).items()
+        }
+        resource_requirements_by_id = {
+            key: self._select_requirement_definitions(map(str, values), requirements)
+            for key, values in (self._resource_requirements_by_id or {}).items()
+        }
+
+        self._serializer_requirements = serializer_requirements
+        self._serializer_definitions = definitions
+        self._serializers_bound = True
+        if self._configs is not None:
+            self._requirements = requirements
+            self._operator_requirements_by_id = operator_requirements_by_id
+            self._resource_requirements_by_id = resource_requirements_by_id
+
+    def _create_serializer_definition(
+        self,
+        *,
+        artifact: Artifact,
+        serializer: BaseSerializer,
+        serializer_requirements: tuple[RequirementDefinition, ...],
+    ) -> SerializerDefinition:
+        artifact_definition = self._artifacts.definition_for(artifact)
+        serializer_type = type(serializer)
+        return SerializerDefinition(
+            artifact_id=artifact_definition.artifact_id,
+            name=serializer.display_name,
+            description=serializer.description,
+            serializer_type=(
+                f"{serializer_type.__module__}.{serializer_type.__qualname__}"
+            ),
+            requirements=self._select_requirement_definitions(
+                serializer.requirements,
+                serializer_requirements,
+            ),
+            is_entry=artifact_definition.role is ArtifactRole.ENTRY,
+            is_exit=artifact_definition.is_exit,
+        )
+
     @staticmethod
     def _extract_operators(
         layout: GraphLayout,
-    ) -> tuple[OperatorReference, ...]:
+    ) -> tuple[tuple[OperatorReference, ...], tuple[int, ...]]:
         row_count, column_count = layout.shape
-        processed_operator_ids: set[int] = set()
+        declaration_indices: dict[int, int] = {}
         references: list[OperatorReference] = []
+        occurrences: list[int] = []
+        rows = layout.rows
 
         for column in range(column_count):
+            column_operator_ids: set[int] = set()
             for row in range(row_count):
-                operator: BaseOperator | None = layout.rows[row][column]
-
-                if operator is None:
+                operator = rows[row][column]
+                if operator is None or id(operator) in column_operator_ids:
                     continue
 
                 operator_id = id(operator)
-
-                if operator_id in processed_operator_ids:
-                    continue
-
-                processed_operator_ids.add(operator_id)
-
-                references.append(
-                    OperatorReference(
-                        operator=operator,
-                        layout_position=(row, column),
-                        config_fields=operator.config_fields,
-                        resource_fields=operator.resource_fields,
+                column_operator_ids.add(operator_id)
+                if operator_id not in declaration_indices:
+                    declaration_indices[operator_id] = len(references)
+                    references.append(
+                        OperatorReference(
+                            operator=operator,
+                            layout_position=(row, column),
+                            config_fields=operator.config_fields,
+                            resource_fields=operator.resource_fields,
+                        )
                     )
-                )
+                occurrences.append(declaration_indices[operator_id])
 
-        return tuple(references)
+        return tuple(references), tuple(occurrences)
 
     def _extract_resources(self) -> ResourceRegistry:
         definitions: dict[ResourceField, ResourceDefinition] = {}
@@ -262,6 +349,18 @@ class GraphSpecification:
             )
 
         return self._resource_requirements
+
+    @property
+    def serializer_requirements(self) -> tuple[RequirementDefinition, ...]:
+        return self._serializer_requirements
+
+    @property
+    def serializer_definitions(self) -> tuple[SerializerDefinition, ...]:
+        return self._serializer_definitions
+
+    @property
+    def serializers_bound(self) -> bool:
+        return self._serializers_bound
 
     @property
     def requirements(self) -> tuple[RequirementDefinition, ...]:

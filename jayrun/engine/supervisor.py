@@ -4,30 +4,72 @@ import asyncio
 import math
 import threading
 from collections.abc import Coroutine
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from ..persistence import Database
+    from ._history import _HistoryRecorder
+
+from ..authority import Controller, Supervisor
 from ..core.artifact.context import ArtifactContext
 from ..core.config.context import ConfigContext
 from ..core.graph.graph_definition import GraphDefinition
+from ..core.graph.graph_registry import GraphRegistry
+from ..core.graph.inspection.registry import GraphIdentity
 from .context_run import ContextRun
 from .engine_state import EngineState, RuntimeActivity
 from .gateway.engine_gateway import EngineGateway
+from .messages.capability import _RuntimeCapability
+from .messages.commands.apply_snapshot import ApplySnapshotCommand
 from .messages.commands.shutdown_runtime import ShutdownRuntimeCommand
-from .registry.identities import EngineIdentity
+from .observation import ContextObserver
+from .pressure import PressureSnapshot
+from .progress_history import ProgressHistory
 from .registry.runtime_registry import RuntimeRegistry
 from .runtime import EngineRuntime
+from .settings.combined_context import CombinedContextSettings
 from .settings.context import ContextSettings
 from .settings.engine import EngineSettings
+from .settings._instrumentation import _InstrumentationPolicy
+from .snapshot import ContextSnapshot
+from .terminal_history import TerminalCursor, TerminalHistoryPage
+from .submission import _normalize_authority, _normalize_submission
 
 
 class EngineSupervisor:
     _FORCED_ACK_TIMEOUT = 5.0
     _CLEANUP_TIMEOUT = 5.0
 
-    def __init__(self, settings: EngineSettings) -> None:
+    def __init__(
+        self,
+        settings: EngineSettings,
+        name: str,
+        engine_id: str,
+        graph_registry: GraphRegistry | None = None,
+        database: Database | None = None,
+    ) -> None:
         if not isinstance(settings, EngineSettings):
             raise TypeError("settings must be an EngineSettings instance")
+        if graph_registry is not None and not isinstance(
+            graph_registry,
+            GraphRegistry,
+        ):
+            raise TypeError("graph_registry must be a GraphRegistry or None")
+        if not isinstance(name, str) or not name:
+            raise ValueError("name must be a non-empty string")
+        if not isinstance(engine_id, str) or not engine_id:
+            raise ValueError("engine_id must be a non-empty string")
         self._settings = settings
-        self._identity = EngineIdentity()
+        self._database = database
+        self._history_recorder: _HistoryRecorder | None = None
+        self._name = name
+        self._engine_id = engine_id
+        self._graph_registry = graph_registry
+        self._progress_history = ProgressHistory(
+            enabled=_InstrumentationPolicy.for_mode(settings.recording_mode).learn_progress,
+            engine_settings=settings,
+        )
+        self._capability: _RuntimeCapability | None = None
         self._state = EngineState.CREATED
         self._activity = RuntimeActivity.IDLE
         self._runtime: EngineRuntime | None = None
@@ -53,14 +95,28 @@ class EngineSupervisor:
                     raise RuntimeError(
                         f"engine cannot start from {self._state.value!r}"
                     )
+                if self._database is not None:
+                    from ._history import _capture_caller
+                    _capture_caller()
                 self._state = EngineState.STARTING
                 self._startup_complete.clear()
 
             runtime: EngineRuntime | None = None
             try:
+                if self._database is not None:
+                    from ._history import _HistoryRecorder
+                    self._history_recorder = _HistoryRecorder(self._database, self._name, self._engine_id, self.report_failure)
+                    self._history_recorder.open(self._settings)
+                    self._progress_history._open_database(self._database, self._history_recorder)
                 runtime = EngineRuntime(
+                    name=self._name,
+                    engine_id=self._engine_id,
                     engine_settings=self._settings,
+                    progress_history=self._progress_history,
+                    graph_registry=self._graph_registry,
+                    history_recorder=self._history_recorder,
                     gateway=EngineGateway(
+                        activated=self._mark_active,
                         idled=self._mark_idle,
                         failed=self.report_failure,
                     ),
@@ -68,6 +124,7 @@ class EngineSupervisor:
                 with self._lock:
                     self._runtime = runtime
                 runtime.initialize()
+                self._capability = runtime.messenger.engine_capability
                 with self._lock:
                     self._registry = runtime.registry
                 runtime.loop.start(loop)
@@ -101,59 +158,154 @@ class EngineSupervisor:
 
     def submit(
         self,
-        artifacts: ArtifactContext,
-        configs: ConfigContext,
+        graph: GraphDefinition | GraphIdentity,
+        artifacts: ArtifactContext | None = None,
+        configs: ConfigContext | None = None,
         *,
         context_settings: ContextSettings | None = None,
-        supervises: GraphDefinition | tuple[GraphDefinition, ...] = (),
+        authority: Supervisor | Controller | None = None,
     ) -> ContextRun:
-        supervised_graphs = self._validate_submission(
+        normalized_authority = _normalize_authority(
+            authority,
+            self._graph_registry,
+        )
+        submission = _normalize_submission(
+            graph=graph,
             artifacts=artifacts,
             configs=configs,
-            context_settings=context_settings,
-            supervises=supervises,
+            graph_registry=self._graph_registry,
         )
-        with self._lock:
-            if self._state is not EngineState.RUNNING:
-                raise RuntimeError(f"engine cannot submit from {self._state.value!r}")
-            runtime = self._require_runtime()
-            runtime.gateway.reset_idle_state()
-            try:
-                run = runtime.registry.register(
-                    artifacts=artifacts,
-                    configs=configs,
-                    supervises=supervised_graphs,
-                    identity=self._identity,
-                    context_settings=context_settings,
-                )
-            except BaseException as failure:
-                # Public argument errors are rejected above. An exception after
-                # entering the registry is therefore a runtime/module failure:
-                # preserve it for debugging and start the unified shutdown.
-                self.report_failure(failure)
-                raise
-            if self._state is EngineState.RUNNING:
-                self._activity = (
-                    RuntimeActivity.IDLE
-                    if not runtime.registry.context_ids()
-                    else RuntimeActivity.ACTIVE
-                )
-            failure = self._failure
+        settings = CombinedContextSettings.from_settings(
+            engine_settings=self._settings,
+            context_settings=context_settings,
+            artifact_registry=submission.graph._specification.artifacts,
+        )
+        timing_key = self._progress_history.timing_key(submission, settings)
+        recorder = self._history_recorder
+        if recorder is not None:
+            with self._lock:
+                if self._state is not EngineState.RUNNING:
+                    raise RuntimeError(f"engine cannot submit from {self._state.value!r}")
+        capture = recorder.prepare(submission, settings, context_settings) if recorder is not None else None
+        try:
+            with self._lock:
+                if self._state is not EngineState.RUNNING:
+                    raise RuntimeError(f"engine cannot submit from {self._state.value!r}")
+                runtime = self._require_runtime()
+                if capture is not None:
+                    capture.check_binding(submission.graph)
+                runtime.gateway.reset_idle_state()
+                submission.graph._seal()
+                try:
+                    run = runtime.registry.register(
+                        submission=submission,
+                        supervises=normalized_authority.supervises,
+                        controller=normalized_authority.controller,
+                        history_reader=normalized_authority.history,
+                        capability=self._require_capability(),
+                        settings=settings,
+                        history_capture=capture,
+                        timing_key=timing_key,
+                    )
+                except BaseException as failure:
+                    # Public argument errors are rejected above. An exception after
+                    # entering the registry is therefore a runtime/module failure:
+                    # preserve it for debugging and start the unified shutdown.
+                    self.report_failure(failure)
+                    raise
+                if artifacts is not None:
+                    artifacts._clear_entries(submission.graph._specification.artifacts)
+                if self._state is EngineState.RUNNING:
+                    self._activity = (
+                        RuntimeActivity.IDLE
+                        if not runtime.registry.context_ids()
+                        else RuntimeActivity.ACTIVE
+                    )
+                failure = self._failure
 
-        if failure is not None:
-            raise failure
-        return run
+            if failure is not None:
+                raise failure
+            return run
+        finally:
+            if capture is not None:
+                capture.discard()
 
     def contexts(self, *, active_only: bool = False) -> tuple[ContextRun, ...]:
         if not isinstance(active_only, bool):
             raise TypeError("active_only must be a bool")
         with self._lock:
             registry = self._registry
-            if registry is None:
+            capability = self._capability
+            if registry is None or capability is None or not registry.context_ids():
                 return ()
             return registry.context_runs(
-                self._identity,
+                capability,
                 active_only=active_only,
+            )
+
+    def apply(self, snapshot: ContextSnapshot | PressureSnapshot) -> None:
+        if not isinstance(snapshot, (ContextSnapshot, PressureSnapshot)):
+            raise TypeError("snapshot must be a ContextSnapshot or PressureSnapshot instance")
+        if self._history_recorder is not None:
+            with self._lock:
+                if self._state not in {EngineState.RUNNING, EngineState.STOPPING}:
+                    raise RuntimeError(f"engine cannot apply a snapshot from {self._state.value!r}")
+                if self._state is EngineState.STOPPING and (isinstance(snapshot, PressureSnapshot) or snapshot.request is not None):
+                    raise RuntimeError("control requests cannot be applied while the engine is shutting down")
+                runtime = self._require_runtime()
+                capability = self._require_capability()
+            accepted = runtime.messenger.submit_control(ApplySnapshotCommand(snapshot=snapshot), capability)
+            if not accepted:
+                raise RuntimeError("runtime is not accepting snapshot updates")
+            return
+        with self._lock:
+            if self._state not in {
+                EngineState.RUNNING,
+                EngineState.STOPPING,
+            }:
+                raise RuntimeError(
+                    f"engine cannot apply a snapshot from {self._state.value!r}"
+                )
+            if (
+                self._state is EngineState.STOPPING
+                and (isinstance(snapshot, PressureSnapshot) or snapshot.request is not None)
+            ):
+                raise RuntimeError(
+                    "control requests cannot be applied while the engine is shutting down"
+                )
+            runtime = self._require_runtime()
+            accepted = runtime.messenger.submit_control(
+                ApplySnapshotCommand(snapshot=snapshot),
+                self._require_capability(),
+            )
+            if not accepted:
+                raise RuntimeError("runtime is not accepting snapshot updates")
+
+    def terminal_history(self, *, after: TerminalCursor | None, limit: int) -> TerminalHistoryPage:
+        with self._lock:
+            if self._state not in {EngineState.RUNNING, EngineState.STOPPING}:
+                raise RuntimeError(f"terminal history is unavailable from {self._state.value!r}")
+            return self._require_runtime().registry.terminal_history(
+                self._require_capability(), after, limit,
+            )
+
+    def observer(self, *, capacity: int) -> ContextObserver:
+        with self._lock:
+            if self._state is not EngineState.RUNNING:
+                raise RuntimeError(
+                    f"engine cannot create an observer from {self._state.value!r}"
+                )
+            return self._require_runtime().observations.observer(capacity=capacity)
+
+    @property
+    def pressure(self) -> PressureSnapshot:
+        with self._lock:
+            if self._state is not EngineState.RUNNING:
+                raise RuntimeError(
+                    f"engine pressure is unavailable from {self._state.value!r}"
+                )
+            return self._require_runtime().registry.pressure(
+                self._require_capability()
             )
 
     def shutdown(
@@ -331,6 +483,14 @@ class EngineSupervisor:
         if runtime is not None:
             self._close_runtime(runtime, emergency=not coordinated)
 
+        # Storage remains available through the last runtime producer, but slow
+        # storage never keeps execution resources or the runtime loop alive.
+        if self._history_recorder is not None:
+            try:
+                self._history_recorder.close(failure=self.failure, cleanup_failures=self.cleanup_failures)
+            except BaseException as failure:
+                self._record_cleanup_failure(failure)
+
         with self._lock:
             self._activity = RuntimeActivity.IDLE
             self._state = (
@@ -355,8 +515,8 @@ class EngineSupervisor:
         runtime.messenger.submit(
             ShutdownRuntimeCommand(
                 forced=forced,
-                identity=self._identity,
-            )
+            ),
+            self._require_capability(),
         )
 
         grace_timeout = (
@@ -382,8 +542,8 @@ class EngineSupervisor:
             runtime.messenger.submit(
                 ShutdownRuntimeCommand(
                     forced=True,
-                    identity=self._identity,
-                )
+                ),
+                self._require_capability(),
             )
         except RuntimeError:
             if runtime.gateway.shutdown_ready:
@@ -413,6 +573,7 @@ class EngineSupervisor:
         with self._lock:
             if self._runtime is runtime:
                 self._runtime = None
+                self._capability = None
 
     def _run_runtime_coroutine(
         self,
@@ -473,6 +634,11 @@ class EngineSupervisor:
             if self._state is EngineState.RUNNING:
                 self._activity = RuntimeActivity.IDLE
 
+    def _mark_active(self) -> None:
+        with self._lock:
+            if self._state is EngineState.RUNNING:
+                self._activity = RuntimeActivity.ACTIVE
+
     def _record_failure(self, failure: BaseException) -> None:
         with self._lock:
             self._record_failure_locked(failure)
@@ -501,6 +667,11 @@ class EngineSupervisor:
             raise RuntimeError("engine runtime is unavailable")
         return self._runtime
 
+    def _require_capability(self) -> _RuntimeCapability:
+        if self._capability is None:
+            raise RuntimeError("engine capability is unavailable")
+        return self._capability
+
     def _raise_failure(self) -> None:
         with self._lock:
             failure = self._failure
@@ -521,51 +692,6 @@ class EngineSupervisor:
             raise TypeError("timeout must be int, float, or None")
         if timeout is not None and (timeout < 0 or not math.isfinite(timeout)):
             raise ValueError("timeout must be finite and non-negative")
-
-    @staticmethod
-    def _validate_submission(
-        artifacts: ArtifactContext,
-        configs: ConfigContext,
-        context_settings: ContextSettings | None,
-        supervises: GraphDefinition | tuple[GraphDefinition, ...],
-    ) -> tuple[GraphDefinition, ...]:
-        if not isinstance(artifacts, ArtifactContext):
-            raise TypeError("artifacts must be an ArtifactContext instance")
-        if not isinstance(configs, ConfigContext):
-            raise TypeError("configs must be a ConfigContext instance")
-        if artifacts.graph is not configs.graph:
-            raise ValueError(
-                "artifacts and configs must belong to the same graph instance"
-            )
-        if context_settings is not None and not isinstance(
-            context_settings,
-            ContextSettings,
-        ):
-            raise TypeError(
-                "context_settings must be a ContextSettings instance or None"
-            )
-
-        if isinstance(supervises, GraphDefinition):
-            supervised_graphs = (supervises,)
-        elif isinstance(supervises, tuple):
-            supervised_graphs = supervises
-        else:
-            raise TypeError(
-                "supervises must be a GraphDefinition or tuple of GraphDefinition"
-            )
-
-        if any(
-            not isinstance(graph, GraphDefinition)
-            for graph in supervised_graphs
-        ):
-            raise TypeError("supervises must contain only GraphDefinition instances")
-        if len({id(graph) for graph in supervised_graphs}) != len(
-            supervised_graphs
-        ):
-            raise ValueError("supervises cannot contain duplicate graph instances")
-        if any(not graph.confirmed for graph in supervised_graphs):
-            raise RuntimeError("every supervised graph must be confirmed")
-        return supervised_graphs
 
     @property
     def state(self) -> EngineState:

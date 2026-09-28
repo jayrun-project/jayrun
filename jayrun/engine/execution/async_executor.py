@@ -37,7 +37,7 @@ class AsyncExecutor:
                 raise RuntimeError("The queue is full!")
 
         task = asyncio.create_task(
-            session.step.proxy.execute(),
+            self._execute_session(session),
         )
 
         with self._lock:
@@ -75,12 +75,15 @@ class AsyncExecutor:
     def cancel_contexts(self, context_ids: tuple[int, ...]) -> None:
         context_id_set = set(context_ids)
         with self._lock:
-            sessions = tuple(self._sessions.items())
-        for task, session in sessions:
-            if session.step.context_id in context_id_set:
-                with self._lock:
-                    self._expected_cancellations.add(task)
-                task.cancel()
+            tasks = tuple(
+                task
+                for task, session in self._sessions.items()
+                if session.step.context_id in context_id_set
+                and task not in self._expected_cancellations
+            )
+            self._expected_cancellations.update(tasks)
+        for task in tasks:
+            task.cancel()
 
     def shutdown(
         self,
@@ -89,7 +92,12 @@ class AsyncExecutor:
             if self._closed:
                 return
             self._closed = True
-            tasks = tuple(self._sessions)
+            # A previous abort may already be waiting inside user finally
+            # cleanup. Repeated cancellation would interrupt that cleanup.
+            tasks = tuple(
+                task for task in self._sessions
+                if task not in self._expected_cancellations
+            )
             self._expected_cancellations.update(tasks)
         for task in tasks:
             task.cancel()
@@ -113,6 +121,20 @@ class AsyncExecutor:
             self._failure_reporter(failure)
             return
         session.collect(result)
+
+    async def _drain(self) -> None:
+        with self._lock:
+            tasks = tuple(self._sessions)
+        self.shutdown()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+    @staticmethod
+    async def _execute_session(
+        session: ExecutionSession,
+    ) -> tuple[object, ...] | Exception:
+        session.start_execution()
+        return await session.step.proxy.execute()
 
     @property
     def free(

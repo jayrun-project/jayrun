@@ -33,12 +33,25 @@ class DataContext(Generic[SourceT, ValueT]):
         self._require_mutable()
         self._instances.update(instances)
 
+    def _update_ordered_instances(
+        self,
+        instances: Mapping[SourceT, ValueT],
+    ) -> None:
+        self._require_mutable()
+        for source, value in instances.items():
+            self._instances.pop(source, None)
+            self._instances[source] = value
+
     def _seal(self) -> None:
         self._sealed = True
 
     def _require_mutable(self) -> None:
         if self._sealed:
             raise RuntimeError("submitted contexts are read-only")
+
+    @property
+    def _is_sealed(self) -> bool:
+        return self._sealed
 
     @property
     def name(self) -> str | None:

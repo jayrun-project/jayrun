@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from weakref import WeakKeyDictionary
+
+from ...core.graph.graph_definition import GraphDefinition
 
 from ..base.runtime_module import RuntimeModule
 from ..messages.commands.reconcile_contexts import ReconcileContextsCommand
@@ -13,14 +16,11 @@ from .memory import MemoryPressureMonitor
 
 @dataclass(frozen=True, slots=True)
 class _PlacementRequirement:
+    # These are precisely the capacity-sharing dimensions used below. Memory
+    # sizes/device counts affect allocation, not this conservative scheduling
+    # hint. Keeping them here accumulated equivalent hints without limit.
     device: Device
     backend: Backend
-    group_memory_bytes: int
-    per_device_memory_bytes: int
-    min_devices: int
-    max_devices: int
-    prefer_max_devices: bool
-    exclusive: bool
     device_id: int | None
 
     @classmethod
@@ -31,12 +31,6 @@ class _PlacementRequirement:
         return cls(
             device=request.device,
             backend=request.backend,
-            group_memory_bytes=request.group_memory_bytes,
-            per_device_memory_bytes=request.per_device_memory_bytes,
-            min_devices=request.min_devices,
-            max_devices=request.max_devices,
-            prefer_max_devices=request.prefer_max_devices,
-            exclusive=request.exclusive,
             device_id=request.device_id,
         )
 
@@ -48,10 +42,10 @@ class ContextScheduler(RuntimeModule):
         self._closed = False
         self._queued_contexts: dict[int, ContextInstance] = {}
         self._admitted_contexts: dict[int, ContextInstance] = {}
-        self._graph_placement_history: dict[
-            int,
+        self._graph_placement_history: WeakKeyDictionary[
+            GraphDefinition,
             set[_PlacementRequirement],
-        ] = {}
+        ] = WeakKeyDictionary()
         self._reconciliation_scheduled = False
         cpu_device = next(
             runtime_device
@@ -79,12 +73,12 @@ class ContextScheduler(RuntimeModule):
 
     def record_placement_requests(
         self,
-        graph_id: int,
+        graph: GraphDefinition,
         requests: tuple[PlacementRequest, ...],
     ) -> None:
-        self._validate_graph_id(graph_id)
+        self._validate_graph(graph)
         self._validate_requests(requests)
-        history = self._graph_placement_history.setdefault(graph_id, set())
+        history = self._graph_placement_history.setdefault(graph, set())
         history.update(
             _PlacementRequirement.from_request(request)
             for request in requests
@@ -107,6 +101,11 @@ class ContextScheduler(RuntimeModule):
         if self._queued_contexts:
             self._admit_queued_contexts()
 
+    @property
+    def memory_pressured(self) -> bool:
+        """Return the current hysteretic process and system-memory pressure."""
+        return self._memory_pressure.sample()
+
     def close(self) -> None:
         if getattr(self, "_closed", False):
             return
@@ -124,7 +123,7 @@ class ContextScheduler(RuntimeModule):
         if ordinary_slots == 0 and supervision_slots == 0:
             self._schedule_reconciliation()
             return
-        if self._memory_pressure.sample():
+        if self.memory_pressured:
             self._schedule_reconciliation()
             return
 
@@ -149,9 +148,9 @@ class ContextScheduler(RuntimeModule):
                 ordinary_slots -= 1
             self._engine_runtime.messenger.submit(
                 ContextAdmittedEvent(
-                    context_instance=context,
-                    identity=self.identity,
-                )
+                    context_id=context_id,
+                ),
+                self.capability,
             )
             if ordinary_slots == 0 and supervision_slots == 0:
                 break
@@ -178,7 +177,7 @@ class ContextScheduler(RuntimeModule):
         context: ContextInstance,
         pending_requests: tuple[PlacementRequest, ...],
     ) -> bool:
-        requirements = self._graph_placement_history.get(id(context.graph), ())
+        requirements = self._graph_placement_history.get(context.graph, ())
         return any(
             self._shares_capacity(requirement, pending_request)
             for requirement in requirements
@@ -212,7 +211,8 @@ class ContextScheduler(RuntimeModule):
         self._reconciliation_scheduled = True
         try:
             accepted = self._engine_runtime.messenger.submit_after(
-                ReconcileContextsCommand(identity=self.identity),
+                ReconcileContextsCommand(),
+                self.capability,
                 delay=self._reconciliation_interval,
             )
         except BaseException:
@@ -222,11 +222,9 @@ class ContextScheduler(RuntimeModule):
             self._reconciliation_scheduled = False
 
     @staticmethod
-    def _validate_graph_id(graph_id: int) -> None:
-        if isinstance(graph_id, bool) or not isinstance(graph_id, int):
-            raise TypeError("graph_id must be an int")
-        if graph_id < 0:
-            raise ValueError("graph_id must be non-negative")
+    def _validate_graph(graph: GraphDefinition) -> None:
+        if not isinstance(graph, GraphDefinition):
+            raise TypeError("graph must be a GraphDefinition")
 
     @staticmethod
     def _validate_requests(requests: tuple[PlacementRequest, ...]) -> None:

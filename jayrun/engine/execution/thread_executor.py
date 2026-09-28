@@ -109,6 +109,7 @@ class ThreadExecutor:
 
     def _execute_session(self, session: ExecutionSession) -> None:
         try:
+            session.start_execution()
             self._collect_result(session, session.step.proxy.execute)
         finally:
             self._report_completion(session)

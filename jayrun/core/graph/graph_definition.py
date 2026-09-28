@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import inspect
-import warnings
 from collections.abc import Mapping
 from dataclasses import replace
 from functools import cached_property
+from typing import TYPE_CHECKING
 
 from ...engine.execution.execution_mode import ExecutionMode
 from ..artifact.base import Artifact
+from ..config.field import ConfigField
 from ..operator.base import BaseOperator
 from ..resource.base import BaseResource
 from ..resource.context import ResourceContext
 from ..resource.field import ResourceField
+from ..serializer.base import BaseSerializer
 from .artifact_flow import ArtifactFlow
 from .compiled_graph import (
     CompiledGraph,
@@ -20,34 +22,51 @@ from .compiled_graph import (
     CompiledStep,
 )
 from .definition.artifact import ArtifactDefinition, ArtifactRole
-from .definition.field import ResourceDefinition
+from .definition.field import ConfigDefinition, ResourceDefinition
 from .graph_layout import GraphLayout
 from .graph_specification import GraphSpecification
 from .graph_state import GraphState
 from .inspection.graph import GraphInspection
 
+if TYPE_CHECKING:
+    from ..validation.graph import GraphValidationReport
+    from ...visualization.adapters.definition import GraphPlotter
+    from .reporting import GraphReporter
+
 
 class GraphDefinition:
     """Define and confirm an executable artifact graph.
 
-    Graph construction validates topology and infers exit artifacts. Graphs without
-    resource fields confirm immediately; graphs with resources confirm after all
-    required bindings are supplied and optional bindings are accepted explicitly.
+    Graph construction freezes topology and identifies every produced artifact
+    whose final value has no later consumer as an exit, including outputs without
+    their own flow. Per-run artifact policy selects retained exit values. Every graph requires an explicit confirm() after all bindings and timing
+    configuration are complete.
+    Finish construction and binding before sharing a graph across threads.
 
     Args:
         *flows: Every artifact flow in the graph.
         entry_flows: Flow or flows whose initial artifact values are supplied by the
-            application.
+            application. Omit this argument when every flow starts from an
+            independent zero-input operator.
+        version: Non-empty graph version used as part of registry identity.
     """
 
     def __init__(
         self,
         *flows: ArtifactFlow,
-        entry_flows: ArtifactFlow | tuple[ArtifactFlow, ...],
+        entry_flows: ArtifactFlow | tuple[ArtifactFlow, ...] = (),
+        version: str = "1",
     ) -> None:
-        if isinstance(entry_flows, ArtifactFlow):
-            entry_flows = (entry_flows,)
+        if not isinstance(version, str):
+            raise TypeError("'version' must be a string")
+        if not version.strip():
+            raise ValueError("'version' must not be empty")
 
+        self._timing_config_fields: tuple[ConfigField, ...] | None = None
+        self._version = version
+        self._sealed = False
+        self._serializers_bound = False
+        self._serializer_bindings: dict[Artifact, BaseSerializer] = {}
         self._entry_flows = entry_flows
         self._flows = flows
 
@@ -55,6 +74,7 @@ class GraphDefinition:
         self._collect_artifacts()
         self._generate_layout()
         active_operator_outputs = self._validate_layout()
+        self._layout._freeze()
         self._set_exit_artifacts(active_operator_outputs)
 
         self._state = GraphState.CREATED
@@ -63,12 +83,9 @@ class GraphDefinition:
             self._layout,
             artifacts=self._artifacts,
         )
-        self._inspection = GraphInspection(self._specification)
-
         self._resource_context = ResourceContext()
+        self._inspection = GraphInspection(self._specification, self._resource_context)
 
-        if not self._specification.resources:
-            self._confirm()
 
     def bind_resources(
         self,
@@ -78,6 +95,10 @@ class GraphDefinition:
         ],
     ) -> None:
         """Bind resource instances to graph resource fields.
+
+        Invalid selection, requirements, or configuration discovery leave the
+        graph unbound and permit retry. Optional omissions still require confirm().
+        Construction and binding must finish before sharing a graph across threads.
 
         Args:
             resources: Mapping from resource IDs, fields, or inspected definitions to
@@ -124,19 +145,161 @@ class GraphDefinition:
             if field in resolved_resources
         }
 
-        self._resource_context.set(ordered_resources)
+        candidate = ResourceContext()
+        candidate.set(ordered_resources)
+        # Discovery stages all fallible input checks before committing selection.
+        self._specification.proceed(candidate.instances)
+        self._resource_context.set(candidate.instances)
         self._state = GraphState.RESOURCES_BOUND
 
-        if len(self._inspection.resources.all) == len(ordered_resources):
-            self._confirm()
-            return
 
-        warnings.warn(
-            "Required resources are satisfied, but optional resources "
-            "remain unbound. Call confirm() to explicitly continue "
-            "without them.",
-            UserWarning,
-            stacklevel=2,
+    def select_timing_configs(
+        self,
+        *configs: int | ConfigField | ConfigDefinition,
+    ) -> None:
+        """Select which resolved config values partition timing history.
+
+        Omit this call to use all effective fields. Calling it with no fields
+        explicitly ignores config differences for timing reuse; other execution
+        compatibility checks still apply. Diagnostic history retains the full
+        configuration independently. This does not alter graph_id or execution.
+
+        Use exact declarations or existing graph-local IDs/definitions, not field
+        names. Resource-owned fields become available after resource binding.
+        Selection replaces the previous selection atomically and is forbidden
+        after confirmation, including repeated identical calls. Call confirm()
+        only after selection is complete.
+        """
+        if self.confirmed:
+            raise RuntimeError("The graph is already confirmed.")
+        specification = self._specification
+        registry = (specification.configs if specification.complete else
+                    specification._extract_configs(self._resource_context.instances))
+        selected: set[ConfigField] = set()
+        for reference in configs:
+            if isinstance(reference, ConfigField):
+                field = next((field for field in registry.sources if field is reference), None)
+            elif type(reference) is int:
+                field = next((registry.source_for(d) for d in registry.definitions
+                              if d.config_id == reference), None)
+            elif isinstance(reference, ConfigDefinition):
+                field = next((registry.source_for(d) for d in registry.definitions
+                              if d is reference), None)
+            else:
+                raise TypeError("Expected int, ConfigField, or ConfigDefinition for timing selection.")
+            if field is None:
+                raise KeyError("Timing config does not belong to the currently discovered graph fields.")
+            if field in selected:
+                raise ValueError("Multiple timing config references resolve to the same ConfigField.")
+            selected.add(field)
+        self._timing_config_fields = tuple(field for field in registry.sources if field in selected)
+
+    def bind_serializers(
+        self,
+        serializers: Mapping[
+            int | Artifact | ArtifactDefinition,
+            BaseSerializer,
+        ],
+    ) -> None:
+        """Bind serializers to the complete graph boundary.
+
+        Serializer binding is optional. When a non-empty mapping is supplied, it
+        must bind every entry and exit artifact and no intermediate artifacts.
+        Binding is atomic and may occur once before explicit graph confirmation.
+
+        Args:
+            serializers: Mapping from graph-local artifact IDs, artifacts, or
+                inspected artifact definitions to serializer instances.
+
+        Raises:
+            TypeError: If the mapping, a reference, or a serializer has an
+                unsupported type.
+            KeyError: If an artifact reference does not belong to this graph.
+            ValueError: If aliases are duplicated or boundary coverage is partial.
+            RuntimeError: If serializers were already bound or the graph is sealed.
+        """
+        if self._sealed:
+            raise RuntimeError("The graph is sealed.")
+        if self._serializers_bound:
+            raise RuntimeError("Serializers are already bound.")
+        if not isinstance(serializers, Mapping):
+            raise TypeError("Expected a mapping of serializers.")
+
+        registry = self._specification.artifacts
+        definitions_by_id = {
+            definition.artifact_id: definition
+            for definition in registry.definitions
+        }
+        resolved: dict[Artifact, BaseSerializer] = {}
+
+        for reference, serializer in serializers.items():
+            artifact = self._resolve_serializer_artifact(
+                reference,
+                definitions_by_id=definitions_by_id,
+            )
+            if artifact in resolved:
+                raise ValueError(
+                    "Multiple serializer keys resolve to the same Artifact."
+                )
+            if not isinstance(serializer, BaseSerializer):
+                raise TypeError("Serializer values must be BaseSerializer instances.")
+            resolved[artifact] = serializer
+
+        boundary = tuple(
+            artifact
+            for artifact, definition in self._artifacts.items()
+            if definition.role is ArtifactRole.ENTRY or definition.is_exit
+        )
+        if resolved:
+            missing = tuple(
+                artifact for artifact in boundary if artifact not in resolved
+            )
+            extra = tuple(artifact for artifact in resolved if artifact not in boundary)
+            if missing or extra:
+                raise ValueError(
+                    "Serializers must bind every entry and exit artifact and no "
+                    f"other artifacts; missing={missing!r}, extra={extra!r}."
+                )
+
+        ordered = {
+            artifact: resolved[artifact]
+            for artifact in boundary
+            if artifact in resolved
+        }
+        self._specification.bind_serializers(ordered)
+        self._serializer_bindings = ordered
+        self._serializers_bound = True
+        self._inspection._bind_serializers()
+        self.__dict__.pop("_compiled_graph", None)
+
+    def _resolve_serializer_artifact(
+        self,
+        reference: int | Artifact | ArtifactDefinition,
+        *,
+        definitions_by_id: Mapping[int, ArtifactDefinition],
+    ) -> Artifact:
+        registry = self._specification.artifacts
+
+        if type(reference) is int:
+            try:
+                definition = definitions_by_id[reference]
+            except KeyError:
+                raise KeyError(f"Unknown artifact ID: {reference!r}.") from None
+            return registry.source_for(definition)
+
+        if isinstance(reference, ArtifactDefinition):
+            for definition in registry.definitions:
+                if definition is reference:
+                    return registry.source_for(definition)
+            raise KeyError("The ArtifactDefinition does not belong to this graph.")
+
+        if isinstance(reference, Artifact):
+            if reference not in registry.sources:
+                raise KeyError("The Artifact does not belong to this graph.")
+            return reference
+
+        raise TypeError(
+            "Serializer references must be int, Artifact, or ArtifactDefinition"
         )
 
     def _resolve_resource_field(
@@ -173,17 +336,23 @@ class GraphDefinition:
         )
 
     def confirm(self) -> None:
-        """Confirm a graph after intentionally leaving optional resources unbound."""
+        """Finalize resource selection, accepting any unbound optional resources.
+
+        May be called directly when every resource field is optional. Required
+        resources must be bound first. Confirmation completes configuration and
+        requirement discovery and rejects known artifact-contract mismatches.
+        Serializer and timing bindings are frozen. Operators and resources are not executed.
+        """
         if self._state is GraphState.CONFIRMED:
             raise RuntimeError("The graph is already confirmed.")
 
-        if self._specification.resources:
-            if self._state is GraphState.CREATED:
-                raise RuntimeError(
-                    "Resources must be bound before the graph can be confirmed."
-                )
+        self._validate_required_resources(self._resource_context.instances)
 
+        validation = self.validate()
+        if not validation.valid:
+            raise ValueError(f"The graph contains {len(validation.mismatched_edges)} incompatible artifact edge(s).")
         self._confirm()
+        self._seal()
 
     def _validate_required_resources(
         self,
@@ -201,9 +370,13 @@ class GraphDefinition:
             raise ValueError(f"Required resources are missing: {missing}.")
 
     def _confirm(self) -> None:
-        self._specification.proceed(self._resource_context.instances)
+        if not self._specification.complete:
+            self._specification.proceed(self._resource_context.instances)
         self._inspection._proceed()
         self._state = GraphState.CONFIRMED
+
+    def _seal(self) -> None:
+        self._sealed = True
 
     def _collect_artifacts(self) -> None:
         flow_by_artifact: dict[Artifact, ArtifactFlow] = {}
@@ -211,12 +384,19 @@ class GraphDefinition:
         for flow in self._flows:
             artifact = flow.artifact
 
+            if artifact is None:
+                continue
+
             if artifact in flow_by_artifact:
                 raise ValueError(f"Artifact {artifact!r} is assigned to multiple flows")
 
             flow_by_artifact[artifact] = flow
 
-        entry_artifacts = {flow.artifact for flow in self._entry_flows}
+        entry_artifacts = {
+            flow.artifact
+            for flow in self._entry_flows
+            if flow.artifact is not None
+        }
 
         generated_artifacts: set[Artifact] = set()
         unused_artifacts: dict[Artifact, None] = {}
@@ -286,18 +466,28 @@ class GraphDefinition:
                 "tuple of ArtifactFlow instances"
             )
 
-        if not self._entry_flows:
-            raise ValueError("GraphDefinition requires at least one entry flow")
-
         flow_ids = {id(flow) for flow in self._flows}
 
         if any(id(entry_flow) not in flow_ids for entry_flow in self._entry_flows):
             raise ValueError("Every entry flow must also be included in 'flows'")
 
+        for entry_flow in self._entry_flows:
+            if entry_flow.artifact is None:
+                raise ValueError("An artifact-free flow cannot be an entry flow")
+            if not entry_flow.operators[0].input_artifacts:
+                raise ValueError(
+                    "An entry flow must start with an operator that consumes its "
+                    "artifact"
+                )
+
     def _generate_layout(self) -> None:
         active_artifacts = set(self.entry_artifacts)
 
-        row_by_artifact = {flow.artifact: row for row, flow in enumerate(self._flows)}
+        row_by_artifact = {
+            flow.artifact: row
+            for row, flow in enumerate(self._flows)
+            if flow.artifact is not None
+        }
 
         self._layout = GraphLayout(num_rows=len(self._flows))
 
@@ -313,13 +503,16 @@ class GraphDefinition:
             column: list[BaseOperator | None] = [None] * len(self._flows)
 
             for row, flow in enumerate(self._flows):
-                if flow.artifact not in active_artifacts:
-                    continue
-
                 position = positions[row]
 
-                if position < len(flow.operators):
-                    column[row] = flow.operators[position]
+                if position >= len(flow.operators):
+                    continue
+
+                operator = flow.operators[position]
+                is_independent_root = position == 0 and not operator.input_artifacts
+
+                if is_independent_root or flow.artifact in active_artifacts:
+                    column[row] = operator
 
             candidates = {operator for operator in column if operator is not None}
 
@@ -332,15 +525,37 @@ class GraphDefinition:
                 )
             }
 
+            if not ready_operators:
+                blocked = []
+                for row, flow in enumerate(self._flows):
+                    position = positions[row]
+                    if position >= len(flow.operators):
+                        continue
+                    operator = flow.operators[position]
+                    missing = tuple(
+                        artifact for artifact in operator.input_artifacts
+                        if artifact not in active_artifacts
+                    )
+                    waiting = tuple(
+                        f"{artifact!r} at flow row {row_by_artifact[artifact]}"
+                        for artifact in operator.input_artifacts
+                        if column[row_by_artifact[artifact]] is not operator
+                    )
+                    blocked.append(
+                        f"operator {operator.display_name!r} at flow row {row}, "
+                        f"position {position}: unavailable artifacts={missing!r}; "
+                        f"waiting for flow alignment={waiting!r}"
+                    )
+                raise ValueError(
+                    "The graph cannot make further progress. "
+                    + "; ".join(blocked)
+                    + ". Check entry_flows for missing initial values and check "
+                    "consumption order across flows."
+                )
+
             for row, operator in enumerate(column):
                 if operator not in ready_operators:
                     column[row] = None
-
-            if not ready_operators:
-                raise ValueError(
-                    "The graph cannot make further progress. "
-                    "Check artifact dependencies and flow ordering."
-                )
 
             consumed_artifacts = {
                 artifact
@@ -438,18 +653,11 @@ class GraphDefinition:
         self._artifacts = {
             artifact: replace(
                 definition,
-                is_exit=(
-                    artifact in active_operator_outputs
-                    and definition.role is not ArtifactRole.UNUSED
-                ),
+                is_exit=artifact in active_operator_outputs,
             )
             for artifact, definition in self._artifacts.items()
         }
 
-    @property
-    def layout(self) -> GraphLayout:
-        """Computed row-and-column execution layout."""
-        return self._layout
 
     @property
     def flows(self) -> tuple[ArtifactFlow, ...]:
@@ -481,30 +689,104 @@ class GraphDefinition:
         return self._state
 
     @property
-    def confirmed(self) -> bool:
-        """Whether the graph is ready to create contexts and submit work."""
-        return self._state is GraphState.CONFIRMED
+    def version(self) -> str:
+        """Immutable version used with a registry key to identify this graph."""
+        return self._version
+
+    @property
+    def graph_id(self) -> str:
+        """Cached ``jrg1:`` declaration fingerprint, independent of registration.
+
+        The same ordered declaration, supported static contracts and graph version
+        reproduce this ID. Independent branch reorderings may differ. Labels,
+        config defaults/values, resource and serializer bindings, implementation
+        code and runtime state are excluded. Opaque contracts contribute only
+        their qualified type; use ``version`` for otherwise invisible revisions.
+
+        First access hashes construction-frozen tokens; later reads return the
+        cached string without traversal. Access does not confirm, seal, compile,
+        render or perform I/O. An ID is correlation metadata, not executable
+        equivalence, registry identity or authority. Equality/hash are unchanged.
+        """
+        return self._graph_id
 
     @cached_property
-    def compiled_graph(self) -> CompiledGraph:
-        """Validated immutable execution plan for this confirmed graph.
+    def _graph_id(self) -> str:
+        from ._identity import graph_id
 
-        Compilation is lazy and cached. Access raises if the graph is unconfirmed or
-        contains incompatible artifact-property edges.
+        return graph_id(self._version, self._specification._identity_tokens)
+
+    @property
+    def confirmed(self) -> bool:
+        """Whether resource selection and configuration discovery are complete.
+
+        Confirmation rejects known artifact-contract mismatches; unknown static
+        contracts do not establish runtime correctness.
         """
+        return self._state is GraphState.CONFIRMED
+
+    @property
+    def _has_complete_boundary_serializers(self) -> bool:
+        boundary = (
+            artifact
+            for artifact, definition in self._artifacts.items()
+            if definition.role is ArtifactRole.ENTRY or definition.is_exit
+        )
+        return all(
+            artifact in self._serializer_bindings for artifact in boundary
+        )
+
+    def validate(self) -> GraphValidationReport:
+        """Return the cached artifact-contract validation result.
+
+        Available before resource confirmation. This does not execute operators,
+        load resources, or compile the graph. Unknown contracts are distinct from
+        mismatches; a valid result does not establish runtime correctness.
+        """
+        return self._validation_result
+
+    @cached_property
+    def _validation_result(self) -> GraphValidationReport:
+        from ..validation.validation import GraphValidation
+
+        return GraphValidation(self)()
+
+    @cached_property
+    def report(self) -> GraphReporter:
+        """Combined graph declarations, dependencies, bindings, and validation.
+
+        Provides format, print, and save methods, with optional compact output.
+        Binding information is refreshed whenever the report is formatted.
+        """
+        from .reporting import GraphReporter, _format_graph
+
+        return GraphReporter(lambda compact: _format_graph(self, compact), "graph_report.txt")
+
+    @cached_property
+    def plot(self) -> GraphPlotter:
+        """Offline definition viewer with current declared resource bindings.
+
+        show() opens a snapshot; save(path) exports the same portable viewer.
+        Each call refreshes binding evidence without compiling or executing work.
+        """
+        from ...visualization.adapters.definition import GraphPlotter
+
+        return GraphPlotter(self.validate(), self.artifacts, graph=self)
+
+
+    @cached_property
+    def _compiled_graph(self) -> CompiledGraph:
         if self._state is not GraphState.CONFIRMED:
             raise RuntimeError("The graph must be confirmed before compilation.")
 
-        from ..validation.validator import GraphValidator
-
-        validation = GraphValidator(self).validate()
+        validation = self.validate()
         if not validation.valid:
             raise ValueError(
                 "The graph contains "
                 f"{len(validation.mismatched_edges)} incompatible artifact edge(s)."
             )
 
-        row_count, column_count = self.layout.shape
+        row_count, column_count = self._layout.shape
 
         steps: list[CompiledStep] = []
         successor_indices: list[set[int]] = []
@@ -515,7 +797,7 @@ class GraphDefinition:
             compiled_operator_ids: set[int] = set()
 
             for row in range(row_count):
-                operator = self.layout.rows[row][column]
+                operator = self._layout.rows[row][column]
 
                 if operator is None:
                     continue
@@ -651,9 +933,11 @@ class GraphDefinition:
         )
 
         return CompiledGraph(
+            version=self.version,
             steps=compiled_steps,
             artifacts=self.artifacts,
             entry_artifacts=self.entry_artifacts,
+            serializers=tuple(self._serializer_bindings.items()),
             initial_dependency_counts=tuple(
                 step.initial_dependency_count for step in compiled_steps
             ),

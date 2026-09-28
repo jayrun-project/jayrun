@@ -1,4 +1,8 @@
+from __future__ import annotations
+
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from time import perf_counter
 
 from ...core.context.runtime_data import Data
 from ..execution.execution_mode import ExecutionMode
@@ -35,6 +39,12 @@ class ExecutionSession:
     )
     _report_recorded: bool = field(default=False, repr=False)
     _attempt_started: bool = field(default=False, repr=False)
+    _active_started_at: float | None = field(default=None, repr=False)
+    _started_reporter: Callable[[ExecutionSession], None] | None = field(
+        default=None,
+        repr=False,
+    )
+    active_seconds: float = field(default=0.0, repr=False)
 
     def collect(
         self,
@@ -43,6 +53,7 @@ class ExecutionSession:
         if self.state is not ExecutionState.DISPATCHED:
             raise RuntimeError("only a dispatched session can collect a result")
 
+        self._finish_active_period()
         self.recorder.stop_internal_timer("execution_latency")
 
         if isinstance(result, PlacementUnavailable):
@@ -92,6 +103,15 @@ class ExecutionSession:
             self._attempt_started = True
         self.state = ExecutionState.DISPATCHED
 
+    def start_execution(self) -> None:
+        if self.state is not ExecutionState.DISPATCHED:
+            raise RuntimeError("only a dispatched session can start execution")
+        if self._active_started_at is not None:
+            raise RuntimeError("session execution has already started")
+        self._active_started_at = perf_counter()
+        if self._started_reporter is not None:
+            self._started_reporter(self)
+
     def resume_placement(self, request: PlacementRequest) -> None:
         if self.state is not ExecutionState.PLACEMENT_WAITING:
             raise RuntimeError("session is not waiting for placement")
@@ -114,6 +134,10 @@ class ExecutionSession:
     def retry(self) -> None:
         if self.state is not ExecutionState.FAILED:
             raise RuntimeError("only a failed session can be retried")
+        if self.failure is not None:
+            self.failure.__traceback__ = None
+            self.failure.__context__ = None
+            self.failure.__cause__ = None
         self.step.proxy.placement._clear()
         self.state = ExecutionState.IDLE
         self.result = None
@@ -137,6 +161,7 @@ class ExecutionSession:
     def cancel(self) -> None:
         if self.state is ExecutionState.CANCELLED:
             return
+        self._finish_active_period()
         self.step.proxy.placement._clear()
         self.placement_request = None
         self.state = ExecutionState.CANCELLED
@@ -154,7 +179,7 @@ class ExecutionSession:
         except KeyError as error:
             raise RuntimeError("session has no terminal outcome") from error
         self.step.proxy.placement._clear()
-        self.recorder.stop(outcome)
+        self.recorder.stop(outcome, duration_seconds=self.active_seconds)
         self.report = self.recorder.report
 
     def _wait_for_placement(self, request: PlacementRequest) -> None:
@@ -173,6 +198,13 @@ class ExecutionSession:
         self.placement_requests = self.step.proxy.placement.placement_requests
         self.state = ExecutionState.FINISHED
         self.result = result
+
+    def _finish_active_period(self) -> None:
+        started_at = self._active_started_at
+        if started_at is None:
+            return
+        self.active_seconds += max(perf_counter() - started_at, 0.0)
+        self._active_started_at = None
 
     @property
     def placement_waiting(self) -> bool:

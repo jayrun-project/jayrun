@@ -3,7 +3,9 @@ from __future__ import annotations
 from ..base.runtime_module import RuntimeModule
 from ..execution.execution_mode import ExecutionMode
 from ..messages.commands.start_context import StartContextCommand
+from ..messages.events.context_terminated import ContextTerminatedEvent
 from ..registry.context_instance import ContextInstance
+from ..registry.context_state import ContextState
 from ..resource.placement_request import PlacementRequest
 from .execution_context import ExecutionContext
 from .execution_session import ExecutionSession
@@ -15,11 +17,14 @@ class ContextManager(RuntimeModule):
     def initialize(self) -> None:
         self._closed = False
         self._contexts: dict[int, ExecutionContext] = {}
+        self._termination_pending: set[int] = set()
 
     def register(self, context_instance: ContextInstance) -> None:
         if self._closed:
             raise RuntimeError("context manager is closed")
         context_id = context_instance.context_id
+        if not context_instance.is_local:
+            return
         if context_instance.is_terminal:
             self._engine_runtime.context_scheduler.release_context(context_id)
             return
@@ -47,8 +52,8 @@ class ContextManager(RuntimeModule):
             self._engine_runtime.messenger.submit(
                 StartContextCommand(
                     context_id=context_id,
-                    identity=self.identity,
-                )
+                ),
+                self.capability,
             )
         except BaseException as failure:
             self._contexts.pop(context_id, None)
@@ -91,6 +96,12 @@ class ContextManager(RuntimeModule):
                                 break
                             sessions.append(session)
                             remaining[mode] -= 1
+                    # Dispatch can complete a drain without producing a session
+                    # (for example an exhausted evidence admission budget). Such
+                    # termination still needs its authoritative acknowledgement;
+                    # otherwise an idle runtime has no event to wake this loop.
+                    if context.terminated:
+                        self._close_context(context)
         except BaseException as failure:
             for session in reversed(sessions):
                 context = self._contexts.get(session.step.context_id)
@@ -171,17 +182,50 @@ class ContextManager(RuntimeModule):
         coordinated: bool = True,
     ) -> None:
         context_id = context.context_id
-        self._engine_runtime.registry.terminate_context(
-            context_id=context_id,
-            outcome=context.outcome,
-        )
+        if not coordinated:
+            self._engine_runtime.registry.terminate_context(
+                context_id=context_id,
+                outcome=context.outcome,
+            )
+            self._contexts.pop(context_id, None)
+            self._termination_pending.discard(context_id)
+            return
+        if context_id in self._termination_pending:
+            return
+        self._termination_pending.add(context_id)
+        try:
+            self._engine_runtime.messenger.submit(
+                ContextTerminatedEvent(
+                    context_id=context_id,
+                    outcome=context.outcome,
+                ),
+                self.capability,
+            )
+        except BaseException:
+            self._termination_pending.discard(context_id)
+            raise
+
+    def acknowledge_termination(self, context_id: int) -> None:
         self._contexts.pop(context_id, None)
+        self._termination_pending.discard(context_id)
+
+    def release_queued(self, context_id: int) -> None:
+        """Release an initialized context before any local execution starts."""
+        context = self._contexts.get(context_id)
+        if context is None:
+            return
+        if context._context.state is not ContextState.QUEUED:
+            raise RuntimeError("only a queued context can leave local execution")
+        context._rollback_initialization()
+        self._contexts.pop(context_id, None)
+        self._termination_pending.discard(context_id)
 
     def close(self) -> None:
         if getattr(self, "_closed", False):
             return
         if getattr(self, "_contexts", None):
             raise RuntimeError("cannot close while execution contexts are active")
+        getattr(self, "_termination_pending", set()).clear()
         self._closed = True
 
     @property

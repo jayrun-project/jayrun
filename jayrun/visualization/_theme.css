@@ -1,0 +1,36 @@
+/* One theme control for every visualization host. */
+.theme-switch{display:flex;align-items:center;gap:12px;border:0;padding:0;margin:0;color:var(--ink);background:transparent;font:14px/1.5 system-ui,sans-serif;flex-shrink:0}
+.theme-switch legend{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
+.theme-switch label{display:inline-flex;align-items:center;gap:6px;min-height:36px;font-weight:400;white-space:nowrap;cursor:pointer}
+.theme-switch input[type=radio]{appearance:auto;width:18px;height:18px;min-height:0;margin:0;padding:0;accent-color:var(--accent);cursor:pointer}
+.theme-switch input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+/* Hosts share the same appearance slot; content/action rows may differ. */
+.visualization-header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:12px 24px}
+.visualization-identity{min-width:0}
+.visualization-appearance{display:flex;justify-content:flex-end;align-items:center;justify-self:end;align-self:start;min-width:0}
+.visualization-appearance .theme-switch{margin:0}
+.visualization-summary{grid-column:1/-1;min-width:0}
+.visualization-header.workspace-head{grid-template-columns:minmax(0,1fr) auto}
+.visualization-header .workspace-actions.run-theme{width:auto;max-width:none;padding:0}
+.visualization-header.top .title-row{flex-wrap:wrap}
+.visualization-header.top .title-row h1{flex:0 1 auto;min-width:0}
+header.dashboard-header{height:auto;min-height:66px;grid-template-columns:minmax(0,1fr) auto auto;align-items:center}
+.dashboard-identity{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px}
+.dashboard-identity #engine-name{overflow-wrap:anywhere;min-width:0}
+.dashboard-actions{display:flex;align-items:center;padding-right:24px;border-right:1px solid var(--line-strong)}
+.dashboard-actions #owner-stop{white-space:nowrap;min-height:36px}
+.dashboard-header .visualization-appearance{align-self:center}
+@media(max-width:680px){
+ .visualization-header{gap:8px 12px}
+ header.dashboard-header{grid-template-columns:minmax(0,1fr) auto;padding:10px 12px;gap:8px 12px}
+ .dashboard-header .visualization-appearance{grid-column:2;grid-row:1;align-self:start}
+ .dashboard-identity{gap:4px 10px}
+ .dashboard-identity strong{width:100%}
+ .dashboard-identity #engine-name{max-width:none}
+ .dashboard-actions{grid-column:1/-1;justify-content:flex-end;border-right:0;border-top:1px solid var(--line);padding:8px 0 0}
+ .visualization-header.top .title-row h1{flex-basis:100%}
+}
+
+.dashboard-header~.layout{min-height:calc(100dvh - var(--dashboard-header-height,66px))}
+.dashboard-header~.layout .sidebar{top:var(--dashboard-header-height,66px);height:calc(100dvh - var(--dashboard-header-height,66px))}
