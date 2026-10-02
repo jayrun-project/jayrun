@@ -1,3 +1,8 @@
+```{eval-rst}
+.. meta::
+   :google-site-verification: julLJhIROJAKIjHCJgjEUqCs0_UsFPXVik8WIhs6bHU
+```
+
 # Jayrun
 
 Jayrun lets you describe a computation through the data it consumes and produces. You define its operators and artifact flows; an Engine runs the graph and gives you a handle for its results, progress and lifecycle.
