@@ -9,6 +9,8 @@ Jayrun is a Python execution framework for computations with explicit data flow,
 
 Use it for workloads such as inference services, iterative training, document pipelines and scientific campaigns. Its main capabilities work together: artifact flow identifies when data is needed, resources keep expensive setup reusable, and graph-based controllers let applications supply their own operating policies.
 
+Explore the [Jayrun source on GitHub](https://github.com/jayrun-project/jayrun) for the framework code and runnable tutorials.
+
 ## Release intermediate data as work progresses
 
 An artifact identifies a position in the data flow; each run supplies or produces its actual value. Jayrun releases its references to consumed values when the execution rules no longer require them, and clears invocation bindings after use. A pipeline therefore does not need to retain every intermediate until the entire run finishes. This can reduce the amount of intermediate data kept alive, especially for large arrays, images or tensors.
