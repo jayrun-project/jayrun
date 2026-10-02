@@ -1,3 +1,8 @@
+```{eval-rst}
+.. meta::
+   :description: Build and run your first Jayrun computation graph in Python. Declare artifacts and an operator, validate the graph, submit inputs and read the result.
+```
+
 # From artifacts to a completed run
 
 We will multiply `7` by `3`, inspect the graph, run it, and read `21`. The example is deliberately small: it lets you follow what is declared once and what changes on each submission. [Install Jayrun](installation.md) before starting. The preceding [lifetime guide](data-and-lifetimes.md) distinguishes artifact values, per-run configuration and reusable resources; this first program needs only artifacts and configuration.

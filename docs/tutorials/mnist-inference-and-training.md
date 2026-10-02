@@ -1,3 +1,8 @@
+```{eval-rst}
+.. meta::
+   :description: Use Jayrun with PyTorch for MNIST inference and supervised training. Explore shared inference resources, mutable training artifacts and iteration.
+```
+
 (tutorial-mnist-inference-and-training)=
 # MNIST Inference and Supervised Training
 

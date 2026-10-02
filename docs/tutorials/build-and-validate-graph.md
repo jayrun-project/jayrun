@@ -1,3 +1,8 @@
+```{eval-rst}
+.. meta::
+   :description: Validate a NumPy and PyTorch computation graph with Jayrun. Diagnose a producer and consumer dtype mismatch, then execute the corrected graph.
+```
+
 (tutorial-build-and-validate-graph)=
 # Build and Validate a Graph
 

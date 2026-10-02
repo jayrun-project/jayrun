@@ -1,3 +1,8 @@
+```{eval-rst}
+.. meta::
+   :description: Run iterative NumPy heat-diffusion calibration with Jayrun. Reuse problem data, manage per-trial state and isolate failed trials.
+```
+
 (tutorial-adaptive-scientific-calibration)=
 # Adaptive Scientific Calibration
 

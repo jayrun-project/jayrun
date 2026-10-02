@@ -1,10 +1,16 @@
 from pathlib import Path
+from html import escape
+from typing import Any
 import importlib
 import inspect
 import os
 import re
 import sys
 import tomllib
+from xml.etree import ElementTree
+
+from docutils import nodes
+from sphinx.application import Sphinx
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -70,6 +76,9 @@ myst_heading_anchors = 4
 
 html_theme = "furo"
 html_title = "Jayrun documentation"
+html_baseurl = os.environ.get(
+    "READTHEDOCS_CANONICAL_URL", "https://jayrun.readthedocs.io/en/latest/"
+)
 html_static_path = ["_static"]
 templates_path = ["_templates"]
 html_css_files = ["manual.css"]
@@ -150,6 +159,64 @@ def readable_signatures(app, what, name, obj, options, signature, return_annotat
     return signature, return_annotation
 
 
+_SEARCH_TITLES = {
+    "index": "Jayrun — Python Workflow Engine for Computation Graphs",
+    "start/overview": "Python workflows, artifact lifetimes and reusable resources",
+    "start/installation": "Install Jayrun for Python",
+    "start/first-graph": "Your first Python computation graph with Jayrun",
+}
+
+
+def documentation_url(app: Sphinx, docname: str) -> str:
+    """Use the same version-aware URL in page metadata and the sitemap."""
+    target = "" if docname == app.config.master_doc else app.builder.get_target_uri(docname)
+    return f"{app.config.html_baseurl.rstrip('/')}/{target}"
+
+
+def documentation_metadata(
+    app: Sphinx,
+    pagename: str,
+    templatename: str,
+    context: dict[str, Any],
+    doctree: nodes.document | None,
+) -> None:
+    if pagename not in app.env.found_docs:
+        return
+    context["pageurl"] = documentation_url(app, pagename)
+    if pagename in _SEARCH_TITLES:
+        title = _SEARCH_TITLES[pagename]
+        context["search_title"] = title if pagename == app.config.master_doc else f"{title} — Jayrun"
+    if doctree is None or any(
+        meta.get("name") == "description" for meta in doctree.findall(nodes.meta)
+    ):
+        return
+    # Keep descriptions grounded in the page's introduction. Authors can supply
+    # a more concise description with the standard Sphinx meta directive.
+    paragraph = next(doctree.findall(nodes.paragraph), None)
+    if paragraph is not None:
+        description = " ".join(paragraph.astext().split())
+        if len(description) > 200:
+            description = description[:197].rsplit(" ", 1)[0] + "…"
+        context["metatags"] += f'\n<meta name="description" content="{escape(description, quote=True)}">'
+
+
+def documentation_sitemap(app: Sphinx, exception: Exception | None) -> None:
+    """Publish authored pages only, after a successful HTML build."""
+    if exception is not None or app.builder.name not in {"html", "dirhtml"}:
+        return
+    sitemap = ElementTree.Element(
+        "urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+    )
+    for docname in sorted(app.env.found_docs):
+        entry = ElementTree.SubElement(sitemap, "url")
+        ElementTree.SubElement(entry, "loc").text = documentation_url(app, docname)
+    ElementTree.ElementTree(sitemap).write(
+        Path(app.outdir) / "sitemap.xml", encoding="utf-8", xml_declaration=True
+    )
+
+
 def setup(app):
     app.connect("autodoc-process-docstring", current_public_docstrings)
     app.connect("autodoc-process-signature", readable_signatures)
+    app.connect("html-page-context", documentation_metadata)
+    app.connect("build-finished", documentation_sitemap)

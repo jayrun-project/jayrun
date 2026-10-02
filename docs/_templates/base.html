@@ -1,0 +1,9 @@
+{% extends "!base.html" %}
+
+{% block htmltitle %}
+  {% if search_title %}
+    <title>{{ search_title | e }}</title>
+  {% else %}
+    {{ super() }}
+  {% endif %}
+{% endblock %}

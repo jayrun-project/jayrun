@@ -1,3 +1,8 @@
+```{eval-rst}
+.. meta::
+   :description: Learn checkpointed adapter training with Jayrun’s offline GRU example, explicit mutable state and an optional pretrained-transformer integration.
+```
+
 (tutorial-checkpointed-adapter-finetuning)=
 # Checkpointed Adapter Fine-Tuning
 

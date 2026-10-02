@@ -1,3 +1,8 @@
+```{eval-rst}
+.. meta::
+   :description: Explore Jayrun’s Python workflow model: explicit artifact flow, reusable resources, iterative execution, lifecycle control and graph-based supervision.
+```
+
 # What Jayrun does
 
 Jayrun is a Python execution framework for computations with explicit data flow, repeated work and reusable resources. You describe what operators consume and produce, then an Engine manages their execution and lifetime. The same graph model can describe both application work and the services that observe or coordinate it.

@@ -1,3 +1,8 @@
+```{eval-rst}
+.. meta::
+   :description: Run Jayrun Python workflow tutorials for graph validation, FastAPI image processing, PyTorch inference and training, document ingestion and scientific calibration.
+```
+
 # Tutorials
 
 The tutorials combine framework behavior with application-owned models, services and storage. Run them from the framework repository checkout so their source and installed Jayrun implementation match. Their canonical Python sources and notebooks are linked below; these paths are included with the final release.

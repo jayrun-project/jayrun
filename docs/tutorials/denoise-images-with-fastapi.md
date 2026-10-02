@@ -1,3 +1,8 @@
+```{eval-rst}
+.. meta::
+   :description: Build a FastAPI image-processing workflow with Jayrun, reusable async HTTP resources, per-request configuration and synchronous image operators.
+```
+
 (tutorial-denoise-images-with-fastapi)=
 # Denoise Images with FastAPI
 

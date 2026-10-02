@@ -1,3 +1,8 @@
+```{eval-rst}
+.. meta::
+   :description: Install Jayrun with pip on Python 3.11 or later, choose optional dependencies, and prepare scripts, async applications and notebooks.
+```
+
 # Installation and setup
 
 Jayrun requires Python 3.11 or later. Install the published package into your application's environment:

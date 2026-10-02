@@ -1,3 +1,8 @@
+```{eval-rst}
+.. meta::
+   :description: Find supported Jayrun Python imports for graph declarations, Engine, context runs, settings, persistence, placement, serialization and visualization.
+```
+
 # Public import map and glossary
 
 Use public namespaces below. `jayrun.core` and `jayrun.engine` contain implementation modules; source links may lead there, but application imports should use the supported facades.

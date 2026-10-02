@@ -1,3 +1,8 @@
+```{eval-rst}
+.. meta::
+   :description: Observe Jayrun execution in the live dashboard. Inspect runs, artifacts, records and reports, and understand the scope of lifecycle controls.
+```
+
 # Run a live dashboard
 
 Use the dashboard when you want an application service that observes running work. Unlike saving a graph plot, preparing a dashboard does not immediately start a listener. The application explicitly submits its graph with Controller authority.

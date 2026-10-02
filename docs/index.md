@@ -1,5 +1,6 @@
 ```{eval-rst}
 .. meta::
+   :description: Build Python computation graphs with reusable resources, synchronous and asynchronous execution, and a live dashboard. Explore Jayrun’s guides and tutorials.
    :google-site-verification: julLJhIROJAKIjHCJgjEUqCs0_UsFPXVik8WIhs6bHU
 ```
 

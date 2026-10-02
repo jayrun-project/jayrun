@@ -1,3 +1,8 @@
+```{eval-rst}
+.. meta::
+   :description: Build a controllable Python document-ingestion service around Jayrun with bounded admission, inspection, review, cancellation and transactional publication.
+```
+
 (tutorial-document-ingestion)=
 # Controllable Document Ingestion
 
