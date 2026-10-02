@@ -1,42 +1,42 @@
 # Jayrun
 
+**Build, run, and inspect Python computation graphs with reusable resources and a live dashboard.**
+
+Jayrun is a Python execution framework for pipelines, iterative experiments and application services. Define each step with a synchronous or asynchronous Python method. Jayrun passes artifact values between the steps and manages execution and resource lifetimes.
+
 [![PyPI version](https://img.shields.io/pypi/v/jayrun.svg)](https://pypi.org/project/jayrun/)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
+[![CI](https://github.com/jayrun-project/jayrun/actions/workflows/ci.yml/badge.svg)](https://github.com/jayrun-project/jayrun/actions/workflows/ci.yml)
 [![Documentation](https://github.com/jayrun-project/jayrun/actions/workflows/docs.yml/badge.svg)](https://github.com/jayrun-project/jayrun/actions/workflows/docs.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/jayrun-project/jayrun/blob/main/LICENSE)
 
-Jayrun is an artifact-centric Python execution framework for pipelines, iterative computation and application services. Operators consume and produce artifact values; an Engine manages execution, resource lifetimes and control of running work. Components use ordinary synchronous or asynchronous Python methods.
-
-[Documentation](https://jayrun.readthedocs.io/en/latest/) · [First program](https://jayrun.readthedocs.io/en/latest/start/first-graph.html) · [Tutorials](https://jayrun.readthedocs.io/en/latest/tutorials/index.html) · [API reference](https://jayrun.readthedocs.io/en/latest/reference/imports.html)
+[Documentation](https://jayrun.readthedocs.io/en/latest/) · [Quick start](#quick-start) · [Explore the dashboard](https://jayrun.readthedocs.io/en/latest/guides/visualization/dashboard.html) · [Tutorials](#tutorials) · [API reference](https://jayrun.readthedocs.io/en/latest/reference/imports.html)
 
 [![Jayrun dashboard listing running and paused contexts with graph versions, progress and iteration counts](https://raw.githubusercontent.com/jayrun-project/jayrun/main/docs/_static/screenshots/dashboard.png)](https://jayrun.readthedocs.io/en/latest/guides/visualization/dashboard.html)
 
-*Running and paused work in the dashboard. The dashboard is itself a graph, built from an observing operator and a managed service resource. Click the screenshot for an interactive offline preview and setup guide.*
+*Follow running and paused work in the dashboard. Click to explore the offline preview and learn how to start your own.*
 
 ## What Jayrun does
 
-- **Release intermediate data automatically.** Artifact flow lets Jayrun release consumed values when execution no longer needs them. Entry/exit retention policies and application references still determine what stays alive.
-- **Reuse expensive resources.** Models, calibration data and clients can remain available across compatible runs. The Engine manages acquisition, reuse and eventual teardown.
-- **Build your own observers and controllers.** Use graphs for monitoring, experiment scheduling or distributed-work coordination. They use the existing execution and lifecycle machinery, with separate supervision capacity. Your application supplies transport and authentication.
-- **Separate declaration from execution.** Validate and visualize a graph before running it, then submit it repeatedly with different inputs and configuration. Each submission returns its own `ContextRun`.
-- **Manage iteration and capacity explicitly.** Combine graph iteration, operator repetition, conditional routes, sync/async execution and placement requests with lifecycle controls and scoped authority.
-- **Keep dependencies small.** The required third-party runtime dependency is `packaging`; PyYAML is optional. HTML visualization needs no additional plotting package.
+- **Reuse expensive resources.** Share models, calibration data and clients across compatible runs, with managed acquisition and teardown.
+- **Release intermediate data automatically.** Let Jayrun release consumed artifact values when execution no longer needs them. Retention policies and application references determine what stays alive.
+- **Inspect and control execution.** Visualize graphs before running them, follow live work in the dashboard, and inspect captured results, timings and records afterward.
 
-See [what Jayrun does](https://jayrun.readthedocs.io/en/latest/start/overview.html) for practical benefits and boundaries, and [data and lifetimes](https://jayrun.readthedocs.io/en/latest/start/data-and-lifetimes.html) for how artifacts, configuration and resources work together.
+Declare a graph once, then submit it with different inputs and configuration. Graphs can include branches, conditional routes and iteration. They can also act as observers or controllers for other work—the dashboard itself is built as a graph.
 
-## Install
+See [the overview](https://jayrun.readthedocs.io/en/latest/start/overview.html) for applications and [data and lifetimes](https://jayrun.readthedocs.io/en/latest/start/data-and-lifetimes.html) for how artifacts, configuration and resources fit together. The example below introduces these ideas with a single calculation.
 
-Requires Python 3.11 or later:
+## Quick start
+
+Install Jayrun with Python 3.11 or later:
 
 ```bash
 python -m pip install jayrun
 ```
 
-For YAML configuration support, install `jayrun[yaml]`. Workload libraries such as PyTorch are application dependencies, not core requirements.
+The only required third-party runtime dependency is `packaging`. Install `jayrun[yaml]` if you need YAML configuration support; workload libraries such as PyTorch are application dependencies.
 
-## A complete first graph
-
-This program declares a multiplication, confirms the graph, supplies input and configuration, and prints `21`:
+Save this program as `first_graph.py` and run `python first_graph.py`. It declares a multiplication, confirms the graph, supplies input and configuration, and prints `21`:
 
 ```python
 from jayrun import (
@@ -78,60 +78,51 @@ with Engine() as engine:
     print(run.artifact(result).value)  # 21
 ```
 
-`ArtifactContext` supplies data; `ConfigContext` supplies the operator's parameters. Execution settings separately control policies such as retries and iteration limits. `run.wait()` waits for finalization, which can include failure; the example checks the outcome before reading the result.
+`ArtifactContext` supplies the input value, and `ConfigContext` supplies the multiplication factor. The constructor declares fields; Jayrun automatically binds the `source` argument to `self.source` by name and the `outputs` tuple to `self.outputs` by position.
 
-The same confirmed graph can serve another submission. The [complete walkthrough](https://jayrun.readthedocs.io/en/latest/start/first-graph.html) explains each declaration, inspects recorded values and visualizes the finished run.
+Each submission returns its own `ContextRun`. `run.wait()` waits for finalization, which can include failure, so the example checks the outcome before reading the result. Execution settings separately control policies such as retries and iteration limits.
 
-## Inspect declarations and execution
+The same confirmed graph can serve another submission. The [complete walkthrough](https://jayrun.readthedocs.io/en/latest/start/first-graph.html) explains each step, reads the recorded value and visualizes the finished run.
 
-Save a declaration with `graph.plot.save("graph.html")`, a registry with `registry.plot.save("registry.html")`, or a completed run with `run.plot.save("run.html")`. These HTML viewers are interactive and open in a browser. Declaration views show structure; run views add captured outcomes, timings, records and reports.
+## Inspect your graphs and runs
+
+Once you have a graph, save its structure with `graph.plot.save("graph.html")`. After execution, save the completed run with `run.plot.save("run.html")` to explore captured outcomes, timings, records and reports. Both create interactive HTML viewers that open in a browser, with no additional plotting package.
 
 [![Split-and-join graph with an explicit Splitter, two processing branches and a Join operator](https://raw.githubusercontent.com/jayrun-project/jayrun/main/docs/_static/screenshots/split-and-join.png)](https://jayrun.readthedocs.io/en/latest/guides/visualization/graphs.html)
 
-*An explicit split-and-join declaration. Click to explore the interactive graph and its explanation.*
+*A split-and-join graph with two processing branches. Click to explore the interactive declaration.*
 
-The [visualization and reporting chapter](https://jayrun.readthedocs.io/en/latest/guides/evidence/plots.html) covers graph definitions, registries, completed runs and the dashboard. A controller graph can use `self.runtime` to observe or coordinate work; see [the Controller example](https://jayrun.readthedocs.io/en/latest/guides/runtime/controller.html) and [Engine/runtime correspondence](https://jayrun.readthedocs.io/en/latest/guides/runtime/correspondence.html).
+For live work, use the [dashboard](https://jayrun.readthedocs.io/en/latest/guides/visualization/dashboard.html) shown above. You can also build your own monitoring or coordination graph using `self.runtime`; see the [Controller example](https://jayrun.readthedocs.io/en/latest/guides/runtime/controller.html). The [visualization and reporting guide](https://jayrun.readthedocs.io/en/latest/guides/evidence/plots.html) covers declarations, registries, completed runs and the dashboard.
 
-## Persist execution history
-
-Pass `Database("execution.sqlite")` from `jayrun.persistence` to `Engine(database=...)` to retain bounded execution/session history and timing profiles. The Engine owns the database lifecycle. After a run finishes, explicit `engine.database.flush()` checks storage settlement; computation completion alone does not establish successful persistence.
-
-The [Persistence and Database guide](https://jayrun.readthedocs.io/en/latest/guides/evidence/persistence.html) includes a complete write–close–read example. Stored diagnostic history is separate from application checkpoints and arbitrary artifact storage.
+To keep diagnostic history beyond an Engine session, pass `Database("execution.sqlite")` from `jayrun.persistence` to `Engine(database=...)`. The Engine owns the database lifecycle. After computation finishes, call `engine.database.flush()` to check that pending history was stored successfully. The [Persistence and Database guide](https://jayrun.readthedocs.io/en/latest/guides/evidence/persistence.html) shows how to write history and read it after the Engine closes. Stored history is separate from application checkpoints and arbitrary artifact storage.
 
 ## Tutorials
 
-Explore complete applications with a walkthrough, runnable Python source and notebook:
+Ready for a larger workflow? Each tutorial includes a walkthrough, Python source and a notebook, with a small offline CPU path:
 
-| Tutorial | Python source | Notebook | What it demonstrates |
-| --- | --- | --- | --- |
-| [Build and validate](https://jayrun.readthedocs.io/en/latest/tutorials/build-and-validate-graph.html) | [build_graph.py](https://github.com/jayrun-project/jayrun/blob/main/tutorials/build_graph.py) | [01_build_graph](https://github.com/jayrun-project/jayrun/blob/main/tutorials/01_build_graph.ipynb) | Properties, diagnostics and corrected execution |
-| [Image service](https://jayrun.readthedocs.io/en/latest/tutorials/denoise-images-with-fastapi.html) | [denoise_images.py](https://github.com/jayrun-project/jayrun/blob/main/tutorials/denoise_images.py) | [02_denoise_images](https://github.com/jayrun-project/jayrun/blob/main/tutorials/02_denoise_images.ipynb) | Async service, shared client and routing |
-| [Shared model inference](https://jayrun.readthedocs.io/en/latest/tutorials/mnist-inference-and-training.html#share-a-read-only-model-for-inference) | [mnist_inference.py](https://github.com/jayrun-project/jayrun/blob/main/tutorials/mnist_inference.py) | [03_mnist_inference](https://github.com/jayrun-project/jayrun/blob/main/tutorials/03_mnist_inference.ipynb) | Read-only model reuse and placement |
-| [Supervised training](https://jayrun.readthedocs.io/en/latest/tutorials/mnist-inference-and-training.html#supervise-replace-and-promote) | [mnist_training.py](https://github.com/jayrun-project/jayrun/blob/main/tutorials/mnist_training.py) | [04_mnist_training](https://github.com/jayrun-project/jayrun/blob/main/tutorials/04_mnist_training.ipynb) | Iteration, mutable state and scoped supervision |
-| [Document service](https://jayrun.readthedocs.io/en/latest/tutorials/document-ingestion.html) | [document_ingestion.py](https://github.com/jayrun-project/jayrun/blob/main/tutorials/document_ingestion.py) | [05_document_ingestion](https://github.com/jayrun-project/jayrun/blob/main/tutorials/05_document_ingestion.ipynb) | Long-running jobs and transactional publication |
-| [Adapter checkpointing](https://jayrun.readthedocs.io/en/latest/tutorials/checkpointed-adapter-finetuning.html) | [adapter_finetuning.py](https://github.com/jayrun-project/jayrun/blob/main/tutorials/adapter_finetuning.py) | [06_adapter_finetuning](https://github.com/jayrun-project/jayrun/blob/main/tutorials/06_adapter_finetuning.ipynb) | Model/optimizer/RNG checkpoints |
-| [Scientific campaign](https://jayrun.readthedocs.io/en/latest/tutorials/adaptive-scientific-calibration.html) | [heat_calibration.py](https://github.com/jayrun-project/jayrun/blob/main/tutorials/heat_calibration.py) | [07_heat_calibration](https://github.com/jayrun-project/jayrun/blob/main/tutorials/07_heat_calibration.ipynb) | Adaptive control and reproducibility |
+| Tutorial | What it demonstrates | Run it |
+| --- | --- | --- |
+| [Build and validate](https://jayrun.readthedocs.io/en/latest/tutorials/build-and-validate-graph.html) | Properties, diagnostics and corrected execution | [Python](https://github.com/jayrun-project/jayrun/blob/main/tutorials/build_graph.py) · [Notebook](https://github.com/jayrun-project/jayrun/blob/main/tutorials/01_build_graph.ipynb) |
+| [Image service](https://jayrun.readthedocs.io/en/latest/tutorials/denoise-images-with-fastapi.html) | Async service, shared client and routing | [Python](https://github.com/jayrun-project/jayrun/blob/main/tutorials/denoise_images.py) · [Notebook](https://github.com/jayrun-project/jayrun/blob/main/tutorials/02_denoise_images.ipynb) |
+| [Shared model inference](https://jayrun.readthedocs.io/en/latest/tutorials/mnist-inference-and-training.html#share-a-read-only-model-for-inference) | Read-only model reuse and placement | [Python](https://github.com/jayrun-project/jayrun/blob/main/tutorials/mnist_inference.py) · [Notebook](https://github.com/jayrun-project/jayrun/blob/main/tutorials/03_mnist_inference.ipynb) |
+| [Supervised training](https://jayrun.readthedocs.io/en/latest/tutorials/mnist-inference-and-training.html#supervise-replace-and-promote) | Iteration, mutable state and scoped supervision | [Python](https://github.com/jayrun-project/jayrun/blob/main/tutorials/mnist_training.py) · [Notebook](https://github.com/jayrun-project/jayrun/blob/main/tutorials/04_mnist_training.ipynb) |
+| [Document service](https://jayrun.readthedocs.io/en/latest/tutorials/document-ingestion.html) | Long-running jobs and transactional publication | [Python](https://github.com/jayrun-project/jayrun/blob/main/tutorials/document_ingestion.py) · [Notebook](https://github.com/jayrun-project/jayrun/blob/main/tutorials/05_document_ingestion.ipynb) |
+| [Adapter checkpointing](https://jayrun.readthedocs.io/en/latest/tutorials/checkpointed-adapter-finetuning.html) | Model/optimizer/RNG checkpoints | [Python](https://github.com/jayrun-project/jayrun/blob/main/tutorials/adapter_finetuning.py) · [Notebook](https://github.com/jayrun-project/jayrun/blob/main/tutorials/06_adapter_finetuning.ipynb) |
+| [Scientific campaign](https://jayrun.readthedocs.io/en/latest/tutorials/adaptive-scientific-calibration.html) | Adaptive control and reproducibility | [Python](https://github.com/jayrun-project/jayrun/blob/main/tutorials/heat_calibration.py) · [Notebook](https://github.com/jayrun-project/jayrun/blob/main/tutorials/07_heat_calibration.ipynb) |
 
-Each tutorial includes a small offline CPU path. See the [tutorial setup guide](https://jayrun.readthedocs.io/en/latest/tutorials/index.html) for dependencies and optional GPU/model workloads.
+See the [tutorial setup guide](https://jayrun.readthedocs.io/en/latest/tutorials/index.html) for dependencies and optional GPU/model workloads. For a specific task, follow the guides on [graph construction](https://jayrun.readthedocs.io/en/latest/guides/workflow/index.html), [resources](https://jayrun.readthedocs.io/en/latest/guides/graphs/resources.html), [component interfaces](https://jayrun.readthedocs.io/en/latest/guides/components/index.html) or [application integration](https://jayrun.readthedocs.io/en/latest/guides/integration/index.html).
 
-## Find your next step
+## Community
 
-| Task | Guide |
-| --- | --- |
-| Build, validate, submit and inspect a graph | [From declaration to execution](https://jayrun.readthedocs.io/en/latest/guides/workflow/index.html) |
-| Resolve fan-out, fan-in and conditional routes | [Graph-definition resolutions](https://jayrun.readthedocs.io/en/latest/guides/graphs/resolutions.html) |
-| Use context, execution, placement and runtime handles | [Component interfaces](https://jayrun.readthedocs.io/en/latest/guides/components/index.html) |
-| Add reusable models or clients | [Resources](https://jayrun.readthedocs.io/en/latest/guides/graphs/resources.html) |
-| Integrate services, remote work and checkpoints | [Application integration](https://jayrun.readthedocs.io/en/latest/guides/integration/index.html) |
-| Check exact imports and contracts | [Public API](https://jayrun.readthedocs.io/en/latest/reference/imports.html) |
+Have a question or a workflow to share? Join [GitHub Discussions](https://github.com/jayrun-project/jayrun/discussions). Report bugs and request features through [GitHub Issues](https://github.com/jayrun-project/jayrun/issues); for bugs, include a small reproducible example and your Python and Jayrun versions.
 
-The [documentation sources](https://github.com/jayrun-project/jayrun/blob/main/docs/index.md) are included in this repository. Supported public imports come from `jayrun` and its documented public modules; `jayrun.core` and `jayrun.engine` are implementation details.
+You can also help by reporting confusing examples, suggesting documentation improvements or sharing how you use Jayrun. The [documentation sources](https://github.com/jayrun-project/jayrun/blob/main/docs/index.md) are included in this repository.
 
 ## Scope and project status
 
-Jayrun manages graph execution and ownership; applications own network transport, authentication, external side effects and checkpoint contents. Placement accounts for declared capacity rather than performing device allocation. Cleanup releases framework references rather than guaranteeing an immediate drop in process memory. See [supported behavior and limitations](https://jayrun.readthedocs.io/en/latest/reference/limits.html).
+Jayrun manages graph execution and ownership. Applications supply network transport, authentication, external side effects and checkpoint contents. Placement accounts for declared capacity rather than allocating devices, and cleanup releases framework references rather than guaranteeing an immediate drop in process memory. See [supported behavior and limitations](https://jayrun.readthedocs.io/en/latest/reference/limits.html).
 
-Jayrun provides a tested foundation for graph execution, with ongoing improvements to reliability, usability and documentation. Report bugs and request features through [GitHub Issues](https://github.com/jayrun-project/jayrun/issues).
+Jayrun provides a tested foundation for graph execution, with ongoing improvements to reliability, usability and documentation. Use imports from `jayrun` and its [documented public modules](https://jayrun.readthedocs.io/en/latest/reference/imports.html); `jayrun.core` and `jayrun.engine` are implementation details.
 
 ## License
 
