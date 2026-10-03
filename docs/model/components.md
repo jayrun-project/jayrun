@@ -10,7 +10,7 @@ An operator transforms artifacts within a context. A resource prepares reusable 
 | Result | One return position per declared output | One managed `Data` value |
 | Cleanup | Release context-owned values and application-owned temporary work | `teardown(data)` when the managed instance is released |
 
-Constructors declare fields and defaults. Runtime invocation uses proxies, not the original declaration objects. A random `self.client` or `self.counter` assigned during construction is not an implicit runtime field. Use configuration for portable immutable parameters, artifacts for flowing data, and resources for managed clients/models.
+Constructors declare fields and defaults. Runtime invocation uses proxies, not the original declaration objects. An application attribute such as `self.client` or `self.counter` assigned during construction is not an implicit runtime field. Use configuration for portable immutable parameters, artifacts for flowing data, and resources for managed clients/models.
 
 Directly subclass `BaseOperator` or `BaseResource`; do not build an operator inheritance hierarchy or mix declaration bases. Put reusable implementation logic in ordinary helper functions or application classes. See [operator declaration rules](../guides/graphs/operators.md).
 

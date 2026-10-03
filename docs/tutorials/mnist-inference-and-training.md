@@ -48,7 +48,8 @@ print(inspect.getsource(lesson.ModelResource))
 print(inspect.getsource(lesson.build_graph))
 ```
 
-### 2. Submit two contexts to the same graph
+(submit-two-contexts-to-the-same-graph)=
+### 2. Run two batches with one shared model
 
 For this wiring exercise we save a randomly initialized classifier: its predictions are not useful accuracy evidence. The Engine can reuse the same compatible resource across both submissions. Each run supplies a different batch and keeps its own result. Teardown occurs through Engine ownership; merely finishing a batch does not unload the cache.
 
@@ -84,7 +85,7 @@ assert shared == {"contexts": 2, "predictions": 32, "matches_direct": True}
 
 ### 3. Run the complete inference demonstration
 
-The canonical demonstration prepares a centroid classifier and checks eight batches against direct predictions. contexts counts submitted batches; predictions counts individual samples; matches_direct_baseline checks integration equivalence. accuracy describes only the selected dataset/model pair. Resource setup counts are verified by the tutorial tests; the returned summary does not expose them.
+The complete demonstration prepares a centroid classifier and checks eight batches against direct predictions. contexts counts submitted batches; predictions counts individual samples; matches_direct_baseline checks integration equivalence. accuracy describes only the selected dataset/model pair.
 
 <!-- notebook: 03_mnist_inference.ipynb#complete-inference -->
 ```python

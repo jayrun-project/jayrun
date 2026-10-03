@@ -36,7 +36,7 @@ The same primitives let you build application-specific services, for example:
 - A dispatcher that chooses an execution owner using observed capacity and application policy.
 - A coordination graph that exchanges snapshots through your transport to synchronize distributed work.
 
-These services use Jayrun's existing scheduling, thread-execution, async-execution, resource and shutdown machinery. Supervision has separate executor capacity so a waiting controller does not consume the ordinary work's executor slots. It shares the Engine's managed execution infrastructure, not necessarily the same worker pool. Custom policies still need to cooperate with cancellation and yield during async waits.
+The Engine manages execution, resources and shutdown for these services. Supervision has separate executor capacity so a waiting controller does not consume the ordinary work's executor slots. Custom policies still need to cooperate with cancellation and yield during async waits.
 
 Start with [runtime authority and capabilities](../guides/runtime/index.md), the [working Controller example](../guides/runtime/controller.md) and [Engine/runtime correspondence](../guides/runtime/correspondence.md). For distributed applications, Jayrun supplies ownership and synchronization primitives; you provide transport, discovery, authentication and failure detection. See [remote coordination](../guides/integration/remote.md).
 
@@ -56,7 +56,7 @@ Records, progress, reports and bounded event/history views make execution observ
 
 ## Keep the runtime dependency set small
 
-The package declares one required third-party runtime dependency: `packaging`. YAML support is optional through the `yaml` extra, which adds PyYAML. The built-in HTML visualization has no additional Python plotting dependency. Application libraries such as PyTorch or an HTTP framework are needed only when your workload or integration uses them; documentation and development tools are separate from runtime requirements. See [installation](installation.md).
+The package declares one required third-party runtime dependency: `packaging`. YAML support is optional through the `yaml` extra, which adds PyYAML. The HTML graph viewer is bundled. Application libraries such as PyTorch or an HTTP framework are needed only when your workload or integration uses them; documentation and development tools are separate from runtime requirements. See [installation](installation.md).
 
 ## Responsibilities
 

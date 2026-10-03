@@ -22,7 +22,7 @@ Start with [what Jayrun does](start/overview.md) and [artifacts, configuration a
 8. [Troubleshooting](guides/problems/index.md) — symptoms, causes and corrections.
 9. [Reference](reference/index.md) — exact APIs, defaults and supported behavior.
 
-For a specific task, go directly to [graph-definition resolutions](guides/graphs/resolutions.md), [execution settings](guides/runs/settings.md), or [Engine/runtime correspondence](guides/runtime/correspondence.md). Configuration and execution settings have separate guides; Engine and injected interfaces have separate references.
+For a specific task, go directly to [graph-definition resolutions](guides/graphs/resolutions.md), [execution settings](guides/runs/settings.md), or [Engine/runtime correspondence](guides/runtime/correspondence.md).
 
 [Public source repository](https://github.com/jayrun-project/jayrun) · [Report an issue](https://github.com/jayrun-project/jayrun/issues)
 

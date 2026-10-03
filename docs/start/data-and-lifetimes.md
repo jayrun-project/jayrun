@@ -30,7 +30,7 @@ A connected input whose value is `None` skips its consumer. That is how a declar
 
 Scale reads its factor each time it executes; consuming an artifact does not consume the factor. The submitted configuration remains the same across that run's repeats and graph iterations. Another submission can use factor `3` without rebuilding the graph or altering the earlier run. Resource setup also reads declared configuration: here, the calibration offset is a resource configuration field.
 
-Submission creates a separate, sealed configuration view. Editing a caller's builder afterward does not change accepted work. Configuration is not a mutable counter, model state or automatic disk storage. Put evolving computation state in artifacts, and use application storage for durable checkpoints.
+Submission creates a separate, sealed configuration view. Editing a caller's builder afterward does not change accepted work. Put evolving computation state in artifacts, and use application storage for durable checkpoints.
 
 [Execution settings](../guides/runs/settings.md) are a fourth, separate concern: they tell Jayrun how to manage work, such as iteration limits and retries. They are not fields that Scale reads as part of its calculation.
 
@@ -40,7 +40,7 @@ The first execution needing Calibration calls its `setup()` and acquires the ret
 
 Reuse depends on resource type, effective configuration and sharing policy. A reusable value must be safe for the concurrency its bindings permit; `parallel_safe=True` does not add locking.
 
-A placed resource can keep its capacity reservation while cached. When other work needs that capacity, the runtime may unload an idle, unpinned resource and call `teardown(data)`. A future acquisition may then need setup again. Engine shutdown also cleans up managed resources after their users drain. A resource is therefore not a promise of one setup for the entire process or permanent residency. See [resource authoring](../guides/graphs/resources.md) for cleanup and [placement](../guides/components/placement.md) for capacity ownership.
+A placed resource can keep its capacity reservation while cached. When other work needs that capacity, the runtime may unload an idle, unpinned resource and call `teardown(data)`. A future acquisition may then need setup again. Engine shutdown also cleans up managed resources after their users drain. See [resource authoring](../guides/graphs/resources.md) for cleanup and [placement](../guides/components/placement.md) for capacity ownership.
 
 ## What a completed run keeps
 

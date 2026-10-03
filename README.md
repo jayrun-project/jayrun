@@ -88,7 +88,7 @@ The same confirmed graph can serve another submission. The [complete walkthrough
 
 ## Inspect your graphs and runs
 
-Once you have a graph, save its structure with `graph.plot.save("graph.html")`. After execution, save the completed run with `run.plot.save("run.html")` to explore captured outcomes, timings, records and reports. Both create interactive HTML viewers that open in a browser, with no additional plotting package.
+Once you have a graph, save its structure with `graph.plot.save("graph.html")`. After execution, save the completed run with `run.plot.save("run.html")` to explore captured outcomes, timings, records and reports. Both create interactive HTML viewers that open in a browser.
 
 [![Split-and-join graph with an explicit Splitter, two processing branches and a Join operator](https://raw.githubusercontent.com/jayrun-project/jayrun/main/docs/_static/screenshots/split-and-join.png)](https://jayrun.readthedocs.io/en/latest/guides/visualization/graphs.html)
 

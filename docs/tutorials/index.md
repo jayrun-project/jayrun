@@ -40,7 +40,7 @@ Each has a small offline CPU path. The MNIST CPU fixtures are synthetic lifecycl
 
 The notebooks let you inspect a declaration, supply inputs, check an outcome, and change one decision. Predict the result of each “Try it yourself” exercise before running it. Expected states and counts are explained alongside the steps; generated IDs, model accuracy, and timings can vary. A passing numerical or lifecycle check does not establish production capacity or model quality.
 
-See the [tutorial README](https://github.com/jayrun-project/jayrun/blob/main/tutorials/README.md), [requirements](https://github.com/jayrun-project/jayrun/blob/main/tutorials/requirements.txt) and [optional PEFT requirements](https://github.com/jayrun-project/jayrun/blob/main/tutorials/requirements-peft.txt). The manual renders excerpts from the local canonical sources; it does not fetch tutorial files during the documentation build.
+See the [tutorial README](https://github.com/jayrun-project/jayrun/blob/main/tutorials/README.md), [requirements](https://github.com/jayrun-project/jayrun/blob/main/tutorials/requirements.txt) and [optional PEFT requirements](https://github.com/jayrun-project/jayrun/blob/main/tutorials/requirements-peft.txt).
 
 ## Walkthroughs
 

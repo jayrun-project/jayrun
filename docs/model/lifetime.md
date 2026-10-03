@@ -36,7 +36,7 @@ Only the sample and intermediate values travel through the flows. Each run's fac
 :language: python
 ```
 
-[Download the example](../_examples/lifetimes.py). It prints `26`, `45`, then `50`. Setup emits a `calibration_loaded` context record; the assertions check that it appears in the first and third runs, but not in the second. The read-only CPU resource needs no accelerator placement, so this example demonstrates reuse/configuration rather than placement-driven eviction. The Engine context manager owns final cleanup.
+[Download the example](../_examples/lifetimes.py). It prints `26`, `45`, then `50`. Setup emits a `calibration_loaded` context record; the assertions check that it appears in the first and third runs, but not in the second. The Engine context manager owns final cleanup.
 
 ## Inspect the first run
 

@@ -3,8 +3,8 @@
 These examples belong to the application layer; they do not change Jayrun's core API.
 Each notebook imports the adjacent Python implementation and walks through runnable
 steps: understand the data flow, supply inputs, inspect an outcome, and try a small
-change. Documentation uses the same guided cells and includes canonical implementation
-excerpts. Framework verification exercises these applications through their public interfaces.
+change. Each documentation walkthrough follows the notebook's runnable steps and
+links to the complete Python implementation.
 
 If Jayrun is new to you, read the manual's first graph and artifact/resource lifetime
 walkthrough before starting. Begin with graph validation, then choose the application
@@ -77,8 +77,7 @@ be available in the runtime already. For GPU lessons select a GPU runtime and se
 for the web services. The notebooks use real in-process ASGI clients, not public tunnels.
 
 Only missing non-PyTorch optional packages are installed by the Colab setup. Do not
-replace the runtime's working PyTorch/CUDA installation. The hosted Colab service itself
-was not tested during this rebuild; local fresh-kernel execution is reported separately.
+replace the runtime's working PyTorch/CUDA installation.
 
 ## Optional real pretrained-model integration
 
@@ -92,8 +91,8 @@ python -m tutorials.peft_finetuning --revision main --device cuda --output peft_
 
 For reproduction, replace `main` with the resolved immutable revision recorded in
 `result.json`. Resume with `--resume peft_results/training_checkpoint.pt --updates 24`.
-Model downloads, CUDA execution, and pretrained model quality were not qualified in
-this CPU rebuild. The fixture checkpoint test and the optional integration are separate.
+The offline checkpoint lesson uses a different model and dataset; check continuation
+and memory requirements separately when adapting this pretrained-model integration.
 
 ## Ownership and limits
 
@@ -120,11 +119,10 @@ The cells check concrete outcomes: incompatible graph edges, decoded image pixel
 direct inference equality, paused epoch records, review/publication stages, checkpoint
 continuity, and campaign refinement. Exercises invite you to change one input or policy
 and explain the resulting behavior. Accuracy, IDs, and timings are not fixed expected
-output. Walkthrough code and the corresponding notebook cells are checked for agreement.
+output.
 
-Development verification covers actual FastAPI clients and a local HTTP upstream,
-numerical baselines, optimizer/checkpoint continuity, retained failure outcomes and
-fresh-kernel notebook execution. Those internal test tools are not included in this
-public repository. Real MNIST downloads, pretrained-model downloads and hosted Colab
-execution require separate opt-in checks; synthetic fixtures establish lifecycle
-behavior, not real-data model quality or hardware/endurance qualification.
+The default offline CPU runs exercise application lifecycle and numerical integration.
+They do not exercise real MNIST downloads, pretrained-model downloads, CUDA execution or
+hosted Colab behavior. Check those paths in your target environment; synthetic
+fixtures are not evidence of real-data model quality, GPU performance or production
+capacity.
