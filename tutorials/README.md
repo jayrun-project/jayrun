@@ -1,8 +1,15 @@
 # Jayrun tutorials
 
 These examples belong to the application layer; they do not change Jayrun's core API.
-Each notebook imports the adjacent Python implementation. Documentation includes the
-same source. Framework verification exercises these applications through their public interfaces.
+Each notebook imports the adjacent Python implementation and walks through runnable
+steps: understand the data flow, supply inputs, inspect an outcome, and try a small
+change. Documentation uses the same guided cells and includes canonical implementation
+excerpts. Framework verification exercises these applications through their public interfaces.
+
+If Jayrun is new to you, read the manual's first graph and artifact/resource lifetime
+walkthrough before starting. Begin with graph validation, then choose the application
+closest to your work. Each notebook states its Python, HTTP, tensor, or numerical
+prerequisites; none requires prior knowledge of Jayrun internals.
 
 ## Choose a tutorial
 
@@ -31,10 +38,18 @@ python -m tutorials.adapter_finetuning --output adapter_results
 python -m tutorials.heat_calibration --output heat_results
 ```
 
-The PyTorch examples need an existing suitable PyTorch installation. This requirements
+Graph validation, inference, training, and adapter examples need an existing suitable
+PyTorch installation. Document ingestion does not require PyTorch; heat calibration
+needs NumPy. This requirements
 file deliberately does not install or replace PyTorch. The examples import the local
 `jayrun/` source when launched from the repository root; installing a different released
 Jayrun package is not a substitute for using the source version paired with these lessons.
+
+For local notebooks use Jupyter in the same environment; install `jupyterlab` if needed,
+then launch `python -m jupyterlab` from the repository root. Run cells in order in a fresh
+kernel. The walkthrough snippets use top-level `await`; synchronous Engine/TestClient
+blocks run through `asyncio.to_thread` so they do not nest work on Jupyter's event loop.
+Use the module commands above for ordinary terminal execution.
 
 The MNIST examples default to a synthetic lifecycle fixture so all notebooks have a
 small offline path. It is explicitly **not MNIST** and its accuracy is not a model-quality
@@ -100,6 +115,12 @@ launching, arbitrary-URL safety, or exactly-once side effects.
 Run the module commands above or execute each notebook from a fresh kernel to check
 its example. The notebooks import the adjacent Python implementation, so keep the
 complete `tutorials/` directory and sample data together.
+
+The cells check concrete outcomes: incompatible graph edges, decoded image pixels,
+direct inference equality, paused epoch records, review/publication stages, checkpoint
+continuity, and campaign refinement. Exercises invite you to change one input or policy
+and explain the resulting behavior. Accuracy, IDs, and timings are not fixed expected
+output. Walkthrough code and the corresponding notebook cells are checked for agreement.
 
 Development verification covers actual FastAPI clients and a local HTTP upstream,
 numerical baselines, optimizer/checkpoint continuity, retained failure outcomes and

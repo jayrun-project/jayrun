@@ -6,80 +6,124 @@
 (tutorial-checkpointed-adapter-finetuning)=
 # Checkpointed Adapter Fine-Tuning
 
-Train a low-rank language-model adapter while keeping mutable training state explicit.
-The default offline GRU fixture tests lifecycle and checkpoint mechanics. A separate optional
-PEFT integration loads an actual pretrained transformer; choose the offline example first to learn the workflow.
+Train a small low-rank output adapter, save all continuation state, reconstruct it, and compare resumed training with an uninterrupted run. You should understand a PyTorch optimizer and state_dict. The offline GRU and bundled text are a lifecycle fixture, not a pretrained LLM or a response-quality benchmark.
 
-## Run the offline example
+## Run it
+
+Follow [tutorial setup](index.md#prepare-your-environment), then run from the repository root:
 
 ```bash
 python -m tutorials.adapter_finetuning --output adapter_results
 ```
 
-Open `tutorials/06_adapter_finetuning.ipynb`. The fixture prepares a small base model before
-scheduling, freezes it, and trains only a low-rank output head on the bundled support-text
-corpus. It is not a pretrained LLM or a demonstration of production response quality.
+Open `tutorials/06_adapter_finetuning.ipynb` for the guided lesson. The Python snippets below are consecutive notebook cells: run them in Jupyter with top-level `await`. For a terminal run, use the module command above.
 
-## Keep all mutable state in one artifact
+## 1. Separate shared input from mutable training state
 
-The artifact owns the model, optimizer, scheduler, sampler generator, update position,
-examples-seen count, and model identity. The token dataset is shared read-only by the
-application. A graph iteration performs up to three optimizer updates, evaluates, records
-bounded progress, and reaches a control boundary. Stop prevents another iteration.
+The token dataset is shared read-only by convention. TrainingState owns model, optimizer, scheduler, sampler RNG, identity, update position, and examples-seen count. One graph iteration performs up to three updates, records progress, and reaches a control boundary. total_updates is an absolute target, not a number to add to the current position.
 
-```{literalinclude} ../../tutorials/adapter_finetuning.py
-:language: python
-:pyobject: TrainingState
+<!-- notebook: 06_adapter_finetuning.ipynb#inspect-state -->
+```python
+import asyncio
+import inspect
+import tempfile
+import torch
+from pathlib import Path
+from tutorials import adapter_finetuning as lesson
+
+print(inspect.getsource(lesson.TrainingState))
+print(inspect.getsource(lesson.TrainBlock))
+dataset = lesson.load_fixture()
+print("Train / validation shapes:", tuple(dataset.train.shape), tuple(dataset.validation.shape))
 ```
 
-```{literalinclude} ../../tutorials/adapter_finetuning.py
-:language: python
-:pyobject: TrainBlock
+## 2. Train to update six
+
+new_fixture_state prepares the small base and freezes it before scheduling. Only the low-rank head trains. run_training assembles and submits the confirmed graph using those canonical operators. Six updates correspond to 24 sampled examples in this recipe; optimizer and scheduler should both be populated.
+
+<!-- notebook: 06_adapter_finetuning.ipynb#train-partial -->
+```python
+partial = await asyncio.to_thread(
+    lesson.run_training, lesson.new_fixture_state(), dataset, total_updates=6)
+print("Updates / examples seen:", partial.step, partial.examples_seen)
+assert partial.step == 6 and partial.examples_seen == 24
+assert partial.optimizer.state
 ```
 
-There is no per-tensor graph scheduling. CPU/CUDA placement is explicit; initial movement
-rebinds the optimizer while restoring its existing state. Later iterations reuse it. A
-reservation is a capacity claim, not VRAM enforcement. The example is single-device and
-makes no multi-GPU or multi-host training claim.
+## 3. Save, reconstruct, and continue
 
-## Save a checkpoint, not merely a report
+Saving model weights alone would lose optimizer momentum, schedule position, and the next sampled batch. The application checkpoint stores those values together and verifies dataset/model identity when loading. A new state is reconstructed, then restored before another context is submitted. Here the temporary directory is removed after restoration; keep a chosen output directory for a real experiment.
 
-The application checkpoint contains model, optimizer, scheduler, sampler RNG, positions,
-model identity, and the token-dataset fingerprint. It is saved via a temporary file and
-loaded with `weights_only=True`. A separately constructed matching state receives the
-checkpoint and continues in a new context. Dataset/model mismatches are rejected.
+<!-- notebook: 06_adapter_finetuning.ipynb#restore -->
+```python
+with tempfile.TemporaryDirectory() as temporary:
+    checkpoint = Path(temporary) / "training_checkpoint.pt"
+    lesson.save_checkpoint(partial, dataset, checkpoint)
+    restored = lesson.restore_checkpoint(lesson.new_fixture_state(), dataset, checkpoint)
+assert restored.step == 6 and restored.examples_seen == 24
+torch.testing.assert_close(restored.generator.get_state(), partial.generator.get_state(), rtol=0, atol=0)
 
-```{literalinclude} ../../tutorials/adapter_finetuning.py
-:language: python
-:pyobject: save_checkpoint
+resumed = await asyncio.to_thread(lesson.run_training, restored, dataset, total_updates=12)
+print("After continuation:", resumed.step, resumed.examples_seen)
+assert resumed.step == 12 and resumed.examples_seen == 48
 ```
 
-The default recipe has no dropout or other model-side random operations; the sampler owns
-its RNG. It does not restore process-global RNG into concurrent trials. The optional PEFT
-recipe also disables dropout. Arbitrary stochastic models, data-loader workers, distributed
-samplers, and CUDA kernel nondeterminism need additional application-specific qualification.
+## 4. Compare the full parameter state
 
-After loading a checkpoint, compare the update position and the next training result with an uninterrupted run. The optimizer, scheduler and sampler must continue together. A partially executed update block must not simply be retried: restore a known application checkpoint first. Runtime histories do not reconstruct training state.
+Build the same initial fixture and train uninterrupted to update twelve. On this CPU recipe, resumed parameters should agree exactly. The canonical complete demo also compares direct PyTorch training and checks that frozen parameters did not change. These checks establish continuation for this fixture, not arbitrary stochastic models or hardware.
 
-## Optional pretrained transformer
+<!-- notebook: 06_adapter_finetuning.ipynb#compare -->
+```python
+uninterrupted = await asyncio.to_thread(
+    lesson.run_training, lesson.new_fixture_state(), dataset, total_updates=12)
+for name, value in uninterrupted.model.state_dict().items():
+    torch.testing.assert_close(value, resumed.model.state_dict()[name], rtol=0, atol=0)
+print("Checkpoint continuation matches uninterrupted CPU training.")
+
+summary = await asyncio.to_thread(lesson.run_demo)
+assert summary["matches_direct_baseline"] and summary["frozen_parameters_unchanged"]
+print({key: summary[key] for key in ("updates", "trainable_parameters", "validation_loss_before", "validation_loss_after")})
+```
+
+## Try it yourself
+
+Change the checkpoint boundary to update three and keep the final target twelve. Adapt the expected position/examples-seen checks and compare the result again. Try restoring into a fixture with a different seed: model identity should reject it.
+
+Do not retry a partially executed optimizer block as if its effects were rolled back. Restore a known application checkpoint first. The sampler owns the RNG in this recipe; arbitrary dropout, worker RNG, or CUDA nondeterminism needs additional qualification. History records do not reconstruct training state.
+
+## Optional: a pretrained transformer
+
+The separate peft_finetuning implementation uses Transformers and PEFT. It downloads weights and needs explicit optional-package installation and a suitable memory budget. Enable only after completing the offline lesson. Record and reuse the resolved immutable revision. This tiny corpus does not evaluate production model quality.
+
+<!-- notebook: 06_adapter_finetuning.ipynb#optional-pretrained -->
+```python
+RUN_PRETRAINED = False
+if RUN_PRETRAINED:
+    from tutorials.peft_finetuning import run_pretrained
+    pretrained_result = await asyncio.to_thread(
+        run_pretrained, model_id="HuggingFaceTB/SmolLM2-135M", revision="main",
+        output=Path("peft_results"), device="cpu", total_updates=12)
+    print(pretrained_result)
+```
+
+## Optional pretrained-model setup
+
+The optional notebook cell is disabled by default. To run the separate integration explicitly:
 
 ```bash
 python -m pip install -r tutorials/requirements-peft.txt
 python -m tutorials.peft_finetuning --revision main --device cuda --output peft_results
 ```
 
-The complete implementation is `tutorials/peft_finetuning.py`; no framework modification is
-required. Transformers loads `HuggingFaceTB/SmolLM2-135M` by default and PEFT applies LoRA to
-linear layers. Use `--model` to select another compatible causal model. The resolved immutable
-revision is recorded; reuse that revision rather than `main` for reproduction. The standalone
-adapter is saved using PEFT's own format, while a full application checkpoint retains optimizer
-state. This small corpus is not a suitable quality benchmark. The optional path downloads model weights and needs a compatible backend; start with
-the offline fixture if these dependencies are unavailable.
+The resolved immutable revision is recorded; use it for later reproduction. The PEFT adapter export and full optimizer checkpoint serve different purposes. CPU/CUDA placement is explicit and single-device. A reservation accounts for capacity; it does not enforce actual VRAM allocation. The fixture has no model-side dropout; concurrent trials do not restore process-global RNG.
 
-The design follows [PyTorch checkpoint guidance](https://docs.pytorch.org/tutorials/beginner/saving_loading_models.html)
-and the [PEFT LoRA interface](https://huggingface.co/docs/peft/en/package_reference/lora).
+## Read the canonical implementation
 
-## Canonical source
+The complete [adapter_finetuning.py](https://github.com/jayrun-project/jayrun/blob/main/tutorials/adapter_finetuning.py) supplies the operators and application helpers used above. This excerpt shows checkpoint storage:
 
-The complete runnable implementation is [tutorials/adapter_finetuning.py](https://github.com/jayrun-project/jayrun/blob/main/tutorials/adapter_finetuning.py).
-Use {doc}`the tutorial index <index>` for all notebooks and their execution requirements.
+```{literalinclude} ../../tutorials/adapter_finetuning.py
+:language: python
+:pyobject: save_checkpoint
+```
+
+Continue with [the tutorial collection](index.md) or [supported behavior and limitations](../reference/limits.md).
