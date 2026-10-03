@@ -13,7 +13,7 @@ python -m pip install jayrun
 
 For a checkout of the framework, run `python -m pip install -e .` from its repository root. Use a checkout containing the APIs described by this manual when the public package has not yet incorporated a change. [The public repository](https://github.com/jayrun-project/jayrun) is the source location.
 
-Optional YAML configuration support is available with `python -m pip install "jayrun[yaml]"`. The current HTML graph viewer is bundled; plotting does not require PyVis. Tutorial dependencies, including PyTorch and web-service packages, belong to those examples and are not necessary for the small CPU examples in these guides.
+Optional YAML configuration support is available with `python -m pip install "jayrun[yaml]"`. The HTML graph viewer is bundled. Tutorial dependencies, including PyTorch and web-service packages, belong to those examples and are not necessary for the small CPU examples in these guides.
 
 ## Scripts and notebooks
 
