@@ -2,6 +2,7 @@
 
 from .engine.settings.context import ArtifactPolicy, ContextSettings
 from .engine.settings.engine import (
+    ControllerPolicy,
     EngineSettings,
     FailureMode,
     RetryPolicy,
@@ -13,6 +14,7 @@ from .engine.settings.engine import (
 __all__ = (
     "ArtifactPolicy",
     "ContextSettings",
+    "ControllerPolicy",
     "EngineSettings",
     "FailureMode",
     "RetryPolicy",

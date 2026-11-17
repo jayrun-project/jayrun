@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from ..progress_history import _TimingScope
     from .._history import _ContextCapture
 
+from ...authority import Controller, Supervisor
 from ...core.artifact.base import Artifact
 from ...core.artifact.context import ArtifactContext
 from ...core.config.context import ConfigContext
@@ -62,12 +63,13 @@ from ..recorders.execution.records import (
 from ..resource.placement_request import PlacementRequest
 from ..settings.combined_context import CombinedContextSettings
 from ..settings.context import ContextSettings
-from ..settings.engine import FailureMode, RoutingMode
+from ..settings.engine import ControllerPolicy, FailureMode, RoutingMode
 from ..snapshot import ContextSnapshot
 from ..terminal_history import TerminalCursor, TerminalHistoryPage, _TerminalHistory
 from ..submission import (
     _NormalizedSubmission,
     _SupervisionScope,
+    _normalize_authority,
     _normalize_submission,
 )
 from .context_id_generator import ContextIdGenerator
@@ -515,46 +517,60 @@ class RuntimeRegistry(RuntimeModule):
                 self._context_runs[key] = run
             return run
 
+    def _authorize_runtime_submission(
+        self,
+        caller_context_id: int,
+        authority: Supervisor | Controller | None,
+    ) -> _RuntimeCapability:
+        capability = self._context_capabilities.get(caller_context_id)
+        if capability is None:
+            raise PermissionError("runtime submission requires a live Controller")
+        self._engine_runtime.messenger.authorize_controller(capability)
+        if (authority is not None and self._engine_runtime.engine_settings.controller_policy
+                is ControllerPolicy.HOST_ONLY):
+            raise PermissionError("HOST_ONLY forbids runtime authority submission")
+        return capability
+
     def submit_from_context(
         self,
         caller_context_id: int,
-        graph_key: GraphIdentity,
+        graph: GraphDefinition | GraphIdentity,
         artifacts: ArtifactContext | None = None,
         configs: ConfigContext | None = None,
         *,
         context_settings: ContextSettings | None = None,
+        authority: Supervisor | Controller | None = None,
     ) -> ContextRun:
         if getattr(self._engine_runtime, "history_recorder", None) is not None:
-            return self._submit_with_history(caller_context_id, graph_key, artifacts, configs,
-                                             context_settings=context_settings)
+            return self._submit_with_history(
+                caller_context_id, graph, artifacts, configs,
+                context_settings=context_settings, authority=authority,
+            )
         with self._lifecycle_lock:
             if self._shutdown_requested:
                 raise RuntimeError("runtime is shutting down")
             return self._submit_from_context(
                 caller_context_id,
-                graph_key,
+                graph,
                 artifacts,
                 configs,
                 context_settings=context_settings,
+                authority=authority,
             )
 
     def _submit_with_history(
-        self, caller_context_id: int, graph_key: GraphIdentity,
+        self, caller_context_id: int, graph: GraphDefinition | GraphIdentity,
         artifacts: ArtifactContext | None, configs: ConfigContext | None,
         *, context_settings: ContextSettings | None,
+        authority: Supervisor | Controller | None,
     ) -> ContextRun:
         runtime = self._engine_runtime
         with self._lifecycle_lock:
             if self._shutdown_requested:
                 raise RuntimeError("runtime is shutting down")
-            caller = self.get_context(caller_context_id)
-            capability = self._context_capabilities[caller_context_id]
-            runtime.messenger.authorize_controller(capability)
-            if not caller.is_controller:
-                raise PermissionError("runtime submission requires a Controller")
-            if runtime.graph_registry is None:
-                raise RuntimeError("runtime submission requires a graph registry")
-        submission = _normalize_submission(graph=graph_key, artifacts=artifacts, configs=configs,
+            capability = self._authorize_runtime_submission(caller_context_id, authority)
+        normalized_authority = _normalize_authority(authority, runtime.graph_registry)
+        submission = _normalize_submission(graph=graph, artifacts=artifacts, configs=configs,
                                             graph_registry=runtime.graph_registry)
         settings = CombinedContextSettings.from_settings(runtime.engine_settings, context_settings,
                                                         submission.graph._specification.artifacts)
@@ -575,7 +591,12 @@ class RuntimeRegistry(RuntimeModule):
                 runtime.gateway.notify_active_state()
                 submission.graph._seal()
                 try:
-                    run = self.register(submission, (), capability, settings, history_capture=capture, timing_key=timing_key)
+                    run = self.register(
+                        submission, normalized_authority.supervises, capability, settings,
+                        controller=normalized_authority.controller,
+                        history_reader=normalized_authority.history,
+                        history_capture=capture, timing_key=timing_key,
+                    )
                 except BaseException as failure:
                     runtime.gateway.notify_failed_state(failure)
                     raise
@@ -589,28 +610,19 @@ class RuntimeRegistry(RuntimeModule):
     def _submit_from_context(
         self,
         caller_context_id: int,
-        graph_key: GraphIdentity,
+        graph: GraphDefinition | GraphIdentity,
         artifacts: ArtifactContext | None = None,
         configs: ConfigContext | None = None,
         *,
         context_settings: ContextSettings | None = None,
+        authority: Supervisor | Controller | None = None,
     ) -> ContextRun:
-        """Register ordinary graph-key work authorized by a controller.
-
-        Runtime submission deliberately cannot create authority-bearing
-        contexts. It follows this engine's routing mode exactly like
-        :meth:`jayrun.Engine.submit`.
-        """
-        caller = self.get_context(caller_context_id)
-        capability = self._context_capabilities[caller_context_id]
-        self._engine_runtime.messenger.authorize_controller(capability)
-        if not caller.is_controller:
-            raise PermissionError("runtime submission requires a Controller")
+        """Register work with the same normalization and routing as host submission."""
+        capability = self._authorize_runtime_submission(caller_context_id, authority)
         graph_registry = self._engine_runtime.graph_registry
-        if graph_registry is None:
-            raise RuntimeError("runtime submission requires a graph registry")
+        normalized_authority = _normalize_authority(authority, graph_registry)
         submission = _normalize_submission(
-            graph=graph_key,
+            graph=graph,
             artifacts=artifacts,
             configs=configs,
             graph_registry=graph_registry,
@@ -626,8 +638,9 @@ class RuntimeRegistry(RuntimeModule):
         try:
             run = self.register(
                 submission=submission,
-                supervises=(),
-                controller=False,
+                supervises=normalized_authority.supervises,
+                controller=normalized_authority.controller,
+                history_reader=normalized_authority.history,
                 capability=capability,
                 settings=settings,
                 timing_key=self._engine_runtime.progress_history.timing_key(submission, settings),

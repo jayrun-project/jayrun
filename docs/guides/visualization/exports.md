@@ -33,6 +33,27 @@ For a custom web application, `graph.plot.build()` returns viewer data and `jayr
 
 ## What the export contains
 
+The viewer offers two JSON downloads:
+
+- **Export graph data** saves the visualization payload, including layout and the
+  captured declaration report when available.
+- **Export declaration report** saves the exact compact JSON from
+  `graph.report.to_json()`, with schema `jayrun.declaration/1`. Authored descriptions,
+  component references, configuration defaults and reconstruction limitations are
+  preserved, including integer values too large for JavaScript numbers.
+
+The declaration download is available for confirmed graphs in newly generated
+definition, registry and completed-run views, and captured live dashboard graphs.
+Registry selection chooses which graph's report is downloaded. It is disabled for
+unconfirmed graphs and older or history-only snapshots that contain no declaration
+report. Regenerate an old HTML export from its confirmed graph to include the report.
+The dashboard's **Report** tab continues to export finalized execution evidence.
+
+Full graph and component descriptions are retained in the declaration download;
+abbreviated cards and summarized inspection fields do not change it. Viewer topology and aggregate export-size limits still
+apply, as do dashboard capture bounds. Oversized exports fail explicitly. The
+declaration attachment does not add a graph importer or execute component code.
+
 Inspect the data and metadata before sharing a file outside your application. A run export may contain retained diagnostic information. Regenerate the file for a later state; saved HTML does not poll a live runtime.
 
 For ongoing observation instead of a saved snapshot, [run a live dashboard](dashboard.md). Full rendering options: [visualization reference](../../reference/visualization.md).

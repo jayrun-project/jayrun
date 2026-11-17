@@ -2,6 +2,10 @@
 
 Settings are keyword-only validated values. Context retry policy inherits the Engine policy when None; context artifact/record/iteration policy belongs to the context. See [capacity and retention](../guides/runs/capacity.md) and [failure mode](../guides/runs/failures.md).
 
+`controller_policy=ControllerPolicy.HOST_ONLY` is the default. Set `DELEGATED` to
+allow live Controllers to submit Controller/Supervisor children. Host submission
+is unaffected; see [delegated submission](../guides/runtime/controller.md#delegate-controller-and-supervisor-creation).
+
 ## Limit semantics
 
 | Setting | Owner / unit | Default | None / zero | Behavior |
@@ -65,6 +69,12 @@ Settings and retry/recording/routing enums are validated at construction. The si
 
 ```{eval-rst}
 .. autoclass:: jayrun.settings.RecordingMode
+   :members:
+   :undoc-members:
+```
+
+```{eval-rst}
+.. autoclass:: jayrun.settings.ControllerPolicy
    :members:
    :undoc-members:
 ```

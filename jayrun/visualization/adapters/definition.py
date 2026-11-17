@@ -60,7 +60,12 @@ def definition_payload(graph: GraphDefinition) -> dict:
     from ...core.graph.graph_definition import GraphDefinition
     if not isinstance(graph, GraphDefinition):
         raise TypeError("graph must be a GraphDefinition")
-    return _report_payload(graph.validate(), graph.artifacts, graph=graph)
+    data = _report_payload(graph.validate(), graph.artifacts, graph=graph)
+    if graph.confirmed:
+        # Keep JSON as text: a browser parse/stringify round trip would round
+        # large integer defaults and change the declaration evidence.
+        data["declaration_report_json"] = graph.report.to_json()
+    return validate_payload(data)
 
 
 def _report_payload(report: GraphValidationReport, artifacts: tuple[Artifact, ...], *, graph: GraphDefinition | None = None, include_config_defaults: bool = True) -> dict:
@@ -225,6 +230,10 @@ def _report_payload(report: GraphValidationReport, artifacts: tuple[Artifact, ..
                         "Known mismatches": len(report.mismatched_edges), "Unknown connections": len(report.unknown_edges),
                         "Resources": "Markers describe declarations/bindings, never live resource instances."}}
     if graph is not None:
+        if graph.name:
+            data["label"] = graph.name
+        if graph.description is not None:
+            data["description"] = graph.description
         data["details"]["Requirements"] = [str(requirement) for requirement in graph.inspect.requirements.all] if graph.inspect.requirements.complete else "Resource selection is incomplete; combined requirements are not available."
         data["details"]["Boundary serializers"] = [{"Artifact ID": str(s.artifact_id), "Name": s.name, "Description": s.description, "Type": s.serializer_type} for s in graph.inspect.serializers.all]
     annotate_segments(data, provenance="GraphDefinition._validate_dataflow and GraphValidation producer consume/register semantics; availability follows actual input/output fields.", lifecycle=True)
@@ -527,7 +536,7 @@ class GraphPlotter:
                     "layout_position": list(node.layout_position) if operator else None,
                     "artifact_id": None if operator else artifact_ids[node.artifact],
                     "color": None if operator else colors[artifact_ids[node.artifact]],
-                    "details": self._details(node),
+                    "details": "",  # Safe inspection text is attached in build().
                 }
             )
         edges = [
@@ -542,7 +551,7 @@ class GraphPlotter:
                 "validation": (
                     edge.status.value if edge.status is not None else "unavailable"
                 ),
-                "details": self._details(edge),
+                "details": "",
             }
             for edge in self._report.edges
         ]
@@ -565,10 +574,6 @@ class GraphPlotter:
             or getattr(value, "name", None)
             or type(value).__name__
         )
-
-    @staticmethod
-    def _details(value: object) -> str:
-        return repr(value).replace("\r\n", "\n").replace("\r", "\n")
 
     @classmethod
     def _artifact_color(cls, index: int) -> str:

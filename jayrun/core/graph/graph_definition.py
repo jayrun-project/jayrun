@@ -49,6 +49,8 @@ class GraphDefinition:
             application. Omit this argument when every flow starts from an
             independent zero-input operator.
         version: Non-empty graph version used as part of registry identity.
+        name: Optional authored graph name, excluded from structural identity.
+        description: Optional authored purpose, preserved verbatim in reports.
     """
 
     def __init__(
@@ -56,11 +58,18 @@ class GraphDefinition:
         *flows: ArtifactFlow,
         entry_flows: ArtifactFlow | tuple[ArtifactFlow, ...] = (),
         version: str = "1",
+        name: str | None = None,
+        description: str | None = None,
     ) -> None:
         if not isinstance(version, str):
             raise TypeError("'version' must be a string")
         if not version.strip():
             raise ValueError("'version' must not be empty")
+        for label, value in (("name", name), ("description", description)):
+            if value is not None and not isinstance(value, str):
+                raise TypeError(f"'{label}' must be a string or None")
+        self._name = name
+        self._description = description
 
         self._timing_config_fields: tuple[ConfigField, ...] | None = None
         self._version = version
@@ -660,6 +669,16 @@ class GraphDefinition:
 
 
     @property
+    def name(self) -> str | None:
+        """Authored graph name; independent of graph and registry identity."""
+        return self._name
+
+    @property
+    def description(self) -> str | None:
+        """Authored graph purpose; no behavior is inferred from implementation."""
+        return self._description
+
+    @property
     def flows(self) -> tuple[ArtifactFlow, ...]:
         """Artifact flows in declaration order."""
         return self._flows
@@ -757,10 +776,14 @@ class GraphDefinition:
 
         Provides format, print, and save methods, with optional compact output.
         Binding information is refreshed whenever the report is formatted.
+        After confirmation, to_dict/to_json export exact supported declarations
+        and authored descriptions for AI reconstruction and comparison.
         """
         from .reporting import GraphReporter, _format_graph
+        from .declaration_report import declaration_report
 
-        return GraphReporter(lambda compact: _format_graph(self, compact), "graph_report.txt")
+        return GraphReporter(lambda compact: _format_graph(self, compact), "graph_report.txt",
+                             declaration=lambda: declaration_report(self))
 
     @cached_property
     def plot(self) -> GraphPlotter:

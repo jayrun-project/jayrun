@@ -8,6 +8,12 @@ graph.plot.save("graph.html")
 
 You can do this before confirmation, which is useful when validation identifies a mismatch. A graph-construction exception is different: if construction never returned a graph, correct the declaration before attempting to plot it.
 
+The viewer uses the graph's authored name as its title. Open **Graph info** to read
+its description. Long descriptions remain available in the inspection panels;
+operator cards show a short preview. Confirmed graphs also include **Export
+declaration report**, which downloads the complete AI-readable graph declaration.
+See [export contents](exports.md#what-the-export-contains) for the two JSON exports.
+
 ## Read the split-and-join graph
 
 The [split-and-join example](../graphs/resolutions.md#complete-splitprocessjoin-graph) copies one list into two separate branch artifacts. Each branch produces a sum, and Join consumes both sums.

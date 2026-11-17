@@ -30,6 +30,8 @@ def registry_payload(registry: GraphRegistry) -> dict:
         definition = registry.graph_for(key, version)
         graph = definition_payload(definition)
         graph["label"] = f"{key} · v{version}"
+        if definition.name:
+            graph["label"] = f"{definition.name} · {key} · v{version}"
         graph["identity"].update({"Registry key": key, "Registry version": version})
         graph["id"] = "registered-" + hashlib.sha256(json.dumps([key, version, graph["id"]], ensure_ascii=True).encode()).hexdigest()[:24]
         graphs.append(graph)

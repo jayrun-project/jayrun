@@ -27,8 +27,10 @@ class Supervisor:
 class Controller:
     """Grant engine-wide observation and control to a submitted context.
 
-    A controller may also submit registered graph identities through
+    A controller may also submit confirmed graphs or registered identities through
     ``self.runtime.submit(...)`` and asynchronously request engine shutdown.
+    EngineSettings.controller_policy must be DELEGATED to submit children with
+    Supervisor or Controller authority; HOST_ONLY is the default.
     Controller contexts execute locally through supervision capacity and cannot
     be transferred. An optional ``history`` reader explicitly grants its existing
     session scope. The runtime lends an attenuated view for this controller

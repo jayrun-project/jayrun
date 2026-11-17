@@ -122,26 +122,30 @@ while new contexts and control-request snapshots are rejected.
 
 [Source: apply](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/runtime.py)
 
-```{py:method} RuntimeInterface.submit(graph_key, artifacts=None, configs=None, *, settings=None)
+```{py:method} RuntimeInterface.submit(graph, artifacts=None, configs=None, *, settings=None, authority=None)
 
-Submit ordinary registered-graph work from a controller.
+Submit a confirmed graph or registered identity from a live Controller. Graph,
+builder and settings rules match `Engine.submit()`. A configured registry requires
+direct graph objects to be registered too. Ordinary work follows routing policy;
+authority-bearing work executes locally.
 
-Submission creates a new logical context from a `(key, version)` graph
-identity plus graph-independent artifact and configuration contexts. It
-follows the engine's routing mode and never accepts a snapshot; snapshots
-belong to `apply`. Runtime submission cannot create a supervisor or
-controller, so authority is intentionally absent from this API.
-
-:param graph_key: Registered `(key, version)` graph identity.
-:param artifacts: Optional entry-artifact builder context. Omit it for a graph without required entry artifacts.
-:param configs: Optional configuration builder context. Omit it for a graph without required configuration fields.
-:param settings: Optional context execution settings.
-
-:returns: The newly submitted context run.
-
-:raises PermissionError: If the caller is not a controller.
-:raises RuntimeError: If no graph registry is configured or submission is unavailable.
+:param graph: Confirmed GraphDefinition or registered `(key, version)` identity.
+:param artifacts: Optional entry-artifact builder context.
+:param configs: Optional configuration builder context.
+:param settings: Optional child ContextSettings.
+:param authority: Optional Supervisor or Controller; requires ControllerPolicy.DELEGATED.
+:returns: The newly submitted ContextRun.
+:raises PermissionError: If the caller is not a live Controller, or HOST_ONLY rejects non-None authority.
+:raises TypeError: If a submission argument has an unsupported type.
+:raises RuntimeError: If the graph is unconfirmed, an identity requires a missing registry, or submission is unavailable.
 ```
+
+See [delegated submission](../guides/runtime/controller.md#delegate-controller-and-supervisor-creation)
+for child lifetime, history grants and supervision capacity.
+
+The first parameter is now named `graph`, matching `Engine.submit()`. Existing
+positional identity calls work unchanged; replace `graph_key=...` with `graph=...`
+in keyword calls.
 
 [Source: submit](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/runtime.py)
 

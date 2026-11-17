@@ -6,6 +6,7 @@ Neither conversion imports Jayrun core types, the engine, or any adapters.
 from __future__ import annotations
 
 from copy import deepcopy
+import json
 from .contract import SCHEMA_VERSION, validate_payload
 from .layout import arrange
 
@@ -26,6 +27,7 @@ def attach_presentation(legacy: dict, payload: dict) -> dict:
             if key in source:
                 node[key] = deepcopy(source[key])
         node["inspection"] = deepcopy(source.get("details", {}))
+        node["details"] = json.dumps(node["inspection"], ensure_ascii=False)
         for side in ("inputs", "outputs"):
             node[side] = deepcopy(source[side])
             for port in node[side]:
@@ -45,7 +47,8 @@ def attach_presentation(legacy: dict, payload: dict) -> dict:
         edge["start"], edge["end"] = deepcopy(source["points"][0]), deepcopy(source["points"][-1])
         edge["source_port_id"], edge["target_port_id"] = source["source"]["port"], source["target"]["port"]
         edge["inspection"] = deepcopy(source.get("details", {}))
-    for key in ("label", "description", "identity", "details", "reiterations", "reiteration", "findings", "bounds"):
+        edge["details"] = json.dumps(edge["inspection"], ensure_ascii=False)
+    for key in ("label", "description", "identity", "details", "reiterations", "reiteration", "findings", "bounds", "declaration_report_json"):
         if key in graph:
             data[key] = deepcopy(graph[key])
     data["presentation_id"] = graph["id"]
@@ -100,4 +103,6 @@ def normalize_legacy(data: dict) -> dict:
              "reiterations": deepcopy(data.get("reiterations", [])), "reiteration": deepcopy(data.get("reiteration", {"eligibility": "unknown", "reason": "Legacy data does not supply re-iteration eligibility."})),
              "findings": deepcopy(data.get("findings", [])), "details": deepcopy(data.get("details", {})), "identity": deepcopy(data.get("identity", {}))}
     graph["identity"].setdefault("Graph version", data.get("graph_version"))
+    if "declaration_report_json" in data:
+        graph["declaration_report_json"] = data["declaration_report_json"]
     return validate_payload(graph)

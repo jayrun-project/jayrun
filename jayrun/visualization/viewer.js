@@ -110,7 +110,20 @@
       return {...e, id: `edge-${e.id}`, artifact_id: `artifact-${e.artifact_id}`, source: {node: `node-${e.source}`, port: sourcePort}, target: {node: `node-${e.target}`, port: targetPort}, status: ["match","mismatch","unknown"].includes(e.validation) ? e.validation : "unchecked", details: e.inspection || {Structure: e.details || ""}, label_position: e.label_position || [(e.points[0][0]+e.points.at(-1)[0])/2,e.points.at(-1)[1]-10]};
     });
     const findings = data.findings || edges.filter(e=>["mismatch","unknown"].includes(e.status)).map(e=>({id:`finding-${e.id}`,subject:e.id,severity:e.status === "mismatch" ? "error" : "info",message:`${e.label}: ${e.status}. See this connection's contract details.`}));
-    return {schema_version: "jayrun.viewer/1", kind:"graph", id:data.graph_id, graph_id:data.graph_id, label:data.label || "Graph definition", description:data.description || "", nodes, edges, artifacts, bounds:data.bounds, reiterations:data.reiterations || [], reiteration:data.reiteration || {eligibility:"unknown",reason:"Legacy data does not supply re-iteration eligibility."}, findings, identity:data.identity || {"Graph version":data.graph_version}, details:data.details || {}};
+    return {schema_version: "jayrun.viewer/1", kind:"graph", id:data.graph_id, graph_id:data.graph_id, label:data.label || "Graph definition", description:data.description || "", nodes, edges, artifacts, bounds:data.bounds, reiterations:data.reiterations || [], reiteration:data.reiteration || {eligibility:"unknown",reason:"Legacy data does not supply re-iteration eligibility."}, findings, identity:data.identity || {"Graph version":data.graph_version}, details:data.details || {}, ...(data.declaration_report_json === undefined ? {} : {declaration_report_json: data.declaration_report_json})};
+  };
+
+  const checkDeclarationReports = payload => {
+    for (const graph of payload.kind === "registry" ? payload.graphs : [payload]) {
+      const text = graph.declaration_report_json;
+      if (text === undefined) continue;
+      if (typeof text !== "string") throw new TypeError("Declaration report must be JSON text");
+      // Validate the attachment, but export the original text without numeric
+      // conversion: JavaScript numbers cannot represent every Python integer.
+      const report = JSON.parse(text), identity = graph.identity?.["Intrinsic graph ID"];
+      if (report?.schema !== "jayrun.declaration/1" || !report.graph ||
+          (identity && report.graph.graph_id !== identity)) throw new TypeError("Invalid declaration report or graph identity");
+    }
   };
 
   class GraphView extends HTMLElement {
@@ -126,6 +139,7 @@
       // viewer_script()/element.graph embedding remain an established API.
       normalizeLegacy(value);
       checkRequirements(value);
+      checkDeclarationReports(value);
       const source = element("script", JSON.stringify({payload: structuredClone(value), display: {theme: this.getAttribute("theme") || "light", motion: true}}), {type: "application/json"});
       this.disconnectedCallback();
       this.replaceChildren(source);
@@ -170,6 +184,7 @@
         if (this._legacyData) envelope.payload = normalizeLegacy(this._legacyData);
         if (envelope.payload.schema_version !== "jayrun.viewer/1") throw new Error("Unsupported viewer schema");
         checkRequirements(envelope.payload);
+        checkDeclarationReports(envelope.payload);
       } catch (error) {
         this.root.append(element("p", "Unable to load graph: " + error.message, {role: "alert"}));
         return;
@@ -356,9 +371,13 @@
       for (const label of ["✓ Match", "! Mismatch", "? Unknown", "· Unchecked", "▣ Resource binding"]) legend.append(element("span", label));
       const dataExport = element("button", "Export graph data", {type: "button", "data-help": "action.export-graph"});
       this.listen(dataExport, "click", () => this.exportData());
+      this.declarationExport = element("button", "Export declaration report", {type: "button"});
+      this.listen(this.declarationExport, "click", () => this.exportDeclarationReport());
       this.artifactLegend = element("div", null, {class: "artifact-legend", role: "region", tabindex: "0", "aria-label": "Artifacts"});
       const legendRow = element("div", null, {class: "legend-row", tabindex: "0", role: "region", "aria-label": "Connection key and data export"});
-      legendRow.append(legend, dataExport);
+      const exports = element("div", null, {class: "export-actions"});
+      exports.append(dataExport, this.declarationExport);
+      legendRow.append(legend, exports);
       this._disabledReasons = element("div", "Select a component for Focus / Details.", {class:"disabled-reasons"});
       footer.append(this.artifactLegend, legendRow, this._disabledReasons);
       this.shell.append(footer);
@@ -514,6 +533,10 @@
       this.viewport.scrollTo(0, 0);
       this.viewHint.hidden = true;
       this._graph = this.graphs.find(graph => graph.id === id) || null;
+      this.declarationExport.disabled = typeof this._graph?.declaration_report_json !== "string";
+      this.declarationExport.title = this.declarationExport.disabled
+        ? "No declaration report captured. Export a confirmed graph to include its report."
+        : "Download the complete graph declaration as JSON for reconstruction and review.";
       this.svg = null;
       this.scale = 1;
       this.autoFit = true;
@@ -1357,6 +1380,13 @@
       const url = URL.createObjectURL(new Blob([JSON.stringify(this._graph, null, 2)], {type: "application/json"}));
       const link = element("a", "", {href: url, download: "graph-viewer-data.json"});
       link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
+    exportDeclarationReport() {
+      const text = this._graph?.declaration_report_json;
+      if (typeof text !== "string") { this.announce("No declaration report captured for this graph."); return; }
+      const url = URL.createObjectURL(new Blob([text], {type: "application/json"}));
+      element("a", "", {href: url, download: "graph_declaration.json"}).click();
       setTimeout(() => URL.revokeObjectURL(url), 0);
     }
   }

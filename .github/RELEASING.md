@@ -9,6 +9,11 @@ development repository and must never enter the public Git history.
 1. Update the package version in `pyproject.toml` and `jayrun/__init__.py` together.
    Add the release changelog and preserve older entries. Component identity versions
    on operator/resource/serializer classes are independent of the package version.
+   Prepare `.github/releases/X.Y.Z.md` with the GitHub Release body; the publish
+   workflow reads this file for the tagged version. Keep the changelog entry
+   marked Unreleased and distinguish upcoming from published versions in README
+   until publication is approved. Before tagging, set the release date and update
+   README's release link as part of the reviewed publication changes.
 2. From the development repository, export to an empty directory:
    `python .github/scripts/release_check.py --export /path/to/public-candidate`.
    Review the public tree against the latest public main in a separate checkout.

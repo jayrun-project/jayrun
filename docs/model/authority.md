@@ -5,7 +5,8 @@ The application that owns an Engine can submit and control its work. A running c
 - An ordinary context has no cross-context run visibility.
 - `Supervisor(graph_a, graph_b)` observes and controls its declared graph scope.
 - `Supervisor()` covers all live graph contexts but does not gain Controller-only operations.
-- `Controller()` can also submit ordinary registered work, request engine shutdown and read bounded terminal summaries.
+- `Controller()` can also submit ordinary confirmed graphs or registered identities, request engine shutdown and read bounded terminal summaries.
+- With `EngineSettings(controller_policy=ControllerPolicy.DELEGATED)`, Controllers can also submit Supervisor/Controller children. The default `HOST_ONLY` reserves authority creation for the host. See [delegation and child lifetime](../guides/runtime/controller.md#delegate-controller-and-supervisor-creation).
 - `Controller(history=reader)` additionally borrows the explicitly supplied durable-history scope.
 
 The caller's own context is excluded from its visible-run lists. An exact graph object defines local scope without a registry; registered identities participate in normalization when an Engine uses a registry. Names and context IDs alone do not grant control. Historical cursors do not grant access.

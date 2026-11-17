@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import math
 import threading
+import time
 from asyncio import AbstractEventLoop
 from collections.abc import Callable, Coroutine
 from concurrent.futures import Future
@@ -15,6 +16,7 @@ T = TypeVar("T")
 
 
 class RuntimeLoop(RuntimeModule):
+    _INTERNAL_START_TIMEOUT = 5.0
     _EXTERNAL_START_TIMEOUT = 5.0
 
     def __init__(self, **kwargs: object) -> None:
@@ -31,6 +33,9 @@ class RuntimeLoop(RuntimeModule):
         self._started_event = threading.Event()
         self._closed_event = threading.Event()
         self._startup_failure: BaseException | None = None
+        self._startup_cancelled = threading.Event()
+        self._startup_accepted = threading.Event()
+        self._startup_lock = threading.Lock()
 
     def start(self, loop: AbstractEventLoop | None = None) -> None:
         if loop is not None and not isinstance(loop, AbstractEventLoop):
@@ -95,8 +100,12 @@ class RuntimeLoop(RuntimeModule):
         self._closed_event.clear()
         self._started_event.clear()
         self._startup_failure = None
+        self._startup_cancelled.clear()
+        self._startup_accepted.clear()
+        deadline = time.monotonic() + self._INTERNAL_START_TIMEOUT
         self._thread = threading.Thread(
             target=self._thread_main,
+            args=(deadline,),
             name="runtime-loop",
             daemon=True,
         )
@@ -106,21 +115,59 @@ class RuntimeLoop(RuntimeModule):
             self._thread = None
             self._owns_loop = False
             raise
-        self._started_event.wait()
-        if self._startup_failure is not None:
-            raise self._startup_failure
+        try:
+            initialized = self._started_event.wait(max(0.0, deadline - time.monotonic()))
+            if self._startup_failure is not None:
+                raise self._startup_failure
+            if not initialized or time.monotonic() >= deadline:
+                raise TimeoutError("internal runtime loop initialization timed out")
+            loop = self._require_loop()
+            ready = threading.Event()
 
-    def _thread_main(self) -> None:
+            def acknowledge() -> None:
+                if not self._startup_cancelled.is_set() and time.monotonic() < deadline:
+                    ready.set()
+
+            loop.call_soon_threadsafe(acknowledge)
+            if not ready.wait(max(0.0, deadline - time.monotonic())):
+                raise TimeoutError("internal runtime loop did not acknowledge startup callback")
+            with self._startup_lock:
+                if self._closing or time.monotonic() >= deadline:
+                    raise TimeoutError("internal runtime loop did not acknowledge startup callback")
+                self._startup_accepted.set()
+        except BaseException as failure:
+            self._startup_cancelled.set()
+            self._closing = True
+            # The loop-local startup timer can stop an idle loop even when
+            # call_soon_threadsafe cannot wake it. Never join without a bound.
+            self._thread.join(self._INTERNAL_START_TIMEOUT)
+            if self._thread.is_alive():
+                failure.add_note("runtime loop thread did not terminate after startup failure")
+            raise
+
+    def _thread_main(self, deadline: float) -> None:
         loop: AbstractEventLoop | None = None
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             self._loop = loop
+            if self._startup_cancelled.is_set():
+                return
             self._coordinator_task = loop.create_task(
                 self._engine_runtime.coordinator.run()
             )
             self._coordinator_task.add_done_callback(self._handle_coordinator_done)
-            self._started_event.set()
+            def expire_startup() -> None:
+                with self._startup_lock:
+                    if not self._startup_accepted.is_set():
+                        self._closing = True
+                        self._stop_loop()
+
+            # This is a one-shot startup timer, not a runtime poller.
+            # Keep it until the caller accepts the acknowledgement so a late
+            # callback cannot strand a loop after the caller has timed out.
+            loop.call_later(max(0.0, deadline - time.monotonic()), expire_startup)
+            loop.call_soon(self._started_event.set)
             loop.run_forever()
         except BaseException as failure:
             self._startup_failure = failure

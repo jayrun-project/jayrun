@@ -1,4 +1,5 @@
 from .engine import (
+    ControllerPolicy,
     EngineSettings,
     FailureMode,
     RetryPolicy,
@@ -8,6 +9,7 @@ from .engine import (
 )
 
 __all__ = (
+    "ControllerPolicy",
     "EngineSettings",
     "FailureMode",
     "RetryPolicy",

@@ -4,7 +4,7 @@
 
 Jayrun is a Python execution framework for pipelines, iterative experiments and application services. Define each step with a synchronous or asynchronous Python method. Jayrun passes artifact values between the steps and manages execution and resource lifetimes.
 
-**Latest release:** [0.3.0](https://pypi.org/project/jayrun/0.3.0/)
+**Latest release:** [0.3.1](https://pypi.org/project/jayrun/0.3.1/) · [Release notes](CHANGELOG.md#031---2026-11-17)
 
 [![PyPI version](https://img.shields.io/pypi/v/jayrun.svg)](https://pypi.org/project/jayrun/)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)

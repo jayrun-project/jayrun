@@ -6,6 +6,7 @@
 | PermissionError on submit/shutdown/terminal history | Not a Controller | Have the owner grant Controller where justified; Supervisor() is not equivalent |
 | PermissionError on pressure apply | Scope is restricted | Use an authorized unrestricted supervisor/controller or application owner |
 | `runtime.history is None` | Controller has no reader grant | Pass an explicit DatabaseReader via Controller(history=...) |
+| PermissionError when a Controller submits non-None authority | Engine uses HOST_ONLY | Have the host explicitly choose ControllerPolicy.DELEGATED, or submit ordinary work |
 | Expired reader/handle | Controller/source lifecycle ended | Obtain a new authorized capability; IDs cannot recreate a grant |
 | ObserverOverflowError | Consumer fell behind bounded event queue | Report the observation gap and reconcile authorized snapshots/terminal summaries |
 | Missing terminal entries | Retention, byte bounds, disabled window or old cursor | Check page.gap and sequence bounds; do not claim full event coverage |

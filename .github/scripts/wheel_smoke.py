@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import importlib.metadata
+import json
 from pathlib import Path
 import re
 import shutil
@@ -44,6 +45,41 @@ def main() -> None:
         from jayrun.context import ContextState
         from jayrun.persistence import Database
         from jayrun.dashboard import prepare_dashboard
+        from jayrun import Artifact, ArtifactFlow, BaseOperator, GraphDefinition
+        from jayrun.settings import ContextSettings, ControllerPolicy, EngineSettings
+        from runtime_control import Answer
+        answer = Artifact(name='answer')
+        delegated = GraphDefinition(ArtifactFlow(Answer(outputs=(answer,))),
+                                   name='Installed declaration', description='Purpose ' * 1500)
+        delegated.confirm()
+        declaration = delegated.report.to_json()
+        assert json.loads(declaration) == delegated.report.to_dict()
+        assert json.loads(declaration)['schema'] == 'jayrun.declaration/1'
+        assert delegated.plot.build()['declaration_report_json'] == declaration
+        assert delegated.plot.build()['description'] == delegated.description
+        assert 'Export declaration report' in delegated.plot.to_html()
+
+        class SubmitController(BaseOperator):
+            def __init__(self):
+                super().__init__()
+                self.outputs = ()
+
+            async def execute(self):
+                child = self.runtime.submit(delegated,
+                                            settings=ContextSettings(max_iterations=1),
+                                            authority=Controller())
+                await child.wait_async(timeout=10)
+                assert child.state is ContextState.FINISHED, child.report.data.failure
+                self.context.record('child_answer', child.artifact(answer).value)
+                return ()
+
+        parent = GraphDefinition(ArtifactFlow(SubmitController()))
+        parent.confirm()
+        with Engine(EngineSettings(controller_policy=ControllerPolicy.DELEGATED)) as engine:
+            run = engine.submit(parent, authority=Controller())
+            run.wait(timeout=10)
+            assert run.state is ContextState.FINISHED, run.report.data.failure
+            assert run.records('child_answer')[0].value == 42
         graph, source, result, scale = build_graph()
         registry = GraphRegistry()
         registry.register('smoke', graph)
@@ -66,7 +102,7 @@ def main() -> None:
                                 configs=prepared.configs, settings=prepared.settings, authority=Controller())
             run.wait(timeout=10)
             assert run.state is ContextState.FINISHED and run.records('dashboard_url')
-    print(f'PASS installed wheel {jayrun.__version__}: {jayrun.__file__}; public exports, README, 15 examples, persistence, viewers, dashboard' + (' and YAML' if args.yaml else ''))
+    print(f'PASS installed wheel {jayrun.__version__}: {jayrun.__file__}; public exports, README, 15 examples, persistence, viewers, dashboard, declaration reports and delegated submission' + (' and YAML' if args.yaml else ''))
 
 
 if __name__ == '__main__':

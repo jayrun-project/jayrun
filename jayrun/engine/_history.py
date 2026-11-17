@@ -122,7 +122,8 @@ def _engine_settings(settings: EngineSettings) -> dict[str, object]:
         "max_workers", "max_tasks", "context_history_admission_limit", "remote_context_id_limit",
         "terminal_history_limit", "terminal_history_max_bytes")}
     result.update(recording_mode=settings.recording_mode.value, failure_mode=settings.failure_mode.value,
-                  routing_mode=settings.routing_mode.value, retry_policy=_retry(settings.retry_policy))
+                  routing_mode=settings.routing_mode.value,
+                  controller_policy=settings.controller_policy.value, retry_policy=_retry(settings.retry_policy))
     result["runtime_devices"] = tuple({"device": device.device.value,
         "backends": tuple(backend.value for backend in device.backends), "device_id": device.device_id,
         "memory_limit_gb": device.memory_limit_gb, "exclusive_only": device.exclusive_only}

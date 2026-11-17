@@ -313,8 +313,11 @@ h3 {
 .inspector-heading h2{min-width:0;line-height:1.3}
 .detail-panel p {
   font-size:13px;
+  overflow-wrap:anywhere;
   white-space:pre-wrap
 }
+.detail-panel h2 {overflow-wrap:anywhere}
+.export-actions {display:flex;gap:8px;flex-shrink:0}
 .detail-panel dl {
   margin:8px 0
 }

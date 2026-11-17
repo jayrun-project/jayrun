@@ -9,7 +9,7 @@ Engine is the application's lifecycle owner. `self.runtime` is a capability gran
 | Waiting | `wait`, `wait_async` | `wait`, `wait_async` | Shared wait helpers and timeout rules |
 | Local pressure | `pressure` | `pressure` | Runtime scope filters counts |
 | Delivered evidence | `apply(snapshot)` | `apply(snapshot)` | Context/pressure snapshots; runtime checks authority |
-| Submission | GraphDefinition or registered identity; may grant authority | Registered identity only; Controller; no authority parameter | Similar operation, narrower capability |
+| Submission | GraphDefinition or registered identity; may grant authority | Same submission arguments; live Controller; authority grants require DELEGATED | Same normalization, policy-gated authority |
 | Events | `observer(capacity=...)` creates an observer | `events` returns one fixed queue | Different acquisition/ownership |
 | Terminal summaries | `terminal_history(...)` | `terminal_history(...)` | Same paging vocabulary; Controller only inside a component |
 | Durable history | `database` lifecycle owner | `history` borrowed reader | Explicit Controller reader grant |

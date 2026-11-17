@@ -6,12 +6,12 @@
       "provenance": "User-provided dashboard image already present in the tracked baseline; preserved byte-for-byte during 0.3.0 release preparation. Capture source and session were not reproduced."
     },
     "split-and-join.png": {
-      "sha256": "68d70ac56d8ee4b52a2228f11495e375677b95289cb440a423dd16289ed8c5e3",
+      "sha256": "c41072ac3c671426d7becbea70c49233c7cfb66ca36bb669adec397ea32cc4a4",
       "source": "docs/_static/split_join.html",
       "provenance": "Captured with Chromium from the bundled declaration viewer."
     }
   },
   "sources": {
-    "docs/_static/split_join.html": "2764a3cb70787247c3a077850fa90d782f9981841c2165facb88ce15feca7e62"
+    "docs/_static/split_join.html": "84a455a7de1e60f3e94946de818fdaa0b239ba38f7b47e7640db646e3a1cfa8b"
   }
 }

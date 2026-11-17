@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ...persistence import DatabaseReader
 
+from ...authority import Controller, Supervisor
+from ...core.graph.graph_definition import GraphDefinition
 from ...core.artifact.context import ArtifactContext
 from ...core.config.context import ConfigContext
 from ...core.graph.inspection.registry import GraphIdentity
@@ -163,41 +165,46 @@ class RuntimeInterface:
 
     def submit(
         self,
-        graph_key: GraphIdentity,
+        graph: GraphDefinition | GraphIdentity,
         artifacts: ArtifactContext | None = None,
         configs: ConfigContext | None = None,
         *,
         settings: ContextSettings | None = None,
+        authority: Supervisor | Controller | None = None,
     ) -> ContextRun:
-        """Submit ordinary registered-graph work from a controller.
+        """Submit a confirmed graph or registered identity from a Controller.
 
-        Submission creates a new logical context from a ``(key, version)`` graph
-        identity plus graph-independent artifact and configuration contexts. It
-        follows the engine's routing mode and never accepts a snapshot; snapshots
-        belong to :meth:`apply`. Runtime submission cannot create a supervisor or
-        controller, so authority is intentionally absent from this API.
+        Graph, builder and settings validation follows Engine.submit. When the
+        Engine has a registry, direct graph objects must also be registered.
+        Ordinary work follows the Engine's routing mode. Authority-bearing work
+        runs locally and requires ControllerPolicy.DELEGATED; HOST_ONLY rejects
+        any non-None authority before child admission. Only live Controllers may
+        submit under either policy. Children have Engine-owned lifetimes; parent
+        completion does not automatically cancel them or revoke their authority.
 
         Args:
-            graph_key: Registered ``(key, version)`` graph identity.
-            artifacts: Optional entry-artifact builder context. Omit it for a
-                graph without required entry artifacts.
-            configs: Optional configuration builder context. Omit it for a graph
-                without required configuration fields.
-            settings: Optional context execution settings.
+            graph: Confirmed GraphDefinition or registered (key, version) identity.
+            artifacts: Optional entry-artifact builder.
+            configs: Optional configuration builder.
+            settings: Optional child context settings.
+            authority: Optional Supervisor or Controller grant, subject to policy.
 
         Returns:
             The newly submitted context run.
 
         Raises:
-            PermissionError: If the caller is not a controller.
-            RuntimeError: If no graph registry is configured or submission is
-                unavailable.
+            PermissionError: If the caller is not a live Controller or policy
+                denies the requested authority.
+            TypeError: If a submission argument has an unsupported type.
+            RuntimeError: If the graph is unconfirmed, an identity requires a
+                missing registry, or submission is unavailable.
         """
         return self._runtime_access.submit(
-            graph_key,
+            graph,
             artifacts,
             configs,
             context_settings=settings,
+            authority=authority,
         )
 
     def shutdown(self, forced: bool = False) -> None:

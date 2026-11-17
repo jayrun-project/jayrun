@@ -24,6 +24,17 @@ class FailureMode(Enum):
     CONTINUE = "continue"
 
 
+class ControllerPolicy(Enum):
+    """Choose who may submit Controller and Supervisor contexts.
+
+    HOST_ONLY reserves authority grants for the host Engine API. DELEGATED also
+    permits live Controllers to grant authority through runtime submission.
+    """
+
+    HOST_ONLY = "host_only"
+    DELEGATED = "delegated"
+
+
 class RoutingMode(Enum):
     """Choose how ordinary submissions receive an execution engine_id.
 
@@ -156,6 +167,8 @@ class EngineSettings:
             device is added automatically when absent.
         routing_mode: Whether ordinary submissions are routed locally or wait
             for an explicit engine_id assignment.
+        controller_policy: Whether Controllers may submit authority-bearing children.
+            HOST_ONLY denies runtime authority grants; host submission is unaffected.
         context_history_admission_limit: Optional per-context history-producing admission
             budget. Further attempts/iterations fail with ContextHistoryLimitError;
             diagnostic/control admission raises that error. Accepted evidence,
@@ -182,6 +195,7 @@ class EngineSettings:
     max_tasks: int | None = None
     runtime_devices: RuntimeDevice | tuple[RuntimeDevice, ...] = ()
     routing_mode: RoutingMode = RoutingMode.LOCAL
+    controller_policy: ControllerPolicy = ControllerPolicy.HOST_ONLY
     context_history_admission_limit: int | None = None
     remote_context_id_limit: int | None = None
     terminal_history_limit: int = 1024
@@ -194,6 +208,8 @@ class EngineSettings:
             raise TypeError("failure_mode must be a FailureMode instance")
         if not isinstance(self.retry_policy, RetryPolicy):
             raise TypeError("retry_policy must be a RetryPolicy instance")
+        if not isinstance(self.controller_policy, ControllerPolicy):
+            raise TypeError("controller_policy must be a ControllerPolicy instance")
         if not isinstance(self.routing_mode, RoutingMode):
             raise TypeError("routing_mode must be a RoutingMode instance")
         self._validate_positive_integer(self.context_history_admission_limit, "context_history_admission_limit")

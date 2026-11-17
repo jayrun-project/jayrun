@@ -2,6 +2,15 @@
 
 The application owns `Engine`: construction chooses settings, an optional graph registry and optional database; `start()` admits work. A synchronous `with Engine() as engine:` starts an owned event loop and shuts down on exit.
 
+Owned-loop startup allows five seconds for loop initialization and acknowledgement
+of a callback submitted from the starting thread. If that boundary is not reached,
+`start()` raises `TimeoutError` and the Engine enters failure cleanup. Initialization
+or callback-submission errors retain their original exception. Cleanup has separate
+bounds, so five seconds is not a deadline for the entire `start()` call. Successful
+startup confirms initial responsiveness; it does not guarantee future loop health.
+Blocked application or driver code still requires cooperative return or an
+application-owned process boundary.
+
 Submit a confirmed graph with graph-independent builders:
 
 ```python

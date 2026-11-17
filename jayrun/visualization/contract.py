@@ -63,9 +63,9 @@ def _mapping(value: object, at: str) -> dict:
     return value
 
 
-def _text(value: object, at: str, *, empty: bool = False) -> str:
-    if type(value) is not str or (not value and not empty) or len(value) > 8192:
-        raise ValueError(f"{at} must be a {'possibly empty ' if empty else 'nonempty '}string of at most 8192 characters")
+def _text(value: object, at: str, *, empty: bool = False, limit: int = 8192) -> str:
+    if type(value) is not str or (not value and not empty) or len(value) > limit:
+        raise ValueError(f"{at} must be a {'possibly empty ' if empty else 'nonempty '}string of at most {limit} characters")
     if any(0xD800 <= ord(char) <= 0xDFFF for char in value):
         raise ValueError(f"{at} must not contain unpaired Unicode surrogates")
     return value
@@ -114,15 +114,29 @@ def _metadata(record: dict) -> None:
         if key in record:
             record[key] = summarize(record[key])
     if "description" in record:
-        _text(record["description"], "description", empty=True)
+        _text(record["description"], "description", empty=True, limit=MAX_EXPORT_BYTES)
+
+
+def _reject_json_constant(value: str) -> None:
+    raise ValueError(f"declaration report contains non-JSON constant {value}")
 
 
 def _graph(graph: dict) -> dict:
     if graph.get("kind") != "graph":
         raise ValueError("included payloads must have kind='graph'")
     _text(graph.get("id"), "graph.id")
-    _text(graph.get("label"), "graph.label")
+    _text(graph.get("label"), "graph.label", limit=MAX_EXPORT_BYTES)
     _metadata(graph)
+    if "declaration_report_json" in graph:
+        text = _text(graph["declaration_report_json"], "declaration_report_json", limit=MAX_EXPORT_BYTES)
+        report = json.loads(text, parse_constant=_reject_json_constant)
+        if type(report) is not dict or report.get("schema") != "jayrun.declaration/1":
+            raise ValueError("unsupported declaration report schema")
+        identity = graph.get("identity", {}).get("Intrinsic graph ID")
+        if type(report.get("graph")) is not dict:
+            raise ValueError("declaration report requires graph metadata")
+        if identity is not None and report["graph"].get("graph_id") != identity:
+            raise ValueError("declaration report belongs to a different graph")
     artifacts = {}
     for item in _items(graph.get("artifacts"), "artifacts", MAX_CONNECTIONS):
         _mapping(item, "artifact")

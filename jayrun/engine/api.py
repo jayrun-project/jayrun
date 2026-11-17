@@ -107,6 +107,9 @@ class Engine:
 
         Raises:
             RuntimeError: If the engine cannot be started from its current state.
+            TimeoutError: If runtime-loop initialization or startup callback
+                acknowledgement exceeds its bounded startup wait. Failure cleanup
+                has separate bounds; this is not an overall start-call deadline.
         """
         self._supervisor.start(loop=loop)
 

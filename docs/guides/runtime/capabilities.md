@@ -13,6 +13,7 @@ Components use the injected `self.runtime` handle. They do not construct an Engi
 | Apply a context snapshot | Target authority required | Scoped targets | Authorized targets | Authorized targets |
 | Apply a pressure snapshot | Denied | Denied | Available | Available |
 | `submit`, `shutdown` | Denied | Denied | Denied | Available |
+| Submit Controller/Supervisor children | Denied | Denied | Denied | Only with Engine ControllerPolicy.DELEGATED |
 | `terminal_history` | Denied | Denied | Denied | Available |
 | `history` | Denied | Denied | Denied | Granted reader, or None without a grant |
 

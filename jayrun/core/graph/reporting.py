@@ -15,11 +15,40 @@ if TYPE_CHECKING:
 
 
 class GraphReporter:
-    """Render a graph or registry with a shared text-report interface."""
+    """Render text reports and export confirmed graph declarations for AI use."""
 
-    def __init__(self, formatter: Callable[[bool], str], default_filename: str) -> None:
+    def __init__(self, formatter: Callable[[bool], str], default_filename: str,
+                 *, declaration: Callable[[], dict[str, object]] | None = None) -> None:
         self._formatter = formatter
         self._default_filename = default_filename
+        self._declaration = declaration
+
+    def to_dict(self) -> dict[str, object]:
+        """Return a detached versioned declaration of a confirmed graph.
+
+        Names and descriptions are verbatim authored metadata. Unsupported state
+        and redacted defaults are explicit limitations; no user code is executed
+        to infer behavior. Registry reports retain their text-only interface.
+        """
+        if self._declaration is None:
+            raise TypeError("declaration export requires an individual graph report")
+        return self._declaration()
+
+    def to_json(self, *, indent: int | None = None) -> str:
+        """Return a compact AI-facing declaration, or indented JSON on request.
+
+        Both forms preserve every supported value and supplied description.
+        Tuple values use explicit tags; limitations distinguish unavailable or
+        redacted construction data from genuine nulls. No code is reconstructed.
+        """
+        if indent is not None and (type(indent) is not int or not 0 <= indent <= 8):
+            raise ValueError("indent must be None or an integer from 0 to 8")
+        text = json.dumps(self.to_dict(), ensure_ascii=False, allow_nan=False,
+                          indent=indent, separators=(",", ":") if indent is None else None)
+        from .declaration_report import MAX_BYTES
+        if len(text.encode("utf-8")) > MAX_BYTES:
+            raise ValueError("declaration report exceeds 32 MiB; nothing exported")
+        return text
 
     def __str__(self) -> str:
         return self.format()
@@ -43,13 +72,22 @@ class GraphReporter:
         """Print the selected report format to standard output."""
         print(self.format(compact=compact))
 
-    def save(self, path: str | Path | None = None, *, compact: bool = False) -> Path:
+    def save(self, path: str | Path | None = None, *, compact: bool = False,
+             format: str = "text") -> Path:
         """Write UTF-8 text with a trailing newline and return its absolute path.
 
         Missing parent directories are created and an existing file is replaced.
+        Choose format="json" for a confirmed graph declaration; compact then
+        controls JSON whitespace only. The default remains the existing text
+        report. Failed export leaves an existing file untouched.
         """
-        text = self.format(compact=compact)
-        output = Path(path if path is not None else self._default_filename).expanduser().resolve()
+        if not isinstance(compact, bool):
+            raise TypeError("compact must be a bool")
+        if format not in ("text", "json"):
+            raise ValueError("format must be 'text' or 'json'")
+        text = self.format(compact=compact) if format == "text" else self.to_json(indent=None if compact else 2)
+        default = self._default_filename if format == "text" else "graph_declaration.json"
+        output = Path(path if path is not None else default).expanduser().resolve()
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(text + "\n", encoding="utf-8")
         return output
@@ -120,7 +158,7 @@ def _format_graph(graph: GraphDefinition, compact: bool = False) -> str:
         f"Exits: {_refs('A', (a.artifact_id for a in inspection.artifacts.exit))}",
         f"Contracts: {counts['match']} match; {counts['mismatch']} mismatch; {counts['unknown']} unknown; {counts['not compared']} boundary edges not compared",
         f"Comparisons with no declared properties: {empty_contracts}",
-        f"Resources: {len(inspection.resources.bindings)}/{len(inspection.resources)} bound; shared instances: {len(inspection.resources.shared)}",
+        f"Resources: {len(inspection.resources.bindings)}/{len(inspection.resources)} bound; shared declarations: {len(inspection.resources.shared)}",
         f"Missing required resources: {len(inspection.resources.missing)}; optional unbound: {sum(not r.required for r in inspection.resources.unbound)}",
         f"Serializers: enabled={serializers.enabled}; finalized={serializers.bound}; boundary coverage={len(serializers)}/{len(serializers.boundary)}",
         "Scope: static declarations and bindings; runtime values, execution success, and performance are not established.",
@@ -128,6 +166,9 @@ def _format_graph(graph: GraphDefinition, compact: bool = False) -> str:
         "Artifact role describes origin: unused means no consuming flow. exit identifies boundary outputs; run policy selects retained values.",
         "Descriptions are quoted metadata, omitted when absent. UNBOUND means no declaration binding, never a runtime None value.",
     ]
+    if graph.name is not None or graph.description is not None:
+        lines.append(f"Graph name={_text(graph.name)}; description={_text(graph.description)}")
+    lines.append("Resource declaration reuse is distinct from runtime cache reuse, which also depends on resource class, effective configuration and concurrency requirements.")
     columns = defaultdict(list)
     for node in operators:
         columns[node.layout_position[1]].append(node.node_id)

@@ -4,6 +4,68 @@ All notable changes to Jayrun are documented in this file.
 
 Release notes describe new capabilities, compatibility changes and fixes.
 
+## [0.3.1] - 2026-11-17
+
+### Added
+
+- `EngineSettings.controller_policy` with `ControllerPolicy.HOST_ONLY` (default)
+  and `ControllerPolicy.DELEGATED`, available from `jayrun.settings`.
+- With `DELEGATED`, live Controllers can submit child Controller and Supervisor
+  workflows. Child Controllers may submit further workflows with authority.
+- Controllers can submit newly constructed, confirmed `GraphDefinition` objects
+  directly without a graph registry, as well as registered graph identities.
+
+- Optional graph `name` and `description`, preserved without changing structural
+  graph identity.
+- Structured declaration reports through `graph.report.to_dict()` and
+  `graph.report.to_json()`, using schema `jayrun.declaration/1`. Reports preserve
+  authored intent, component references, bindings and construction limitations.
+- A separate **Export declaration report** action in confirmed graph viewers,
+  including registry and captured dashboard views. The download preserves the
+  report JSON exactly, including integers outside JavaScript's safe range.
+
+### Changed
+
+- `self.runtime.submit(graph, artifacts, configs, settings=..., authority=...)`
+  now matches `Engine.submit()` arguments and validation rules. A configured
+  registry still requires submitted graph objects to be registered.
+- Controller guides and API references explain delegated submission, child
+  lifetimes, explicit history grants, routing and capacity requirements.
+- Engine history settings include the selected `controller_policy`.
+
+### Fixed
+
+- Owned Engine startup now bounds loop initialization and cross-thread readiness
+  acknowledgement to five seconds, with bounded failure cleanup. External event
+  loop ownership is unchanged; this is not a deadline for the entire start call.
+- Graph viewers display authored graph names/descriptions and support long
+  descriptions within their aggregate export bounds.
+- Legacy viewer detail strings now use safe inspection metadata, avoiding raw
+  representations that could bypass sensitive-default redaction.
+
+### Compatibility
+
+- Replace keyword `runtime.submit(graph_key=...)` with `runtime.submit(graph=...)`.
+  Existing positional registered-identity calls continue to work.
+- Under `HOST_ONLY`, any non-None runtime `authority` raises `PermissionError`;
+  previously the unsupported keyword raised `TypeError`. Host authority grants
+  remain available under either policy.
+- Ordinary contexts and Supervisors still cannot submit workflows. Supervisor
+  graph scope is unchanged. Children belong to the Engine and can outlive their
+  parent; parent-issued handles and borrowed history readers keep their existing
+  authority lifetimes.
+- Waiting parents retain execution slots. Configure sufficient `max_tasks` and
+  `max_workers` for nested workflows. Delegation does not add automatic child
+  cancellation, deadlock prevention or a process sandbox.
+
+- Text reports and existing viewer/execution exports remain available. Declaration
+  JSON requires a confirmed graph and does not include operator implementations,
+  submitted values or execution evidence. Missing construction information and
+  redacted defaults are explicit; no automatic reconstruction or importer is added.
+- Existing aggregate viewer and dashboard capture limits still apply. Regenerate
+  old HTML exports to include declaration reports; history-only snapshots without
+  a captured report cannot supply one.
+
 ## [0.3.0] - 2026-09-28
 
 ### Added
@@ -107,3 +169,5 @@ for supported imports, complete examples and operational limits.
 [0.1.0]: https://github.com/jayrun-project/jayrun/releases/tag/v0.1.0
 
 [0.3.0]: https://github.com/jayrun-project/jayrun/compare/v0.2.0...v0.3.0
+
+[0.3.1]: https://github.com/jayrun-project/jayrun/compare/v0.3.0...v0.3.1
