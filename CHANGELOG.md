@@ -4,6 +4,18 @@ All notable changes to Jayrun are documented in this file.
 
 Release notes describe new capabilities, compatibility changes and fixes.
 
+## [0.3.2] - 2026-11-22
+
+### Fixed
+
+- On Windows, context admission and `Engine.pressure` now read available
+  physical memory and the process's current working set through Win32. This
+  fixes an `AttributeError` during pressure sampling and allows the scheduler
+  to enforce a configured CPU memory limit and resume queued work after recovery.
+- On Windows, `Database()` now uses `LOCALAPPDATA` when set, including in
+  processes without a home directory. It consults the user profile only
+  when it needs the fallback path.
+
 ## [0.3.1] - 2026-11-17
 
 ### Added
@@ -171,3 +183,5 @@ for supported imports, complete examples and operational limits.
 [0.3.0]: https://github.com/jayrun-project/jayrun/compare/v0.2.0...v0.3.0
 
 [0.3.1]: https://github.com/jayrun-project/jayrun/compare/v0.3.0...v0.3.1
+
+[0.3.2]: https://github.com/jayrun-project/jayrun/compare/v0.3.1...v0.3.2

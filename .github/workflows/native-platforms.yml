@@ -2,7 +2,7 @@ name: Native platform qualification
 
 on:
   push:
-    branches: ["qa/windows-macos-*"]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
