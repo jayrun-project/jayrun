@@ -7,6 +7,9 @@ from pathlib import Path
 
 from ..resource.placement_request import capacity_bytes
 
+if sys.platform == "win32":
+    from . import _windows_memory
+
 try:
     import resource
 except ImportError:
@@ -77,6 +80,8 @@ class MemoryPressureMonitor:
                 return int(values[1]) * cls._page_size()
             except (IndexError, OSError, ValueError):
                 pass
+        elif sys.platform == "win32":
+            return _windows_memory.process_usage()
         if resource is None:
             return None
         try:
@@ -87,6 +92,8 @@ class MemoryPressureMonitor:
 
     @classmethod
     def _system_memory(cls) -> tuple[int | None, int | None]:
+        if sys.platform == "win32":
+            return _windows_memory.system_memory()
         capacity, available = cls._proc_memory()
         if capacity is None:
             capacity = cls._sysconf_memory("SC_PHYS_PAGES")

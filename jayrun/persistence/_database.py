@@ -33,7 +33,8 @@ Result = TypeVar("Result")
 
 def _default_path() -> Path:
     if sys.platform == "win32":
-        root = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local")))
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        root = Path(local_app_data) if local_app_data is not None else Path.home() / "AppData" / "Local"
         return root / "Jayrun" / "history.sqlite3"
     if sys.platform == "darwin":
         return Path.home() / "Library" / "Application Support" / "Jayrun" / "history.sqlite3"
