@@ -55,3 +55,11 @@ ID of the currently executing context.
 ```
 
 [Source: id](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/context.py)
+
+```{py:attribute} ContextInterface.iteration
+
+Read-only, one-based graph iteration of the current invocation. An operator repeat
+or retry within the same graph iteration returns the same value.
+```
+
+[Source: iteration](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/context.py)

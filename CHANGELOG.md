@@ -4,6 +4,14 @@ All notable changes to Jayrun are documented in this file.
 
 Release notes describe new capabilities, compatibility changes and fixes.
 
+## [0.3.3] - 2026-11-23
+
+### Added
+
+- Operators and resource setup hooks can read the current graph iteration from
+  `self.context.iteration`. It starts at 1 and stays the same when an operator
+  repeats or an invocation retries within that iteration.
+
 ## [0.3.2] - 2026-11-22
 
 ### Fixed
@@ -185,3 +193,5 @@ for supported imports, complete examples and operational limits.
 [0.3.1]: https://github.com/jayrun-project/jayrun/compare/v0.3.0...v0.3.1
 
 [0.3.2]: https://github.com/jayrun-project/jayrun/compare/v0.3.1...v0.3.2
+
+[0.3.3]: https://github.com/jayrun-project/jayrun/compare/v0.3.2...v0.3.3

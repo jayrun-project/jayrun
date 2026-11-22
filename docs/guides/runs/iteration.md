@@ -15,6 +15,11 @@ Choose the repetition scope explicitly. A declared graph is acyclic even when it
 :language: python
 ```
 
+Inside the operator, read `self.context.iteration` for the graph iteration and
+`self.execution.number` for the execution within this operator session. In the
+example above, the pairs are `(1, 1)`, `(1, 2)`, `(2, 1)` and `(2, 2)`.
+From the application, `run.iteration_count` counts graph iterations that have started.
+
 A feedback artifact is both consumed and regenerated. An invariant entry needed by later iterations has a different retention role; do not accidentally clear it by retaining only a downstream result. Use [artifact policy](capacity.md) to choose ownership and final results.
 
 `max_iterations=None` permits unbounded graph iteration under external or component control. `max_repeats=None` removes the context-level repeat cap; `0` permits no additional execution. An explicit `stop()` prevents a next iteration while draining accepted work. `abort()` has a different outcome and cancellation policy.

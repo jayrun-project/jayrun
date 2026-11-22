@@ -70,3 +70,8 @@ class ContextInterface(ScopeInterface):
     def id(self) -> int:
         """ID of the currently executing context."""
         return self._recorder.context_id
+
+    @property
+    def iteration(self) -> int:
+        """One-based graph iteration of the current invocation."""
+        return self._recorder.iteration

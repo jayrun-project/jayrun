@@ -2,6 +2,12 @@
 
 Use `self.context` when the action concerns the run executing this operator or resource setup. For other runs, use an authorized [runtime interface](../runtime/index.md).
 
+## Read the graph iteration
+
+Inside operator execution or resource setup, `self.context.iteration` gives the
+current graph iteration, starting at 1. For example, pass it to an experiment
+logger to associate a measurement with the graph pass that produced it.
+
 ## Record a value for the application
 
 Inside an operator, publish a small structured value:

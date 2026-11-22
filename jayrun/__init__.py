@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from .engine.engine_state import EngineState, RuntimeActivity
     from .registry import GraphRegistry
 
-__version__ = "0.3.2"
+__version__ = "0.3.3"
 
 __all__ = (
     "__version__", "Artifact", "ArtifactContext", "ArtifactField", "ArtifactFlow",
