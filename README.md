@@ -12,6 +12,16 @@ Jayrun is a Python execution framework for pipelines, iterative experiments and 
 
 [Quick start](#quick-start) · [Documentation](https://jayrun.readthedocs.io/en/latest/) · [Tutorials](#tutorials) · [API reference](https://jayrun.readthedocs.io/en/latest/reference/imports.html) · [0.3.4 release notes](https://github.com/jayrun-project/jayrun/releases/tag/v0.3.4)
 
+## What Jayrun does
+
+- **Reuse expensive resources.** Share models, calibration data and clients across compatible runs, with managed acquisition and teardown.
+- **Release intermediate data automatically.** Let Jayrun release consumed artifact values when execution no longer needs them. Retention policies and application references determine what stays alive.
+- **Inspect and control execution.** Visualize graphs before running them, follow live work in the dashboard, and inspect captured results, timings and records afterward.
+
+Declare a graph once, then submit it with different inputs and configuration. Graphs can include branches, conditional routes and iteration. They can also act as observers or controllers for other work—the dashboard itself is built as a graph.
+
+See [the overview](https://jayrun.readthedocs.io/en/latest/start/overview.html) for applications and [data and lifetimes](https://jayrun.readthedocs.io/en/latest/start/data-and-lifetimes.html) for how artifacts, configuration and resources fit together.
+
 ## Quick start
 
 Install Jayrun with Python 3.11 or later.
@@ -20,11 +30,7 @@ Install Jayrun with Python 3.11 or later.
 python -m pip install jayrun
 ```
 
-[![Completed graph showing the source artifact flowing through Scale to the result artifact](https://raw.githubusercontent.com/jayrun-project/jayrun/main/docs/_static/screenshots/first-run.png)](https://jayrun.readthedocs.io/en/latest/_static/first_run.html)
-
-Input **7**, factor **3**, result **21**. [Explore this completed run](https://jayrun.readthedocs.io/en/latest/_static/first_run.html).
-
-Save this program as `first_graph.py` and run `python first_graph.py`. It reproduces the graph above and prints `21`.
+Save the following as `first_graph.py`. The `Scale` operator multiplies an input artifact by a configurable factor.
 
 ```python
 from jayrun import (
@@ -73,26 +79,29 @@ with Engine() as engine:
     if run.state is not ContextState.FINISHED:
         failure = run.report.data.failure
         raise RuntimeError(str(failure))
-    print(run.artifact(result).value)  # 21
+    print(run.artifact(result).value)
+```
+
+Run the program. With input `7` and factor `3`, it prints `21`.
+
+```console
+$ python first_graph.py
+21
 ```
 
 Each submission returns a `ContextRun`. Once it finalizes, check its outcome before reading the result. The [first graph walkthrough](https://jayrun.readthedocs.io/en/latest/start/first-graph.html) explains field binding, reads the recorded value and visualizes the run.
 
 The core runtime requires `packaging`. Install `jayrun[yaml]` for YAML configuration. Individual applications can add libraries such as PyTorch.
 
-## What Jayrun does
-
-- **Reuse expensive resources.** Share models, calibration data and clients across compatible runs, with managed acquisition and teardown.
-- **Release intermediate data automatically.** Let Jayrun release consumed artifact values when execution no longer needs them. Retention policies and application references determine what stays alive.
-- **Inspect and control execution.** Visualize graphs before running them, follow live work in the dashboard, and inspect captured results, timings and records afterward.
-
-Declare a graph once, then submit it with different inputs and configuration. Graphs can include branches, conditional routes and iteration. They can also act as observers or controllers for other work—the dashboard itself is built as a graph.
-
-See [the overview](https://jayrun.readthedocs.io/en/latest/start/overview.html) for applications and [data and lifetimes](https://jayrun.readthedocs.io/en/latest/start/data-and-lifetimes.html) for how artifacts, configuration and resources fit together.
-
 ## Inspect your graphs and runs
 
-Once you have a graph, save its structure with `graph.plot.save("graph.html")`. After execution, save the completed run with `run.plot.save("run.html")` to explore captured outcomes, timings, records and reports. Both create interactive HTML viewers that open in a browser.
+The quick start sends `source` through `Scale` to produce `result`. To save the completed run as interactive HTML, add `run.plot.save("run.html")` after the example’s `print` line. Open the file to inspect the executed step, timing and recorded values.
+
+[![Completed graph showing the source artifact flowing through Scale to the result artifact](https://raw.githubusercontent.com/jayrun-project/jayrun/main/docs/_static/screenshots/first-run.png)](https://jayrun.readthedocs.io/en/latest/_static/first_run.html)
+
+[Explore the completed Scale run](https://jayrun.readthedocs.io/en/latest/_static/first_run.html).
+
+You can also inspect a graph before running it. Save its declaration with `graph.plot.save("graph.html")`. This split-and-join example shows two processing branches meeting at a Join operator.
 
 [![Split-and-join graph with an explicit Splitter, two processing branches and a Join operator](https://raw.githubusercontent.com/jayrun-project/jayrun/main/docs/_static/screenshots/split-and-join.png)](https://jayrun.readthedocs.io/en/latest/guides/visualization/graphs.html)
 
