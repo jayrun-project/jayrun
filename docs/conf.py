@@ -161,10 +161,23 @@ def readable_signatures(app, what, name, obj, options, signature, return_annotat
 
 _SEARCH_TITLES = {
     "index": "Jayrun — Python Workflow Engine for Computation Graphs",
-    "start/overview": "Python workflows, artifact lifetimes and reusable resources",
-    "start/installation": "Install Jayrun for Python",
+    "start/overview": "Python workflows, artifact lifetimes and reusable resources — Jayrun",
+    "start/installation": "Install Jayrun on Python 3.11 or later",
     "start/first-graph": "Your first Python computation graph with Jayrun",
 }
+
+# Keep links to former manual chapters usable within each built version.
+_MOVED_PAGES = {
+    "components/operators-and-executions": "guides/graphs/operators",
+    "concepts/configuration": "guides/graphs/configuration",
+    "concepts/data-model": "model/identity",
+    "getting-started": "start/first-graph",
+    "observability/observability-and-inspection": "guides/evidence/index",
+    "runtime/engine-and-context-lifecycle": "guides/runs/index",
+    "runtime/placement-and-capacity": "model/placement",
+    "troubleshooting": "guides/problems/index",
+}
+html_additional_pages = dict.fromkeys(_MOVED_PAGES, "moved.html")
 
 
 def documentation_url(app: Sphinx, docname: str) -> str:
@@ -180,19 +193,30 @@ def documentation_metadata(
     context: dict[str, Any],
     doctree: nodes.document | None,
 ) -> None:
+    if pagename in _MOVED_PAGES:
+        target = _MOVED_PAGES[pagename]
+        context.update(
+            redirect_target=target,
+            redirect_title=app.env.titles[target].astext(),
+            pageurl=documentation_url(app, target),
+        )
+        return
     if pagename not in app.env.found_docs:
         return
     context["pageurl"] = documentation_url(app, pagename)
     if pagename in _SEARCH_TITLES:
-        title = _SEARCH_TITLES[pagename]
-        context["search_title"] = title if pagename == app.config.master_doc else f"{title} — Jayrun"
+        context["search_title"] = _SEARCH_TITLES[pagename]
     if doctree is None or any(
         meta.get("name") == "description" for meta in doctree.findall(nodes.meta)
     ):
         return
     # Keep descriptions grounded in the page's introduction. Authors can supply
     # a more concise description with the standard Sphinx meta directive.
-    paragraph = next(doctree.findall(nodes.paragraph), None)
+    paragraph = next(
+        (p for p in doctree.findall(nodes.paragraph)
+         if isinstance(p.parent, (nodes.document, nodes.section))),
+        None,
+    )
     if paragraph is not None:
         description = " ".join(paragraph.astext().split())
         if len(description) > 200:

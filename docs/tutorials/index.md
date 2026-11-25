@@ -9,7 +9,7 @@ Use these lessons to build a workflow you can inspect and adapt. Each has a guid
 
 ## Prepare your environment
 
-Use Python 3.11 or later in an isolated environment and keep the complete repository, notebooks, and bundled data together. From a repository checkout:
+Use Python 3.11 or later in an isolated environment. Clone the repository to get the notebooks, application code and bundled sample data together. If you already have a checkout, run the two installation commands from its root.
 
 ```bash
 git clone https://github.com/jayrun-project/jayrun.git

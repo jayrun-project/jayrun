@@ -34,3 +34,12 @@ header.dashboard-header{height:auto;min-height:66px;grid-template-columns:minmax
 
 .dashboard-header~.layout{min-height:calc(100dvh - var(--dashboard-header-height,66px))}
 .dashboard-header~.layout .sidebar{top:var(--dashboard-header-height,66px);height:calc(100dvh - var(--dashboard-header-height,66px))}
+
+/* Reserve the receipt line before the first successful poll. */
+.dashboard-identity #received{min-height:1.55em;white-space:nowrap}
+@media(max-width:620px){
+ header.dashboard-header{grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;padding:6px 10px}
+ .dashboard-header .dashboard-identity{grid-row:1/3;align-content:center}
+ .dashboard-header .dashboard-actions{grid-column:2;grid-row:2;padding:0;border:0}
+ .dashboard-header #owner-stop{font-size:12px;min-height:29px;padding:3px 7px}
+}

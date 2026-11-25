@@ -15,7 +15,7 @@ There is no single setting that bounds all memory and work. Choose limits by the
 
 ## Artifact retention
 
-`ArtifactPolicy(retained_artifacts=None)` retains exits; `()` retains none; an explicit tuple selects supported exit references. It does not turn an intermediate into an exit. `release_entry_artifacts=True` releases submitted entry ownership when execution no longer needs it and empties remaining submitted entry/checkpoint ownership at finalization. Holding the original object or a run result in application code can still keep memory alive.
+`ArtifactPolicy(retained_artifacts=None)` retains all exits. An empty tuple retains none, and an explicit tuple selects individual exits. Successful submission removes entry bindings from the caller's builder even with the default policy. `release_entry_artifacts=True` controls the run's own entry references. It releases them when execution permits and clears the remaining submitted entries and recovery checkpoint at finalization. An application reference can still keep the underlying object alive. See [execution and artifact lifetimes](../../model/lifetime.md).
 
 ## Placement
 

@@ -62,7 +62,7 @@
   }],
   ["evidence.artifacts", {
     brief: "Only retained artifact lifecycle metadata is shown, never artifact payloads.",
-    detail: "PRODUCTION and PERFORMANCE normally retain the latest entry; DEBUG retains the recorded sequence. The public snapshot does not identify recording mode. Missing or omitted entries cannot be reconstructed."
+    detail: "STANDARD and MINIMAL normally retain the latest entry. DIAGNOSTIC retains the recorded sequence. The public snapshot does not identify recording mode. Missing or omitted entries cannot be reconstructed."
   }],
   ["evidence.records", {
     brief: "Records are context-local retained values; a table filter does not filter charts, summaries or exports.",
@@ -77,7 +77,7 @@
     detail: "These settings describe the selected execution evidence. Opening this view does not apply new settings or change recording, retention or failure policy."
   }],
   ["evidence.activity", {
-    brief: "Retained lifecycle events and observed control requests have separate recorded orders.",
+    brief: "Activity shows retained operator log messages after finalization, lifecycle events and observed control requests.",
     detail: "No global timeline, missing event or unseen transition is inferred. A submitted request is not an observed completed transition. Raw retained fields remain available."
   }],
   ["evidence.history", {

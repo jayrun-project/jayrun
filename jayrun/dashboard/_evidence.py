@@ -179,6 +179,30 @@ def terminal_evidence(snapshot):
     }
 
 
+def execution_logs(evidence, *, byte_limit=64 * 1024):
+    """Expose bounded attempt messages without sending the whole execution overlay."""
+    messages = []
+    size = 0
+    limited = bool(evidence['coverage'].get('executions_omitted'))
+    for session in evidence['executions']:
+        limited |= bool(session.get('attempts_omitted'))
+        for attempt in session['attempts']:
+            limited |= bool(attempt.get('records_omitted'))
+            for record in attempt['records']:
+                # Older Database captures preserve fields but lack the original class.
+                if 'message' not in record or record.get('type') not in (
+                        'LogRecord', 'Captured record (original class not recorded)'):
+                    continue
+                message = {key: session[key] for key in ('iteration', 'step_index', 'name')}
+                message.update(execution=attempt['execution'], attempt=attempt['attempt'],
+                               message=record['message'])
+                size += len(json.dumps(message).encode()) + 2
+                if len(messages) >= 128 or size > min(64 * 1024, byte_limit):
+                    return {'messages': messages, 'limited': True}
+                messages.append(message)
+    return {'messages': messages, 'limited': limited}
+
+
 def _failure(error):
     if error is None: return None
     return {'type':type(error).__name__, 'arguments':safe(BaseException.args.__get__(error))}

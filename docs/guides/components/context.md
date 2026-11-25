@@ -1,6 +1,13 @@
+```{eval-rst}
+.. meta::
+   :description: Use self.context in a Jayrun operator or resource setup to read the graph iteration, record values for the application, and request pause, stop or abort.
+```
+
 # Record values and control the current context
 
 Use `self.context` when the action concerns the run executing this operator or resource setup. For other runs, use an authorized [runtime interface](../runtime/index.md).
+
+For a text message about the current step, use `self.execution.log("...")`. For a value the application will look up by key, use `self.context.record(key, value)`. Each has its own [place in the run's evidence](../evidence/reports.md#walk-from-a-report-to-an-execution-record).
 
 ## Read the graph iteration
 

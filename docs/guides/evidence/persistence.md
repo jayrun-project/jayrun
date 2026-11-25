@@ -40,7 +40,7 @@ The Engine's `EngineSettings.failure_mode` governs managed persistence as well a
 
 ## Read history after shutdown
 
-This complete example reuses `build_graph` from the [workflow program](../../start/first-graph.md). Save both Python files in the same directory, or run it from the documentation examples directory. It prints `finished`. The example uses a temporary directory so it cleans up after itself; use a persistent application path in your program.
+Download [history.py](../../_examples/history.py) and [first_graph.py](../../_examples/first_graph.py) into the same directory. Run `python history.py` there. It prints `finished` and removes its temporary database when it exits. Use a persistent application path to keep your own history.
 
 ```{literalinclude} ../../_examples/history.py
 :language: python
@@ -48,7 +48,9 @@ This complete example reuses `build_graph` from the [workflow program](../../sta
 
 The Engine first captures a completed run and flushes its registered history writes. After shutdown, `with Database(path)` opens the store for read-only inspection. The session page identifies a stored engine session. A reader restricted to that session then walks context headers using `HistoryQuery` and `next_cursor`.
 
-`get_context()` retrieves a header's detailed account. In this small example it is available; in a long-lived store, retention or capture pressure may leave only a header. Check the returned detail and its coverage before displaying a complete report. History pages carry headers in publication order, not a reconstructed event stream.
+Use both `header.session_id` and `header.context_id` with `get_context()` to retrieve the stored account. Check its coverage before relying on a full report. Capture or retention can leave only summary evidence.
+
+`HistoryQuery()` pages through context headers in ascending publication order by default. Set `descending=True` for the most recently published entries first. Publication can occur after a run finishes. Use `graph_id` or `session_id` for an exact filter, or `search` for a case-sensitive substring of a context ID, session ID, graph ID or graph version. Keep the same filters and ordering when following `next_cursor`. The {py:class}`~jayrun.persistence.HistoryQuery` reference lists the options in this version.
 
 ## Read while the Engine is running
 

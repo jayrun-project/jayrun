@@ -64,6 +64,11 @@ def _json(value: object) -> bytes:
     return json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("ascii")
 
 
+def _context_reference(session: str, context: str) -> str:
+    identity = json.dumps([session, context], separators=(',', ':'), ensure_ascii=False)
+    return hashlib.sha256(identity.encode()).hexdigest()[:12]
+
+
 @dataclass(frozen=True, slots=True)
 class SerializedLayout:
     """A minimal durable envelope around the unchanged portable viewer JSON.
@@ -229,7 +234,8 @@ class EngineSessionRecord:
 class HistoryQuery:
     """Committed-publication pages; concurrent pruning may remove rows.
 
-    descending reverses publication order, not timestamps. search is a literal,
+    By default descending reverses publication order. By-finish pages use
+    known completion times first and publication to break ties. search is a literal,
     case-sensitive substring of context/session/graph IDs or graph version; it
     never reads diagnostic bodies or matches opaque configuration values."""
 
@@ -243,9 +249,16 @@ class HistoryQuery:
     cursor: str | None = None
     descending: bool = False
     search: str | None = None
+    by_finish: bool = False
+    identity_digest: str | None = None
 
     def __post_init__(self) -> None:
         _text(self.search, "search", 256, optional=True)
+        if type(self.by_finish) is not bool:
+            raise StorageContractError("by_finish must be a bool")
+        if self.identity_digest is not None and (type(self.identity_digest) is not str
+                or len(self.identity_digest) != 12 or any(c not in '0123456789abcdef' for c in self.identity_digest)):
+            raise StorageContractError("invalid context identity digest")
         _graph_id(self.graph_id); _text(self.graph_version, "graph_version", optional=True, empty=True)
         _text(self.session_id, "session_id", optional=True)
         if self.outcome is not None and self.outcome not in _OUTCOMES:
@@ -253,6 +266,12 @@ class HistoryQuery:
         if type(self.descending) is not bool:
             raise StorageContractError("descending must be a bool")
         _query_bounds(self.since, self.until, self.limit, self.cursor)
+
+    def _position(self, header: ContextHistoryHeader) -> int | tuple[int, int]:
+        if not self.by_finish:
+            return header.publication
+        missing = -(2**63) if self.descending else 2**63 - 1
+        return (missing if header.finalized_at is None else _micros(header.finalized_at), header.publication)
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="{{ language | e }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ redirect_title | e }} — Jayrun</title>
+  <link rel="canonical" href="{{ pageurl | e }}">
+  <meta http-equiv="refresh" content="0; url={{ pathto(redirect_target) | e }}">
+</head>
+<body>
+  <p>This guide has moved to <a href="{{ pathto(redirect_target) | e }}">{{ redirect_title | e }}</a>.</p>
+</body>
+</html>

@@ -9,28 +9,28 @@ Read [how to use self.execution](../guides/components/execution.md) for hook ava
 
 ```{py:method} ExecutionInterface.log(message)
 
-Record a text log message for the current execution.
+Record a text message for this execution in `STANDARD` or `DIAGNOSTIC` mode.
 ```
 
 [Source: log](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/execution.py)
 
 ```{py:method} ExecutionInterface.metric(name, value)
 
-Record a numeric metric for the current execution.
+Record a numeric metric for this execution in `STANDARD` or `DIAGNOSTIC` mode.
 ```
 
 [Source: metric](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/execution.py)
 
 ```{py:method} ExecutionInterface.start_timer(name)
 
-Start a named wall-clock timer for the current execution.
+Start a named elapsed-time measurement in `DIAGNOSTIC` mode. Other recording modes omit named timers.
 ```
 
 [Source: start_timer](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/execution.py)
 
 ```{py:method} ExecutionInterface.stop_timer(name)
 
-Stop a named timer and record its elapsed duration.
+Stop the named timer. In `DIAGNOSTIC` mode a matching start produces a `TimerRecord` in the current attempt.
 ```
 
 [Source: stop_timer](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/execution.py)

@@ -103,8 +103,9 @@ hidden activity through global sequence numbers.
 
 ```{py:method} RuntimeInterface.apply(snapshot)
 
-Apply one portable context snapshot through local authorization.
+Apply a `ContextSnapshot` or `PressureSnapshot` received through application-owned transport.
 
+For a context snapshot, the target must be within the caller's scope.
 For a locally owned context, an embedded request is dispatched through
 the normal coordinator. Committed state, records, reports, progress, and
 artifacts synchronize the local view. A queued snapshot assigned to this
@@ -113,7 +114,11 @@ obsolete-generation, and stale-revision snapshots have no effect.
 During shutdown, committed updates for known contexts remain admissible
 while new contexts and control-request snapshots are rejected.
 
-:param snapshot: Immutable snapshot received through application-owned transport.
+A pressure snapshot updates the remote pressure samples available through
+`self.runtime.pressures`. Applying one requires a Controller or an unrestricted
+`Supervisor()`.
+
+:param snapshot: The immutable context or pressure snapshot to apply.
 
 :raises TypeError: If `snapshot` has an unsupported type.
 :raises PermissionError: If the target is outside this authority.

@@ -3,13 +3,14 @@ import asyncio
 from collections import OrderedDict
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
+from heapq import nlargest
 import json
 from urllib.parse import parse_qs
 from uuid import uuid4
 from weakref import WeakKeyDictionary
 from time import monotonic
 
-from ._evidence import detached, terminal_evidence, progress_view, declaration_bindings, correspond
+from ._evidence import detached, terminal_evidence, execution_logs, progress_view, declaration_bindings, correspond
 from ._observation import project
 from ..persistence import PersistenceTimeout, PersistenceBackpressure, StorageUnavailable
 from ._history import _HistorySource, history_row, _presentation, _archive_identity, _archive_key
@@ -29,6 +30,7 @@ class _Workspace:
         self.detail_bytes = 0
         self.graphs = OrderedDict()
         self.graph_bytes = 0
+        self.graph_revision = 0
         self.local_graphs = WeakKeyDictionary()
         self.selected = OrderedDict()
         self.queue = asyncio.Queue(maxsize=32)
@@ -184,6 +186,7 @@ class _Workspace:
         while len(self.graphs) > 64 or self.graph_bytes > 8*1024*1024:
             _, removed = self.graphs.popitem(last=False)
             self.graph_bytes -= removed['_bytes']
+            self.graph_revision += 1
 
     def _graph(self, run, snapshot):
         from ..visualization.adapters.definition import definition_payload
@@ -192,7 +195,8 @@ class _Workspace:
             # These public adapters summarize declarations, never artifact values.
             definition = definition_payload(run.graph)
             data = {'id': graph_id, 'key': snapshot.graph_key, 'version': snapshot.graph_version,
-                    'registered': snapshot.graph_key is not None, 'definition': definition,
+                    'registered': snapshot.graph_key is not None, 'intrinsic_id': run.graph.graph_id,
+                    'name': (run.graph.name or '')[:256], 'definition': definition,
                     'live_graph': definition, 'bindings':declaration_bindings(run.graph,definition), 'ready': False,
                     'access': 'Unknown: requirements are not declared by the public inspection API.'}
             size = len(json.dumps(data, allow_nan=False).encode())
@@ -201,6 +205,7 @@ class _Workspace:
             data['_bytes'] = size
             self.graphs[graph_id] = data
             self.graph_bytes += size
+            self.graph_revision += 1
             self._prune_graphs()
         self._ensure_layout(graph_id)
         return graph_id
@@ -215,6 +220,7 @@ class _Workspace:
         data = self._detach(snapshot, run.graph, previous, graph_id=graph_id)
         data['graph_id'] = graph_id
         data['intrinsic_graph_id'] = run.graph.graph_id
+        data['graph_name'] = (run.graph.name or snapshot.graph_key or '')[:256]
         # Progress access is public and returns numeric evidence only.
         progress = progress_view(snapshot.progress, self.graphs[graph_id]['definition'])
         data['live'] = {'context_id': key, 'graph_id': progress['graph_id'],
@@ -303,6 +309,7 @@ class _Workspace:
             data['configuration'] = previous['configuration']
             data['graph_id'] = previous.get('graph_id')
             data['intrinsic_graph_id'] = previous.get('intrinsic_graph_id')
+            data['graph_name'] = previous.get('graph_name')
             graph_data = self.graphs.get(data.get('graph_id'))
             if graph_data is not None:
                 progress = progress_view(snapshot.progress, graph_data['definition'])
@@ -311,6 +318,8 @@ class _Workspace:
                                 'sample':snapshot.progress.observed_at.isoformat(),'progress':progress}
         data.update({'finalized': snapshot.finalized, 'revision': snapshot.revision,
                      'row': project(snapshot), 'session': str(self.service.context_id)})
+        if not data.get('graph_name') and snapshot.graph_key:
+            data['graph_name'] = snapshot.graph_key[:256]
         data['row']['execution_location'] = self.service.execution_location(snapshot.engine_id)
         evidence = terminal_evidence(snapshot)
         if evidence is not None:
@@ -336,8 +345,9 @@ class _Workspace:
         data['graph_available'] = data.get('graph_id') in self.graphs
         # Trim only detached safe projections; never inspect artifact data size.
         size = len(json.dumps(data, allow_nan=False).encode())
+        omitted_overlay = None
         if size > MAX_CONTEXT_BYTES and 'completed_evidence' in data:
-            data.pop('completed_evidence')
+            omitted_overlay = data.pop('completed_evidence')
             data['completed_evidence_availability'] = 'Finalized graph overlay omitted by the 512 KiB context display bound; retained artifact history, records and report remain independently available'
             size = len(json.dumps(data, allow_nan=False).encode())
         if size > MAX_CONTEXT_BYTES and data.get('report') is not None:
@@ -359,6 +369,11 @@ class _Workspace:
             data = {k:data[k] for k in ('context_id','row','session','revision','finalized')}
             data['capture_gap'] = 'Oversized detached context details omitted'
             size = len(json.dumps(data).encode())
+        if omitted_overlay and 'executions' in omitted_overlay:
+            remaining = MAX_CONTEXT_BYTES - size - 96
+            if remaining > 0:
+                data['execution_logs'] = execution_logs(omitted_overlay, byte_limit=remaining)
+                size = len(json.dumps(data, allow_nan=False).encode())
         data['_bytes'] = size
         old = self.details.pop(key, None)
         self.detail_bytes -= old['_bytes'] if old else 0
@@ -374,13 +389,21 @@ class _Workspace:
                 self.acquire(run, snapshot)
                 return
 
+    @staticmethod
+    def _context_fields(value):
+        visible = {k:v for k,v in value.items() if k not in {'captured_graph','completed_evidence','live','_bytes'}}
+        evidence = value.get('completed_evidence') or value.get('captured_graph', {}).get('definition', {}).get('completed')
+        if evidence and 'executions' in evidence:
+            visible['execution_logs'] = execution_logs(evidence)
+        return visible
+
     def context(self, key):
         if key.startswith('archive-'):
             self._check_history()
             value = self.archived.get(key)
             if value is None:
                 raise LookupError('Saved evidence expired or is unavailable')
-            return {k:v for k,v in value.items() if k not in {'captured_graph', 'completed_evidence', '_bytes'}}
+            return self._context_fields(value)
         if key == str(self.service.context_id):
             row = self.service.self_row()
             return {'context_id':key, 'row':row, 'access':row['access'],
@@ -397,10 +420,17 @@ class _Workspace:
         value = self.details.get(key) or self.archived.get(key)
         if value:
             row = value.get('row')
-            if value.get('finalized') and row.get('generation') is not None:
-                row = {**row, **_presentation(self.service.runtime.engine_id,
-                    key+':'+str(row['generation']), value.get('intrinsic_graph_id'), row.get('version'))}
-            return {k:v for k,v in {**value, 'row':row, 'observation':value.get('live')}.items() if k not in {'_bytes','live','completed_evidence'}}
+            if row.get('generation') is not None:
+                label = _presentation(self.service.runtime.engine_id, key+':'+str(row['generation']),
+                                      value.get('intrinsic_graph_id'), row.get('version'))
+                row = {**row, 'display_id': label['display_id'],
+                       'graph': value.get('graph_name') or row.get('graph') or label['graph']}
+            visible = self._context_fields(value)
+            visible.update(row=row, observation=value.get('live'), graph_available=value.get('graph_id') in self.graphs)
+            if not visible['graph_available'] and not visible.get('graph_availability'):
+                visible['graph_availability'] = ('No graph definition was retained for this run.'
+                    if row.get('finalized') else 'A definition has not been captured for this context.')
+            return visible
         if key in self.service.fleet.rows:
             return {'context_id':key, 'row':self.service.fleet.rows[key],
                     'capture_gap':'Context ended before detailed evidence could be captured',
@@ -529,6 +559,8 @@ class _Workspace:
         result['row'].update(id=key, actions=[], controller=False, control_version='')
         result['row'].update(_presentation(session, identity, result.get('graph_id'),
                                            result['row'].get('version')))
+        if value.get('graph_name'):
+            result['row']['graph'] = value['graph_name']
         try:
             result['captured_graph'] = {'definition': self.canvas(context)}
         except (LookupError, ValueError):
@@ -591,11 +623,16 @@ class _Workspace:
             observed = self.details.get(context) if sep and generation.isdecimal() and item['session'] == self.partition else None
             if observed and observed.get('finalized') and observed['row'].get('generation') == int(generation) and observed.get('intrinsic_graph_id') == item['graph_id']:
                 item['row']['elapsed_seconds'] = observed['row'].get('elapsed_seconds')
+                if observed.get('graph_name'):
+                    item['graph_name'] = item['row']['graph'] = observed['graph_name']
         # A bounded recent section shares exact routing IDs with durable rows.
         # Never erase the detail cache merely because another page was listed.
         recent = []
         if result['page'] == 0 and self.partition in result.get('sessions', ()):
             seen = {value['archive_id'] for value in result['rows']}
+            # Later committed pages start beyond this finish-time boundary.
+            # Rows tied at the boundary may already belong to the next page.
+            edge = result['rows'][-1]['row'].get('finished_at') if result['rows'] and result['has_more'] else None
             for context, value in reversed(self.details.items()):
                 row = value['row']
                 if not value.get('finalized') or row.get('generation') is None:
@@ -610,7 +647,12 @@ class _Workspace:
                 intrinsic = value.get('intrinsic_graph_id')
                 if query.get('graph_id') and query['graph_id'] != intrinsic:
                     continue
-                if query.get('search') and query['search'] not in ' '.join((context, self.partition, intrinsic or '', row.get('version') or '')):
+                finished = row.get('finished_at')
+                if edge and (not finished or (finished <= edge if query.get('sort','newest') == 'newest' else finished >= edge)):
+                    continue
+                projected = history_row(value, session_id=self.partition, context_id=context+':'+str(row['generation']))
+                if query.get('search') and query['search'].casefold() not in ' '.join((
+                        projected['display_id'], context, self.partition, intrinsic or '', row.get('version') or '')).casefold():
                     continue
                 if query.get('date') and (row.get('finished_at') or row.get('updated_at') or '')[:10] < query['date']:
                     continue
@@ -618,8 +660,6 @@ class _Workspace:
                     continue
                 if self.history_source.reader._allowed(self.partition):
                     # Do not clone/render a captured graph merely to list a row.
-                    projected = history_row(value, session_id=self.partition,
-                                            context_id=context+':'+str(row['generation']))
                     projected.update(id=key, session=self.partition, graph_id=intrinsic,
                         actions=[], controller=False, control_version='', archived=True,
                         recent=True)
@@ -627,8 +667,39 @@ class _Workspace:
                 if len(recent) == 25:
                     break
         result['recent_rows'] = recent
-        result['recent_coverage'] = 'At most 25 recent observations not on this committed page; publication status unverified. Matching routing IDs are deduplicated.'
+        result['recent_coverage'] = 'Recent observations within the first page’s completion range. Publication may still be pending.'
         return result
+
+    def _recent_finished(self, query):
+        """Bounded read-only summaries from the same authorized observation as Contexts."""
+        term = query.get('search', '').casefold()
+        graph_filter = query.get('graph_id')
+        session = self.service.runtime.engine_id
+        entries = []
+        for key, value in self.details.items():
+            row = value['row']
+            if not value.get('finalized') or row.get('generation') is None or row.get('controller'):
+                continue
+            if query.get('engine_session') and query['engine_session'] != row.get('engine_id'):
+                continue
+            if graph_filter and graph_filter not in (value.get('graph_id'), value.get('intrinsic_graph_id')):
+                continue
+            access = row.get('access') or {}
+            capability = query.get('capability')
+            if capability in ('observes','controls') and access.get(capability) != 'Yes':
+                continue
+            if capability == 'neither' and (access.get('observes'), access.get('controls')) != ('No','No'):
+                continue
+            if capability == 'unknown' and access.get('observes','Unknown') != 'Unknown' and access.get('controls','Unknown') != 'Unknown':
+                continue
+            identity = _presentation(session, key+':'+str(row['generation']), None, None)['display_id']
+            name = value.get('graph_name') or row['graph']
+            if term and term not in ' '.join((key, identity, name, row['version'], value.get('intrinsic_graph_id') or '')).casefold():
+                continue
+            entries.append({'id':key, 'display_id':identity, 'graph':name, 'version':row['version'],
+                            'state':row['state'], 'finished_at':row.get('finished_at'),
+                            'elapsed_seconds':row.get('elapsed_seconds')})
+        return nlargest(8, entries, key=lambda item:(item['finished_at'] or '', item['id']))
 
     async def history_summary_request(self, engine_session='', *, refresh=False):
         if refresh and not self.archive_enabled:
@@ -677,7 +748,8 @@ class _Workspace:
         query = {k:v[-1] for k,v in parse_qs(parsed.query,keep_blank_values=True).items()}
         route = parsed.path
         if route == '/api/graphs':
-            return {'graphs':[{k:v[k] for k in ('id','key','version','registered','access')} for v in self.graphs.values()],
+            return {'revision': self.graph_revision,
+                    'graphs':[{k:v.get(k) for k in ('id','key','version','registered','access','name','intrinsic_id')} for v in self.graphs.values()],
                     'gap':'Definitions captured from authorized active runs; zero-run registry discovery is unavailable.'}
         if route == '/api/graph':
             graph = self.graphs.get(query.get('id'))
@@ -709,6 +781,9 @@ class _Workspace:
                 # List membership/state must follow current public discovery,
                 # independently of bounded/slower detail capture.
                 row = project(snapshot)
+                row['display_id'] = _presentation(self.service.runtime.engine_id,
+                    key+':'+str(snapshot.generation), None, None)['display_id']
+                row['graph'] = (run.graph.name or snapshot.graph_key or row['graph'])[:256]
                 row['execution_location'] = self.service.execution_location(snapshot.engine_id)
                 rows[key] = {**row, 'graph_id':self.graph_id(run.graph,snapshot), 'session':str(self.service.context_id)}
         if not history and not workloads:
@@ -734,15 +809,21 @@ class _Workspace:
                       (capability in {'observes','controls'} and r.get('controller'))]
         if query.get('search'):
             term = query['search'].lower()
-            values = [r for r in values if term in ' '.join([r['id'],r['graph'],r['version']]).lower()]
+            values = [r for r in values if term in ' '.join((r['id'], r.get('display_id',''), r['graph'],
+                      r['version'], r.get('graph_id') or '', r.get('session') or '')).lower()]
         if query.get('date'): values = [r for r in values if (r.get('updated_at') or '')[:10]>=query['date']]
-        values.sort(key=lambda r:(r['created_at'],r['id']),reverse=query.get('sort','oldest')=='newest')
+        stamp = 'finished_at' if history else 'created_at'
+        values.sort(key=lambda r:(r.get(stamp) or '',r['id']),reverse=query.get('sort','oldest')=='newest')
+        if history:
+            values.sort(key=lambda r:not r.get(stamp))
         page = min(page, max(0, (len(values)-1)//size))
         return {'rows':values[page*size:(page+1)*size], 'total':len(values), 'page':page, 'page_size':size,
                 'scope':'Retained current-session history' if history else 'Active workloads only; dashboard excluded' if workloads else 'Authorized active contexts; included dashboard service is independent of the workload state filter',
                 'persistence':self.persistence, 'gap':self.service.fleet.gap, 'capture_gap':self.gap,
                 'graphs':list(graph_choices.values())[:256], 'graphs_omitted':max(0,len(graph_choices)-256),
-                'sessions':sessions[:100], 'sessions_omitted':max(0,len(sessions)-100)}
+                'sessions':sessions[:100], 'sessions_omitted':max(0,len(sessions)-100),
+                **({} if history else {'recently_finished': self._recent_finished(query),
+                    'history_graph_id': self.graphs.get(query.get('graph_id'), {}).get('intrinsic_id')})}
 
     async def close(self):
         self.closing = True

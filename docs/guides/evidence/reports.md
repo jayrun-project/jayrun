@@ -4,7 +4,7 @@ After a run finalizes, `run.report.data` exposes structured context evidence. `r
 
 Useful questions are: which step ran, skipped or failed; which attempt produced the result; whether Stop was requested; and whether an artifact was registered, cleared or retained. Execution, attempt, lifecycle and artifact records answer different parts of those questions.
 
-`run.artifact(reference)` returns an `ArtifactResult` with value and history. A value can be `None` because a route was absent or because policy released it; history and retained-policy information distinguish those situations. An exit selected for retention differs from an intermediate already consumed.
+`run.artifact(reference)` returns an `ArtifactResult` when artifact reporting is available. A value can be `None` because a route was absent or because policy released the payload. The default recording mode keeps only the latest lifecycle record per artifact. To trace the sequence of updates and clears, choose `RecordingMode.DIAGNOSTIC` before starting the Engine.
 
 ## Print or save the report
 
@@ -19,7 +19,7 @@ Use `run.report.data` when application code needs structured fields rather than 
 
 ## Walk from a report to an execution record
 
-The hierarchy is `run.report.data` → `executions` → `attempts` → `records`. Each execution report names a graph step and its outcome; each attempt contains its logs, metrics, timers and failure records. An explicit context record is read separately through `run.records(key)`.
+Follow `run.report.data.executions` to a step, then read `step.attempts` and each `attempt.records`. A step report identifies its outcome even when an attempt has no optional records. Read explicit application values separately through `run.records(key)`.
 
 This complete program records a sum and prints the step outcome and diagnostic record types:
 
@@ -27,11 +27,26 @@ This complete program records a sum and prints the step outcome and diagnostic r
 :language: python
 ```
 
-Look for the `Sum` step with outcome `finished`, followed by LogRecord, TimerRecord and MetricRecord entries. Framework timing records may also appear. The application record `total` contains `6`. The observer is created before submission and closed before its remaining queued events are drained; [events](progress.md) explains that separate view.
+With the default `Engine()`, the example prints three lines.
+
+```text
+Sum finished None
+LogRecord
+MetricRecord
+```
+
+`None` is the step's skip reason. The `total` application record contains `6`. To see a `TimerRecord` for the named `sum` timer, pass `EngineSettings(recording_mode=RecordingMode.DIAGNOSTIC)` to `Engine`. Both settings types are available from `jayrun.settings`. The observer in the example captures [context events](progress.md).
 
 ## Recording modes
 
-`RecordingMode.STANDARD` is the default. `DIAGNOSTIC` requests richer optional evidence and `MINIMAL` reduces optional recording. These modes do not remove mandatory lifecycle ownership or turn missing optional data into a zero-valued fact. Explicit context records have their own bounds and meaning.
+| Evidence in a local run | `STANDARD` (default) | `DIAGNOSTIC` | `MINIMAL` |
+| --- | --- | --- | --- |
+| Execution logs and numeric metrics | Recorded | Recorded | Omitted |
+| Named timers | Omitted | Recorded | Omitted |
+| Per-attempt `FailureRecord` on failure | Omitted | Recorded | Recorded |
+| Artifact lifecycle | Latest record per artifact | Retained sequence | Latest record per artifact |
+
+All three modes preserve step outcomes, attempt counts and explicit context records. Inspect `run.report.data.failure` when a run fails. Timers measure named intervals, while a step report also carries its overall duration.
 
 `ContextHistoryEntry` in `jayrun.context` describes lifecycle history; the identically named persistence type describes a stored context entry. Alias the types when using both. A report actor/origin describes who initiated an operation; it is not a transferable authorization token.
 

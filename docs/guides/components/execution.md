@@ -1,6 +1,6 @@
 # Describe and repeat an execution
 
-Use `self.execution` inside an operator's `execute()` or a resource's `setup()` to attach diagnostics to that invocation. These diagnostics appear in the step's execution report. Use `self.context.record()` instead when the application needs named values through `run.records(key)`.
+Use `self.execution` inside an operator's `execute()` or a resource's `setup()` to attach diagnostics to that invocation. The Engine's recording mode determines which diagnostics appear in the step report. Use `self.context.record()` when the application needs named values through `run.records(key)`.
 
 ## Logs, metrics and timers
 
@@ -17,7 +17,7 @@ self.execution.metric("total", float(result))
 return result
 ```
 
-A log is text, a metric is a named number, and a timer records elapsed duration. The `finally` block stops the timer even when calculation fails. Their execution and attempt identities help distinguish a successful calculation from an earlier failed attempt. The [report guide](../evidence/reports.md) shows how to read the resulting records.
+The default `STANDARD` mode records the log and metric. Choose `DIAGNOSTIC` to also record the elapsed duration of `calculation`. The `finally` block stops the timer even when the calculation raises. The [recording mode table](../evidence/reports.md#recording-modes) shows what appears in each attempt.
 
 Resource setup can use these same diagnostic methods while loading a model or opening a client. Resource teardown has no injected execution handle; clean up using its Data argument.
 

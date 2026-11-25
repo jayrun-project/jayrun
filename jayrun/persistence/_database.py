@@ -26,7 +26,7 @@ from .values import (DiagnosticCodec, ValueLimits, ValuePath, ValueSnapshot, enc
 from .records import (ContextHistoryEntry, ContextHistoryHeader, EngineSessionHeader,
                       EngineSessionRecord, HistoryPage, HistoryQuery, SessionQuery, _text, _header_size,
                       _context_body, _session_body, _check_values, _sequence,
-                      LegacyImportRecord, _legacy_import_body)
+                      LegacyImportRecord, _legacy_import_body, _context_reference)
 
 Result = TypeVar("Result")
 
@@ -730,12 +730,16 @@ class Database:
             _sequence(result.boundary); _text(result.next_cursor, "page cursor", 4096, optional=True)
             if sum(_header_size(h) for h in result.items) > self.limits.page_bytes:
                 raise StorageContractError("backend page exceeds its byte limit")
-            previous = result.boundary + 1 if query.descending else -1
+            previous = None
             for header in result.items:
-                ordered = header.publication < previous if query.descending else previous < header.publication
+                position = query._position(header) if header_type is ContextHistoryHeader else header.publication
+                ordered = previous is None or (position < previous if query.descending else previous < position)
                 if not ordered or not 0 <= header.publication <= result.boundary:
-                    raise StorageContractError("backend page is not in requested committed publication order")
-                previous = header.publication
+                    raise StorageContractError("backend page is not in requested committed order")
+                previous = position
+                if (header_type is ContextHistoryHeader and query.identity_digest is not None
+                        and _context_reference(header.session_id, header.context_id) != query.identity_digest):
+                    raise StorageContractError("backend page violates its requested identity filter")
                 if scope is not None and header.session_id not in scope:
                     raise StorageContractError("backend page widened the borrowed session scope")
                 names = ("graph_id", "graph_version", "session_id", "outcome") if header_type is ContextHistoryHeader else ("engine_name",)

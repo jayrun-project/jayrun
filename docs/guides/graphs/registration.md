@@ -18,7 +18,7 @@ The version comes from `graph.version`; the registry key is an application-chose
 
 Artifact serializers are application-defined `BaseSerializer` implementations. Bind them with `graph.bind_serializers(...)` before confirming the graph. If you use serializer bindings, cover the complete entry/exit boundary expected by the graph. Partial coverage is rejected; an internal-only artifact is not a substitute for a boundary artifact.
 
-This complete example imports Scale from the [workflow program](../../start/first-graph.md), binds a serializer to both boundary artifacts, then confirms and registers the graph. Save both files in the same directory to run it. It prints `('scale', '1')`.
+Download [serialization.py](../../_examples/serialization.py) and [first_graph.py](../../_examples/first_graph.py) into the same directory. Run `python serialization.py` there. It binds a serializer to both boundary artifacts, confirms and registers the graph, and prints `('scale', '1')`.
 
 ```{literalinclude} ../../_examples/serialization.py
 :language: python

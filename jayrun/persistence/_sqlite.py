@@ -30,7 +30,7 @@ from .records import (ContextHistoryEntry, ContextHistoryHeader, EngineSessionHe
                       SessionQuery, _context_body, _context_read, _datetime, _json,
                       _micros, _session_body, _session_read, _text, _layout_size,
                       _context_identity, _session_identity, _check_values, LegacyImportRecord,
-                      _legacy_import_body, _legacy_import_read)
+                      _legacy_import_body, _legacy_import_read, _context_reference)
 
 _APPLICATION_ID = 0x4A525031
 _SCHEMA_VERSION = 2
@@ -172,6 +172,7 @@ class SQLiteBackend:
             self._db = sqlite3.connect(self.path.absolute().as_uri() + ("?mode=ro" if options.read_only else "?mode=rwc"),
                 uri=True, isolation_level=None, check_same_thread=True, timeout=options.limits.busy_timeout)
             con = self._db
+            con.create_function("context_reference", 2, _context_reference, deterministic=True)
             # Bound SQLite's own scalar/statement allocation before schema reads.
             con.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, min(2**31 - 1, max(options.limits.max_context_bytes, options.limits.layout_bytes) + 1024 * 1024))
             con.setlimit(sqlite3.SQLITE_LIMIT_SQL_LENGTH, 65536)
@@ -669,7 +670,7 @@ class SQLiteBackend:
         return EngineSessionHeader(row["session_id"], _datetime(row["started_us"]) if row["started_us"] is not None else None, row["engine_name"], row["machine_name"],
             _datetime(row["shutdown_us"]) if row["shutdown_us"] is not None else None, row["publication"])
 
-    def _page_cursor(self, query: HistoryQuery | SessionQuery, sessions: tuple[str, ...] | None) -> tuple[int, int, str]:
+    def _page_cursor(self, query: HistoryQuery | SessionQuery, sessions: tuple[str, ...] | None) -> tuple[int, int | tuple[int, int], str]:
         if sessions is not None:
             if type(sessions) is not tuple or len(sessions) > 256:
                 raise StorageContractError("session scope must be a tuple of at most 256 IDs")
@@ -681,6 +682,10 @@ class SQLiteBackend:
             document.pop("descending", None)
         if document.get("search") is None:
             document.pop("search", None)
+        if not document.get("by_finish"):
+            document.pop("by_finish", None)
+        if document.get("identity_digest") is None:
+            document.pop("identity_digest", None)
         for key in ("since", "until"):
             if document[key] is not None: document[key] = _micros(document[key])
         fingerprint = hashlib.sha256(_json([type(query).__name__, document, sorted(set(sessions)) if sessions is not None else None])).hexdigest()
@@ -692,13 +697,18 @@ class SQLiteBackend:
             if type(raw) is not list or len(raw) != 5 or raw[:3] != ["jayrun.page/1", self._store_id, fingerprint]:
                 raise ValueError("foreign cursor")
             boundary, last = raw[3:]
-            if type(boundary) is not int or type(last) is not int or not 0 <= last <= boundary <= current:
+            if isinstance(query, HistoryQuery) and query.by_finish:
+                if type(last) is not list or len(last) != 2 or any(type(v) is not int for v in last) or not -(2**63) <= last[0] < 2**63:
+                    raise ValueError("invalid completion-time cursor")
+                last = tuple(last)
+            publication = last[1] if isinstance(last, tuple) else last
+            if type(boundary) is not int or type(publication) is not int or not 0 <= publication <= boundary <= current:
                 raise ValueError("invalid cursor position")
             return boundary, last, fingerprint
         except (TypeError, ValueError, UnicodeError, RecursionError) as error:
             raise StorageContractError("invalid/foreign page cursor or changed filters/scope") from error
 
-    def _cursor(self, boundary: int, last: int, fingerprint: str) -> str:
+    def _cursor(self, boundary: int, last: int | tuple[int, int], fingerprint: str) -> str:
         return urlsafe_b64encode(_json(["jayrun.page/1", self._store_id, fingerprint, boundary, last])).decode("ascii")
 
     def query_contexts(self, query: HistoryQuery, sessions: tuple[str, ...] | None = None) -> HistoryPage[ContextHistoryHeader]:
@@ -707,21 +717,35 @@ class SQLiteBackend:
         with self._transaction() as con:
             boundary, last, fingerprint = self._page_cursor(query, sessions)
             clauses = ["publication<=?"]; args: list[object] = [boundary]
-            if query.cursor is not None or not query.descending:
+            order = "DESC" if query.descending else "ASC"
+            ordering = "publication " + order
+            if query.by_finish:
+                # The cursor keeps its sort key even when pruning removes the
+                # last row of the preceding page. Missing finish times sort last.
+                missing = -(2**63) if query.descending else 2**63 - 1
+                clock = f"COALESCE(finalized_us,{missing})"
+                ordering = f"{clock} {order}, publication {order}"
+                if query.cursor is not None:
+                    relation = "<" if query.descending else ">"
+                    clauses.append(f"({clock},publication){relation}(?,?)")
+                    args.extend(last)
+            elif query.cursor is not None or not query.descending:
                 clauses.append("publication<?" if query.descending else "publication>?")
                 args.append(last)
             for name in ("graph_id", "graph_version", "session_id", "outcome"):
                 value = getattr(query, name)
                 if value is not None: clauses.append(name + "=?"); args.append(value)
             self._filter_time_scope(clauses, args, query, sessions, "finalized_us")
+            if query.identity_digest is not None:
+                clauses.append("context_reference(session_id,context_id)=?")
+                args.append(query.identity_digest)
             if query.search is not None:
                 clauses.append("(" + " OR ".join("instr(COALESCE(" + field + ",''),?)>0"
                     for field in ("context_id", "session_id", "graph_id", "graph_version")) + ")")
                 args.extend([query.search] * 4)
-            order = "DESC" if query.descending else "ASC"
             capture = "captured_us" if self._schema_version == 2 else "NULL AS captured_us"
             rows = con.execute("SELECT session_id,context_id,graph_id,graph_version,outcome,finalized_us,publication,layout_schema," + capture + " FROM contexts WHERE "
-                + " AND ".join(clauses) + " ORDER BY publication " + order + " LIMIT ?", (*args, query.limit + 1)).fetchall()
+                + " AND ".join(clauses) + " ORDER BY " + ordering + " LIMIT ?", (*args, query.limit + 1)).fetchall()
             items: list[ContextHistoryHeader] = []; size = 0
             for row in rows[:query.limit]:
                 cost = len(_json(tuple(row)))
@@ -730,7 +754,7 @@ class SQLiteBackend:
             if rows and not items:
                 raise PersistenceBackpressure("one context header exceeds page byte budget")
             more = len(rows) > len(items)
-            cursor = self._cursor(boundary, items[-1].publication, fingerprint) if more else None
+            cursor = self._cursor(boundary, query._position(items[-1]), fingerprint) if more else None
             return HistoryPage(tuple(items), cursor, boundary)
 
     @staticmethod

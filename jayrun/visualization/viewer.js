@@ -352,7 +352,7 @@
       this.issueCount = element("span", "0 issues", {class: "count"});
       tools.append(this.issueCount);
       heading.append(headingText, tools);
-      this.viewport = element("div", null, {class: "viewport", tabindex: "0", role: "region", "aria-label": "Graph viewport. Scroll to pan; use Fit and zoom controls."});
+      this.viewport = element("div", null, {class: "viewport", tabindex: "0", role: "region", "aria-label": "Graph viewport. Drag or use arrow keys to pan. Use the wheel, pinch or zoom controls to zoom."});
       this.viewHint = element("div", null, {class: "view-hint muted", hidden: ""});
       canvas.append(this.viewHint, this.viewport);
       this.graphInfo = element("aside", null, {id: "graph-info", class: "graph-info detail-panel", "aria-label": "Graph information", hidden: ""});
@@ -394,31 +394,59 @@
         this.hoverId = null; this.focusId = transient(event.target); this.highlight();
       });
       this.listen(this.root, "focusout", event => { this.focusId = transient(event.relatedTarget); this.highlight(); });
-      // Preserve the original viewer's drag-pan and cursor-anchored wheel zoom.
-      // Geometry remains fixed; only the scrollable presentation changes.
+      const touches = new Map();
+      let pinch = null;
+      const touchPair = () => {
+        const [a,b] = [...touches.values()];
+        return {x:(a.x+b.x)/2, y:(a.y+b.y)/2, distance:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y))};
+      };
       this.listen(this.panelLayout, "pointerdown", event => {
         if (event.button !== 0 || event.target.closest(".detail-panel")) return;
+        if (event.pointerType === "touch" && this.viewport.contains(event.target)) {
+          touches.set(event.pointerId, {x:event.clientX,y:event.clientY});
+          if (touches.size >= 2) {
+            if (touches.size === 2) {
+              const pair = touchPair();
+              pinch = { ...pair, scale:this.scale, anchor:this._graphPoint(pair.x,pair.y) };
+              for (const id of touches.keys()) this.viewport.setPointerCapture(id);
+            }
+            this.drag = null; this.suppressClick = true;
+            return;
+          }
+        }
         this.suppressClick = false;
         this.drag = {id:event.pointerId, x:event.clientX, y:event.clientY,
           left:this.viewport.scrollLeft, top:this.viewport.scrollTop, moved:false,
           capture:this.canvas.inert ? this.panelLayout : this.viewport};
       });
       this.listen(this.root, "pointermove", event => {
+        if (touches.has(event.pointerId)) touches.set(event.pointerId,{x:event.clientX,y:event.clientY});
+        if (pinch && touches.size >= 2) {
+          const pair = touchPair();
+          this._zoomAt(pinch.scale*pair.distance/pinch.distance, pair.x, pair.y, pinch.anchor);
+          return;
+        }
         if (!this.drag || this.drag.id !== event.pointerId) return;
         const dx=event.clientX-this.drag.x, dy=event.clientY-this.drag.y;
         if (!this.drag.moved && Math.hypot(dx,dy)<4) return;
         this.drag.moved=true;
-        this.drag.capture.setPointerCapture(event.pointerId);
+        if (!this.drag.capture.hasPointerCapture(event.pointerId)) this.drag.capture.setPointerCapture(event.pointerId);
         this.viewport.classList.add("dragging");
         this.autoFit=false;
         this.viewport.scrollTo(this.drag.left-dx,this.drag.top-dy);
         this.hoverId=null; this.highlight();
       });
       const finishDrag = event => {
-        if (!this.drag || this.drag.id !== event.pointerId) return;
-        this.suppressClick=this.drag.moved && event.type !== "pointercancel";
-        this.drag=null;
-        this.viewport.classList.remove("dragging");
+        // Transferring implicit touch capture from a card emits a bubbling loss
+        // on that card before the viewport receives its first captured move.
+        if (event.type === "lostpointercapture" && event.target !== (this.drag?.capture || this.viewport)) return;
+        touches.delete(event.pointerId);
+        if (touches.size < 2) pinch = null;
+        if (this.drag?.id === event.pointerId) {
+          this.suppressClick=this.drag.moved && event.type !== "pointercancel";
+          this.drag=null;
+        }
+        if (!this.drag) this.viewport.classList.remove("dragging");
       };
       for (const event of ["pointerup","pointercancel","lostpointercapture"]) this.listen(this.panelLayout,event,finishDrag);
       // Capture the pan gesture's click before nested selectable targets handle
@@ -432,11 +460,8 @@
       this.panelLayout.addEventListener("wheel",event=>{
         if (!this.svg || event.target.closest(".detail-panel")) return;
         event.preventDefault();
-        const box=this.viewport.getBoundingClientRect(), x=event.clientX-box.left, y=event.clientY-box.top;
-        const wx=(this.viewport.scrollLeft+x)/this.scale;
-        const wy=(this.viewport.scrollTop+y-(parseFloat(this.svg.style.marginTop)||0))/this.scale;
-        this.zoom(this.scale*Math.exp(-event.deltaY*.0015));
-        this.viewport.scrollTo(wx*this.scale-x,wy*this.scale+(parseFloat(this.svg.style.marginTop)||0)-y);
+        const units=event.deltaMode===1?16:event.deltaMode===2?this.viewport.clientHeight:1;
+        this._zoomAt(this.scale*Math.exp(-event.deltaY*units*.0015),event.clientX,event.clientY);
       },{signal:this.events.signal,passive:false});
       this.listen(this.root, "keydown", event => {
         if (event.key === "Escape") {
@@ -927,7 +952,6 @@
       if (this.reiteration.disabled) reasons.push("Re-iteration unavailable: " + (this._graph?.reiteration.reason || "No eligible mappings supplied."));
       if (this.motion.disabled) reasons.push("Motion disabled by reduced-motion preference.");
       this._disabledReasons.textContent = reasons.join(" ");
-      this._disabledReasons.hidden = !reasons.length;
     }
     inspectProgress(id, parent = this.inspectorContent) {
       if (this.mode !== "dashboard" || !this._progress) return;
@@ -964,20 +988,40 @@
       patch(current,next);
     }
 
-    zoom(scale) {
+    _fitScale() {
+      const {width,height} = this._graph.bounds;
+      return Math.min(1,Math.max(1,this.viewport.clientWidth-20)/width,
+        Math.max(1,this.viewport.clientHeight-20)/height);
+    }
+    _graphPoint(x,y) {
+      if (!this.svg) return null;
+      const bounds=this.svg.getBoundingClientRect();
+      return {x:(x-bounds.left)/this.scale,y:(y-bounds.top)/this.scale};
+    }
+    _zoomAt(scale,x,y,anchor=this._graphPoint(x,y)) {
+      if (!anchor) return;
+      this.zoom(scale,true);
+      const bounds=this.svg.getBoundingClientRect();
+      this.viewport.scrollBy(bounds.left+anchor.x*this.scale-x,bounds.top+anchor.y*this.scale-y);
+    }
+    zoom(scale, anchored=false) {
       if (!this._graph || !this.svg) return;
       this.autoFit = false;
-      this.svg.style.marginLeft = "";
-      this.svg.style.marginRight = "";
-      this.svg.style.marginBottom = "";
-      this.scale = Math.max(.12, Math.min(2.5, scale));
+      const padded = anchored && Boolean(this.svg.style.marginLeft);
+      if (!padded) {
+        this.svg.style.marginLeft = "";
+        this.svg.style.marginRight = "";
+        this.svg.style.marginBottom = "";
+      }
+      this.scale = Math.max(Math.min(.12,this._fitScale()), Math.min(2.5, scale));
       this.svg.setAttribute("width", this._graph.bounds.width*this.scale);
       this.svg.setAttribute("height", this._graph.bounds.height*this.scale);
-      this.svg.style.marginTop = `${Math.max(0,(this.viewport.clientHeight-this._graph.bounds.height*this.scale)/2)}px`;
+      if (!padded) this.svg.style.marginTop = `${Math.max(0,(this.viewport.clientHeight-this._graph.bounds.height*this.scale)/2)}px`;
     }
     fit() {
       if (!this._graph || !this.svg || !this.viewport.clientWidth || !this.viewport.clientHeight) return;
-      this.zoom(Math.min(1, (this.viewport.clientWidth-20)/this._graph.bounds.width, (this.viewport.clientHeight-20)/this._graph.bounds.height));
+      this.zoom(this._fitScale());
+      this.viewport.scrollTo(0,0);
       this.autoFit = true;
     }
     focusSelected() {
@@ -985,6 +1029,10 @@
       const view = this._focusView();
       if (view) {
         this.autoFit = false;
+        if (this.canvas.inert) {
+          this.openInspector(false);
+          this._openGraphInfo(false);
+        }
         // Explicit Focus adds scroll space around boundary components. Without
         // it, a selected entry/exit cannot reach the center at the graph edge.
         // Zoom/Fit reset these margins; ordinary updates never change them.

@@ -89,6 +89,14 @@ function contextProgress(row,compact=false){
  if(!compact){const parts=['Iteration '+(row.iteration??'unavailable')+(row.max_iterations!=null?' / '+row.max_iterations:''),paused?'Remaining work held':finite&&!row.finalized&&row.confidence!=null?'Timing sample support '+Math.round(row.confidence*100)+'% (not accuracy)':row.finalized?'Execution ended; percentage is not success':null];box.append(make('small',parts.filter(Boolean).join(' · ')));const facts=make('div',null,{class:'progress-facts'});facts.append(make('strong','Elapsed:'),make('span',duration(row.elapsed_seconds)),make('small',(row.elapsed_meaning||'Includes pauses and waits')+(paused?' · may continue while paused':'')));if(row.elapsed_seconds==null&&row.finalized)facts.append(make('small','Not retained for this historical entry'));box.append(facts)}return box;
 }
 
+function revealTab(button){
+ if(!button)return;
+ const bar=button.parentElement,view=bar.getBoundingClientRect(),item=button.getBoundingClientRect();
+ const start=view.left+bar.clientLeft,end=start+bar.clientWidth;
+ if(item.left<start)bar.scrollLeft+=item.left-start;
+ else if(item.right>end)bar.scrollLeft+=item.right-end;
+}
+
 function tabKeys(event){
  const buttons=[...event.currentTarget.querySelectorAll('[role=tab]')],index=buttons.indexOf(event.target);
  if(index<0)return;let next;
@@ -98,8 +106,7 @@ function tabKeys(event){
  else if(event.key==='End')next=buttons.length-1;
  else return;
  event.preventDefault();buttons.forEach((b,i)=>b.tabIndex=i===next?0:-1);buttons[next].focus({preventScroll:true});
- const bar=event.currentTarget,button=buttons[next];if(button.offsetLeft<bar.scrollLeft)bar.scrollLeft=button.offsetLeft;
- else if(button.offsetLeft+button.offsetWidth>bar.scrollLeft+bar.clientWidth)bar.scrollLeft=button.offsetLeft+button.offsetWidth-bar.clientWidth;
+ revealTab(buttons[next]);
  // Manual activation: Arrow/Home/End change focus only; Enter/Space activate.
 }
 
@@ -134,7 +141,7 @@ function identityFact(label,value){
 function renderSummary(data,p){
  const row=data.row||{},identities=make('section',null,{class:'summary-identities'});
  const intrinsic=data.intrinsic_graph_id||(data.archived?data.graph_id:null),current=typeof intrinsic==='string'&&/^jrg1:[0-9a-f]{64}$/.test(intrinsic);
- identities.append(sectionHeading('Identities','graph.identity','About full identities'),identityFact('Context',data.context_id),identityFact('Engine session',data.session),make('p',current?'Graph ID: '+intrinsic.slice(0,17)+'…':intrinsic?'Graph identity: legacy / unrecognized format':'Graph ID unavailable'));
+ identities.append(sectionHeading('Identities','graph.identity','About full identities'),identityFact('Context',data.context_id),identityFact('Engine session',row.engine_id),make('p',current?'Graph ID: '+intrinsic.slice(0,17)+'…':intrinsic?'Graph identity: legacy / unrecognized format':'Graph ID unavailable'));
  if(intrinsic){const full=make('details');full.append(make('summary','Full graph identity'),identityFact('Graph ID',intrinsic));identities.append(full)}
  if(data.graph_id&&!data.archived)identities.append(identityFact('Captured graph reference (not graph ID)',data.graph_id));
  if(row.version!=null)identities.append(identityFact('Graph version',row.version));if(row.graph_key!=null)identities.append(identityFact('Registry key',row.graph_key));
@@ -143,9 +150,9 @@ function renderSummary(data,p){
  const imported=Boolean(row.imported),recordState=data.records_complete&&!data.records_omitted?records+' retained':records?records+' retained · Partial':imported&&data.legacy_evidence?.records?.length?'Partial · legacy display':'Not retained';
  const layout=data.graph_available?(imported?'Legacy layout':'Available'):'Unavailable';
  const config=data.configuration_retained||(!data.archived&&!data.summary_only&&Array.isArray(data.configuration))?'Available':imported&&data.configuration?.length?'Partial':'Unavailable';
- const report=data.report!=null?(imported?'Partial · legacy display':'Available'):data.evidence_coverage?'Partial':'Not retained';
+ const report=data.report!=null?(imported?'Partial · legacy display':'Available'):!data.finalized&&!row.finalized?'Pending finalization':data.evidence_coverage?'Partial':'Not retained';
  p.append(sectionHeading('Evidence',data.archived?'evidence.history':'evidence.retained','About summary evidence'),tree({Report:report,Records:recordState,'Graph layout':layout,Configuration:config}));
- p.append(tree({captured_at:data.captured_at!=null?localTime(data.captured_at*1000):'Not recorded',graph_coverage:data.graph_availability||'Captured in this dashboard session',observation_coverage:data.observation_coverage||'Observation completeness unavailable for this captured evidence',outcome:row.state,estimated_progress:row.fraction,iteration:row.iteration,failure:data.failure??row.failure,execution_location:host.locationDetails?.(row)??'Not captured'}));if(host.accessBox)p.append(host.accessBox(data.access||row.access));
+ p.append(tree({captured_at:data.captured_at!=null?localTime(data.captured_at*1000):'Not recorded',graph_coverage:data.graph_availability||(data.graph_available?'Captured in this dashboard session':'No captured graph definition available'),observation_coverage:data.observation_coverage||'Observation completeness unavailable for this captured evidence',outcome:row.state,estimated_progress:row.fraction,iteration:row.iteration,failure:data.failure??row.failure,execution_location:host.locationDetails?.(row)??'Not captured'}));if(host.accessBox)p.append(host.accessBox(data.access||row.access));
  const keys=host.pins[host.workspace().id]||[];if(keys.length){p.append(make('h3','Records shown in Summary'));for(const key of keys){const last=(data.records||[]).filter(r=>r.key===key).at(-1);p.append(make('h3',key),tree(last?last.value:{availability:'not retained'}))}}
 }
 
@@ -221,13 +228,43 @@ function renderRecords(data,p){
   const pager=make('div',null,{class:'pager'});pager.append(button('Previous records',()=>{w.recordPage=Math.max(0,page-1);draw()}),make('span',(rows.length?page*25+1:0)+'–'+Math.min(page*25+25,rows.length)+' of '+rows.length),button('Next records',()=>{if((page+1)*25<rows.length){w.recordPage++;draw()}}));holder.append(table,pager);replaceStable(ui.output,holder);
  };ui.search.oninput=()=>{w.recordPage=0;draw()};ui.reset.onclick=()=>{ui.search.value='';w.recordPage=0;draw();ui.search.focus()};draw();
 }
+function renderExecutionLogs(data,p){
+ const heading=make('h3','Execution logs');
+ p.append(heading,note('Operator messages from self.execution.log(message). Context records are shown in Records.'));
+ if(!data.finalized&&!data.row?.finalized){p.append(note('Execution messages become available after finalization.'));return}
+ let logs=data.execution_logs;
+ if(!logs&&data.completed_evidence){
+  const messages=[];let limited=Boolean(data.completed_evidence.coverage?.executions_omitted);
+  for(const session of data.completed_evidence.executions||[]){
+   limited||=Boolean(session.attempts_omitted);
+   for(const attempt of session.attempts||[]){
+    limited||=Boolean(attempt.records_omitted);
+    for(const record of attempt.records||[]){
+     if(!['LogRecord','Captured record (original class not recorded)'].includes(record.type)||!Object.hasOwn(record,'message'))continue;
+     if(messages.length===128){limited=true;continue}
+     messages.push({name:session.name,iteration:session.iteration,step_index:session.step_index,
+      execution:attempt.execution,attempt:attempt.attempt,message:record.message});
+    }
+   }
+  }
+  logs={messages,limited};
+ }
+ if(!logs?.messages?.length)p.append(note('No retained execution messages available. MINIMAL recording omits operator logs.'));
+ for(const item of logs?.messages||[]){
+  const entry=make('section',null,{class:'box execution-log'});
+  entry.append(make('h4',[item.name||'Operator','Step '+item.step_index,'Iteration '+item.iteration,'Execution '+item.execution,'Attempt '+item.attempt].join(' · ')),tree(item.message));
+  p.append(entry);
+ }
+ if(logs?.limited)p.append(note('Showing a bounded subset of retained execution evidence.'));
+}
+
 function renderPanel(tab,data,p){const w=host.workspace();
-if(tab==='summary'){renderSummary(data,p)}else if(tab==='failure'){renderFailure(data,p)}else if(tab==='configuration'){p.append(sectionHeading('Captured configuration','evidence.configuration','About captured configuration'));if(!data.configuration?.length)p.append(note('No captured configuration declarations or values available.'));for(const item of data.configuration||[]){p.append(configurationCard(item))}}else if(tab==='settings'){p.append(sectionHeading('Execution settings','evidence.settings','About captured settings'),note(data.settings?.provenance||'Settings unavailable'));const values=data.settings?.values||{};for(const [title,names]of [['Iteration',['max_iterations','max_repeats']],['Recording',Object.keys(values).filter(k=>k.startsWith('record_'))],['Artifact retention',['artifact_policy']],['Failure policy',['retry_policy']]]){const present=Object.fromEntries(names.filter(k=>Object.hasOwn(values,k)).map(k=>[k,values[k]]));if(Object.keys(present).length)p.append(make('h3',title),tree(present))}if(data.settings?.requested!==undefined)p.append(make('h3','Requested overrides'),tree(data.settings.requested));p.append(make('h3','All captured effective settings'),tree(values));p.append(note(data.settings?.gap||'Stored requested/effective values; explicit omissions remain visible.'))}else if(tab==='records')renderRecords(data,p);else if(tab==='artifacts'){renderArtifacts(data,p)}else if(tab==='report'){p.append(sectionHeading('Finalized report','evidence.report','About finalized reports'));if(data.report==null)p.append(note(data.report_availability||'Not finalized'));else{p.append(button('Export report',()=>download('context-'+w.id+'.txt',data.report,'text/plain')),make('pre',data.report))}}else if(tab==='activity'){p.append(sectionHeading('Recorded lifecycle and controls','evidence.activity','About recorded activity'),note('Recorded order only; no inferred global timeline.'),note((data.activity_omitted||0)+' lifecycle entries omitted by the display bound; missing/pruned events cannot be reconstructed.'),make('h3','Retained lifecycle'),activityList(data.activity||[]),make('h3','Observed control requests · separate retained order'),activityList((host.requests?.()||[]).filter(r=>r.context===w.id)))}
+if(tab==='summary'){renderSummary(data,p)}else if(tab==='failure'){renderFailure(data,p)}else if(tab==='configuration'){p.append(sectionHeading('Captured configuration','evidence.configuration','About captured configuration'));if(!data.configuration?.length)p.append(note('No captured configuration declarations or values available.'));for(const item of data.configuration||[]){p.append(configurationCard(item))}}else if(tab==='settings'){p.append(sectionHeading('Execution settings','evidence.settings','About captured settings'),note(data.settings?.provenance||'Settings unavailable'));const values=data.settings?.values||{};for(const [title,names]of [['Iteration',['max_iterations','max_repeats']],['Recording',Object.keys(values).filter(k=>k.startsWith('record_'))],['Artifact retention',['artifact_policy']],['Failure policy',['retry_policy']]]){const present=Object.fromEntries(names.filter(k=>Object.hasOwn(values,k)).map(k=>[k,values[k]]));if(Object.keys(present).length)p.append(make('h3',title),tree(present))}if(data.settings?.requested!==undefined)p.append(make('h3','Requested overrides'),tree(data.settings.requested));p.append(make('h3','All captured effective settings'),tree(values));p.append(note(data.settings?.gap||'Stored requested/effective values; explicit omissions remain visible.'))}else if(tab==='records')renderRecords(data,p);else if(tab==='artifacts'){renderArtifacts(data,p)}else if(tab==='report'){p.append(sectionHeading('Finalized report','evidence.report','About finalized reports'),button('View execution logs in Activity',()=>host.showActivity()));if(data.report==null)p.append(note(data.report_availability||'Not finalized'));else{p.append(button('Export report',()=>download('context-'+w.id+'.txt',data.report,'text/plain')),make('pre',data.report))}}else if(tab==='activity'){renderExecutionLogs(data,p);p.append(sectionHeading('Recorded lifecycle and controls','evidence.activity','About recorded activity'),note('Recorded order only; no inferred global timeline.'),note((data.activity_omitted||0)+' lifecycle entries omitted by the display bound; missing/pruned events cannot be reconstructed.'),make('h3','Retained lifecycle'),activityList(data.activity||[]),make('h3','Observed control requests · separate retained order'),activityList((host.requests?.()||[]).filter(r=>r.context===w.id)))}
 }
 
 function embedGraph(viewer){const root=viewer.shadowRoot;if(!root||root.querySelector("[data-workspace-style]"))return;const style=make('style','.top,.theme,.progress-summary{display:none!important}.shell{height:100%;min-height:0}.graph-heading h2{display:none}.graph-heading{padding:6px 10px}.graph-heading .description{display:none}.toolbar{padding:6px 10px}@media(max-width:620px){.shell{min-height:0}.graph-heading{padding:4px 8px}.toolbar{padding:4px 8px;gap:5px}.graph-heading{display:block;max-height:none}.graph-heading>div:first-child{margin:0 0 4px}.tools{flex-wrap:wrap;overflow:visible;max-width:100%;padding-bottom:2px}.tools>*{flex-shrink:0}.tools button{padding:3px 6px}.view-hint{max-height:28px;font-size:11px;padding:3px 8px;overflow:auto}}');style.dataset.workspaceStyle="";root.append(style);if(viewer.motion)viewer.motion.closest('label').hidden=true;const info=root.querySelector('.top button');if(info)root.querySelector('.graph-heading > div:first-child')?.prepend(info);}
 
-return {tabs:['Graph','Summary','Failure','Configuration','Settings','Records','Artifacts','Report','Activity'],duration,localTime,tree,conciseValue,rawDetails,configurationCard,activitySummary,activityList,stateBadge,contextProgress,tabKeys,renderArtifacts,artifactHistoryTable,identityFact,renderSummary,renderFailure,recordChart,renderRecords,renderPanel,embedGraph};
+return {tabs:['Graph','Summary','Failure','Configuration','Settings','Records','Artifacts','Report','Activity'],duration,localTime,tree,conciseValue,rawDetails,configurationCard,activitySummary,activityList,stateBadge,contextProgress,tabKeys,revealTab,renderArtifacts,artifactHistoryTable,identityFact,renderSummary,renderFailure,recordChart,renderRecords,renderPanel,embedGraph};
 }
 globalThis.JayrunRunPanels={create,duration,themeControl};
 })();

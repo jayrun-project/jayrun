@@ -8,7 +8,6 @@ from __future__ import annotations
 from collections import OrderedDict
 from dataclasses import asdict
 from datetime import datetime, timezone
-from hashlib import sha256
 import json
 import math
 import re
@@ -16,11 +15,11 @@ from time import monotonic
 
 from ..persistence import (DatabaseReader, HistoryQuery, SessionQuery,
                            PersistenceBackpressure, PersistenceTimeout, StorageUnavailable)
-from ..persistence.records import ContextHistoryEntry, ContextHistoryHeader
+from ..persistence.records import ContextHistoryEntry, ContextHistoryHeader, _context_reference
 from ..reporting._history import _configuration, _display, history_evidence
 from ..visualization.adapters.history import history_payload
 from ..visualization.layout import arrange
-from ._evidence import safe, _artifact_history_availability, MAX_RECORDS
+from ._evidence import safe, execution_logs, _artifact_history_availability, MAX_RECORDS
 
 PAGE_SIZE = 25
 CACHE_SECONDS = 2.0
@@ -55,8 +54,7 @@ def _presentation(session: str, context_id: str, graph_id: str | None,
                   version: str | None) -> dict:
     """Human labels only; exact identities remain the routing and query keys."""
     imported = bool(_IMPORTED_SESSION.fullmatch(session))
-    identity = json.dumps([session, context_id], separators=(',', ':'), ensure_ascii=False)
-    reference = ('I-' if imported else 'C-') + sha256(identity.encode()).hexdigest()[:12]
+    reference = ('I-' if imported else 'C-') + _context_reference(session, context_id)
     match = _GRAPH_ID.fullmatch(graph_id or '')
     graph = (f'{match.group(1)[:12]} · v{str(version or "1").removeprefix("v")}' if match else
              'Legacy graph' if imported else 'Graph unavailable')
@@ -76,6 +74,9 @@ def history_row(value: dict, *, session_id: str | None = None,
     if session and context:
         row.update(_presentation(session, str(context), value.get('intrinsic_graph_id') or
                                  value.get('graph_id'), row.get('version')))
+    if value.get('graph_name'):
+        row['graph'] = value['graph_name']
+        row['graph_name'] = value['graph_name']
     row.update(session=session, graph_id=value.get('intrinsic_graph_id') or value.get('graph_id'),
         captured_at=value.get('captured_at'))
     return row
@@ -146,7 +147,7 @@ def _detail(entry: ContextHistoryEntry) -> dict:
             frozen_progress=evidence['frozen_progress'], timing=evidence['timing'],
             evidence_coverage=evidence['coverage'])
         row = value['row']
-        row.update(iteration=evidence['iteration_count'], completed_iterations=evidence['completed_iterations'],
+        row.update(engine_id=evidence['engine_id'] or entry.header.session_id, iteration=evidence['iteration_count'], completed_iterations=evidence['completed_iterations'],
             elapsed_seconds=evidence['elapsed_wall_seconds'], created_at=evidence['created_at'],
             failure=evidence['failure'], generation=evidence['generation'], revision=evidence['revision'])
         progress = evidence['frozen_progress']
@@ -194,6 +195,14 @@ def _detail(entry: ContextHistoryEntry) -> dict:
             value["row"]["finished_at"] = None
     try:
         payload = arrange(history_payload(entry, evidence=evidence))
+        label = payload.get('label')
+        key = evidence.get('graph_key') if evidence else None
+        if label and label != f"Graph definition · v{entry.header.graph_version}":
+            value['graph_name'] = label[:256]
+        elif key:
+            value['graph_name'] = key[:256]
+        if value.get('graph_name'):
+            value['row']['graph'] = value['graph_name']
         value.update(captured_graph={'definition': payload}, graph_available=True,
                      graph_availability='Exact stored layout; no live definition or registry lookup',
                      artifact_history_availability=_artifact_history_availability(
@@ -215,6 +224,12 @@ def _detail(entry: ContextHistoryEntry) -> dict:
                      artifact_history_availability='Artifact history omitted by the 4 MiB historical display bound.')
     if len(json.dumps(value, allow_nan=False).encode()) > MAX_DETAIL_BYTES:
         value = {**_header(entry.header), 'capture_gap': 'Historical detail exceeds display budget; use scoped Database reader'}
+    # The stored overlay already contains the attempt records. Keep a separate
+    # bounded message list only when that overlay cannot be served.
+    if evidence is not None and not value.get('captured_graph', {}).get('definition', {}).get('completed'):
+        remaining = MAX_DETAIL_BYTES - len(json.dumps(value, allow_nan=False).encode()) - 96
+        if remaining > 0:
+            value['execution_logs'] = execution_logs(evidence, byte_limit=remaining)
     return value
 
 
@@ -272,10 +287,13 @@ class _HistorySource:
             # controller outcome. The UI filter refers to live capabilities.
             result = {'rows': [], 'total': 0, 'has_more': False, 'page': page, 'boundary': None}
         else:
+            label = re.fullmatch(r'[CI]-([0-9a-f]{12})', filters[4] or '', re.I)
             try:
                 response = self.reader.query_contexts(HistoryQuery(session_id=session, graph_id=filters[1],
                     outcome=filters[2], since=since, limit=self.page_size, cursor=cursors[page],
-                    descending=filters[3] == 'newest', search=filters[4]), timeout=1.0)
+                    descending=filters[3] == 'newest', by_finish=True,
+                    search=None if label else filters[4],
+                    identity_digest=label[1].lower() if label else None), timeout=1.0)
             except (PersistenceTimeout, PersistenceBackpressure, StorageUnavailable) as error:
                 self.check()
                 # Operational unavailability is not an empty complete history.
@@ -308,8 +326,11 @@ class _HistorySource:
                 cursors[page+1] = response.next_cursor
             else:
                 cursors.pop(page+1, None)
-            result = {'rows': [_header(row) for row in response.items],
-                'total': len(response.items) if page == 0 and response.next_cursor is None else None,
+            rows = [_header(row) for row in response.items]
+            if label:
+                rows = [item for item in rows if item['row']['display_id'].lower() == label[0].lower()]
+            result = {'rows': rows,
+                'total': len(rows) if page == 0 and response.next_cursor is None else None,
                 'has_more': response.next_cursor is not None, 'page': page, 'boundary': response.boundary}
         try:
             sessions = self.sessions()
@@ -323,7 +344,7 @@ class _HistorySource:
             graphs=[{'id': g, 'key': g, 'version': v} for g, v in
                     dict.fromkeys((row['graph_id'], row['row']['version']) for row in result['rows'] if row['graph_id'])],
             graphs_omitted=None, scope='Explicitly granted Database history; bounded header-only pages',
-            coverage='Order is committed publication, not execution start time. Search matches case-sensitive header identities/version. Totals are unknown unless the first page is complete. Historical headers have no live capability or dashboard/workload classification; workloads filter applies only to live lists.')
+            coverage='Ordered by completion time. Search accepts the displayed context ID or stored header identities/version. Missing completion times appear last. Totals are unknown unless the first page is complete.')
         self.check()
         self.pages[key] = (monotonic(), result)
         self.pages.move_to_end(key)

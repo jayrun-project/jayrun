@@ -90,6 +90,7 @@ summary:hover{color:var(--accent)}
 .graph-catalog table{white-space:normal;table-layout:fixed;min-width:620px}
 .graph-catalog th:nth-child(1){width:36%}.graph-catalog th:nth-child(2){width:12%}.graph-catalog th:nth-child(3){width:20%}.graph-catalog th:nth-child(4){width:32%}
 .graph-catalog td{vertical-align:middle;padding:14px 12px;overflow-wrap:anywhere}
+.graph-catalog td:first-child small{display:block}
 .graph-catalog tbody tr:last-child td{border-bottom:0}
 .graph-catalog tbody tr:hover,.graph-catalog tbody tr:focus-within{background:var(--selected)}
 .graph-capture-reference{display:block;font-size:11px;margin-top:4px;overflow-wrap:anywhere}
@@ -296,3 +297,50 @@ main[data-disconnected] .read-status,main[data-disconnected] .overview-refresh-s
 
 /* Keep the measured value and its unit together in both run hosts. */
 .progress-facts>span{white-space:nowrap}
+
+.contexts-view .data-table-shell{grid-template-rows:minmax(0,1fr);gap:0}
+.context-results{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1.35fr) 36px minmax(0,1fr);gap:8px}
+.data-table-stage.context-results>.table-wrap{grid-area:1/1;position:relative;inset:auto;height:auto;min-width:0}
+.context-results>.data-footer{grid-row:2}
+.context-results>.recent-finished{grid-row:3}
+.context-results>.quick{grid-area:1/1;position:relative;inset:auto;justify-self:end;align-self:stretch;height:auto;min-height:0;margin:0;padding:0 12px 12px;scroll-padding-top:48px;overflow-anchor:none}
+.context-results .quick-heading{position:sticky;top:0;z-index:1;padding:6px 0;border-bottom:1px solid var(--line);background:var(--surface)}
+.context-results .quick-content>.wide{margin-bottom:8px}
+@media(max-width:620px){.context-results>.quick{width:100%;scrollbar-gutter:auto}}
+.recent-finished{display:flex;flex-direction:column;min-width:0;min-height:0;padding:10px 12px 6px;box-sizing:border-box;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);box-shadow:var(--shadow-sm)}
+.recent-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none}
+.recent-heading h2{margin:0;font-size:16px}
+.recent-finished ul{list-style:none;padding:0;margin:6px 0 0;min-height:0;overflow:auto;scrollbar-gutter:stable}
+.recent-finished li a:focus-visible{outline-offset:-1px}
+.recent-finished li{display:grid;grid-template-columns:minmax(125px,1fr) minmax(100px,1.5fr) 85px minmax(140px,1fr) 85px;border-top:1px solid var(--line);padding:7px 0;font-size:12px}
+.recent-finished li>span{overflow-wrap:anywhere}.recent-finished time{color:var(--muted)}.recent-finished li a{font-weight:650}
+@media(max-width:1050px){.contexts-view{--utility-height:42px}}
+@media(max-width:620px){.contexts-view{--data-header-height:64px;--utility-height:34px}.recent-heading h2{font-size:15px}.recent-heading a{font-size:12px}}
+@media(max-width:760px){.recent-finished li{grid-template-columns:1fr 1fr;gap:3px 8px}.recent-finished time{grid-column:1/span 1}.recent-finished li>span:last-child{grid-column:2}}
+
+.execution-log h4{margin:0 0 4px;font-size:13px}.execution-log{overflow-wrap:anywhere;white-space:pre-wrap}
+@media(max-width:1380px){
+ .data-table-stage>.graph-catalog table{min-width:0;width:100%}
+ .graph-catalog th:nth-child(1){width:36%}.graph-catalog th:nth-child(2){width:12%}.graph-catalog th:nth-child(3){width:20%}.graph-catalog th:nth-child(4){width:32%}
+ .graph-catalog .graph-actions{grid-template-columns:repeat(auto-fit,minmax(min(100%,112px),1fr))}
+ .graph-catalog .graph-actions button{width:100%;height:auto;white-space:normal}
+}
+@media(max-width:620px){
+ .workspace-head{gap:3px;padding:7px 9px}
+ .workspace-head .workspace-identity{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:6px}
+ .workspace-head .workspace-back{grid-column:1;justify-self:start;margin:0;min-height:22px}
+ .workspace-head #work-state{grid-column:2;grid-row:1;height:auto;max-height:38px;scrollbar-gutter:auto}
+ .workspace-head h1{grid-column:1/-1;height:auto;margin:0}
+ .workspace-head #work-progress{grid-column:1/-1;height:68px;scrollbar-gutter:auto}
+ .workspace-head .context-progress{margin:0;gap:2px}.workspace-head .progress-facts{margin:0}
+ .workspace-head #work-filter-gap:empty,.workspace-head .reason:empty,.workspace-head .control-disabled-reason:empty,.workspace-head .controls:empty{display:none}
+ .workspace-head .reason:not(:empty),.workspace-head .control-disabled-reason:not(:empty),.workspace-head .notice,.workspace-head .workspace-notice{display:block;height:auto;min-height:0;max-height:3.2em;overflow:auto;margin:2px 0}
+ .workspace-body[data-view=graph] .evidence-stamp,.workspace-body[data-view=graph] .graph-caption{font-size:11px;line-height:1.3;height:auto;margin:0}
+ .graph-catalog thead{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
+ .graph-catalog tbody,.graph-catalog tbody tr{display:block}
+ .graph-catalog tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;padding:8px 10px;border-bottom:1px solid var(--line)}
+ .graph-catalog tbody td{height:auto;padding:0;border:0;text-align:left}
+ .graph-catalog tbody td:first-child,.graph-catalog tbody td:last-child{grid-column:1/-1}
+ .graph-catalog tbody td:nth-child(2){text-align:left}.graph-catalog tbody td:nth-child(2)::before{content:"Version "}
+ .graph-catalog .graph-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+}

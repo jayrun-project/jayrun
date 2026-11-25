@@ -13,7 +13,7 @@ if(sessionStorage.getItem('jayrun.sort-default')!=='oldest'){
  for(const kind of ['contexts','history'])if(routeStates[kind])routeStates[kind]={...routeStates[kind],sort:'oldest',page:0};
  const [path,search]=location.hash.slice(1).split('?');
  if(['/contexts','/history'].includes(path)){
-  const query=new URLSearchParams(search||'');query.set('sort','oldest');
+  const query=new URLSearchParams(search||'');if(!query.has('sort'))query.set('sort','oldest');
   history.replaceState(null,'','#'+path+'?'+query);
  }
  sessionStorage.setItem('jayrun.routes',JSON.stringify(routeStates));
@@ -23,7 +23,7 @@ let connectionLost=false,connectionFailure='',pageState=null,polling=false;
 // Last rendered responses are presentation-only and scoped to the current service.
 const lastViewResponses=new Map();
 const chartVisibility=new Map(),pausedDisplays=new Map();
-const runPanels=globalThis.JayrunRunPanels.create({make,note,button,sectionHeading,replaceStable,download,copyText:(...args)=>copyText(...args),shortFailure,
+const runPanels=globalThis.JayrunRunPanels.create({make,note,button,sectionHeading,replaceStable,download,showActivity:()=>go(contextLink(workspace.id,'activity',workspace.origin)),copyText:(...args)=>copyText(...args),shortFailure,
  workspace:()=>workspace,pins,chartVisibility,pausedDisplays,serviceEpoch:()=>serviceEpoch,
  locationDetails,accessBox,requests:()=>fleet?.requests||[],savePins:value=>sessionStorage.setItem('jayrun.pins',JSON.stringify(value))});
 const {duration,localTime,tree,conciseValue,rawDetails,configurationCard,activitySummary,activityList,stateBadge,contextProgress,tabKeys,renderArtifacts,artifactHistoryTable,identityFact,renderSummary,renderFailure,recordChart,renderRecords}=runPanels;
@@ -97,7 +97,7 @@ function updatePageStatus(){
  }else if(p.empty)p.empty.hidden=true;
  if(focused&&!failed){p.restoreFocus=false;const target=p.shell?.querySelector('.table-wrap:not([hidden])')||p.region;target.tabIndex=-1;target.focus({preventScroll:true})}
 }
-function workStatus(row){const node=$('#work-state');node.replaceChildren(stateBadge(row),make('span',' '+row.graph+(row.display_id?'':' · '+row.version)));replaceStable($('#work-progress'),contextProgress(row))}
+function workStatus(row){const node=$('#work-state');node.replaceChildren(stateBadge(row),make('span',' '+row.graph+(row.version&&!String(row.graph).endsWith(' · v'+row.version)?' · '+row.version:'')));replaceStable($('#work-progress'),contextProgress(row))}
 
 function accessBox(access){const d=make('div');d.append(make('h3','Cross-context access'),make('span','Observes: '+(access?.observes||'Unknown'),{class:'badge','data-help':'evidence.access'}),' ',make('span','Controls: '+(access?.controls||'Unknown'),{class:'badge'}),make('p',access?.scope||'The target’s access to other contexts is not available.',{class:'muted'}));return d}
 
@@ -122,7 +122,7 @@ const help=__JAYRUN_HELP__.mount(document,[
  ['dashboard.stop',{brief:'Stop drains the accepted iteration and prevents another; it does not forcibly kill executing code.',detail:'Failure or abort still determines the actual outcome. A request is not a completed transition; watch the visible observed state and request status.'}],
  ['dashboard.abort',{brief:'Abort prevents further dispatch and drains running work; it does not forcibly kill arbitrary code.',detail:'The confirmation states the destructive consequence. Help never submits a request or changes authority, and already executing code may still complete.'}],
  ['dashboard.session',{brief:'An engine session is an engine incarnation, not a physical host.',detail:'A capture session identifies a dashboard observation partition. Session labels describe retained provenance and selected scope, not access grants or physical-engine_id discovery.'}],
- ['dashboard.history',{brief:'History combines scoped retained terminal evidence with bounded recent observations; it is not cumulative engine activity.',detail:'Database rows follow committed publication ordering. Search and filters use full context, graph-version and session identities even when labels are abbreviated. Totals describe matching committed headers; page completeness and older or pruned evidence are not inferred. Historical rows are read-only and may lack capability or workload detail. Recent observations are bounded and may not yet have verified publication status. Database and Recent rows reconcile by routing identity so one context is not shown twice.'}],
+ ['dashboard.history',{brief:'History combines scoped retained terminal evidence with bounded recent observations; it is not cumulative engine activity.',detail:'Newest and oldest use finish time. Search accepts a displayed context ID, its full identity, graph ID or engine session. Totals describe matching committed headers; page completeness and older or pruned evidence are not inferred. Historical rows are read-only and may lack capability or workload detail. Recent observations are bounded and may not yet have verified publication status. Database and Recent rows reconcile by routing identity so one context is not shown twice.'}],
  ['dashboard.summary-pin',{brief:'Shows this record’s latest retained value in this context’s Summary.',detail:'Saved only in this browser tab. Pinning does not change execution, recording, table filtering or other contexts.'}],
  ['dashboard.refresh-unavailable',{brief:'Refresh is unavailable because database persistence is disabled.',detail:'The dashboard still shows retained observations. Database Refresh requires an enabled historical reader.'}],
  ['dashboard.refresh',{brief:'Reload retained history from the database.',detail:'Repeated pending requests coalesce and stale responses are ignored. Refresh does not flush persistence, recompute progress or grant control. Unavailable history is not zero. Visible loading, failure and stale notices describe the last attempted read.'}],
@@ -135,7 +135,7 @@ const help=__JAYRUN_HELP__.mount(document,[
  ['dashboard.failures',{brief:'Recently observed failures visible to this controller.',detail:'The bounded list follows current retained observations. Older, pruned or uncaptured failures may not appear. Long lists scroll within this section without changing navigation.'}],
  ['dashboard.control-outcomes',{brief:'Recent control requests and their observed outcomes.',detail:'Submitting a request does not mean the transition has completed. The bounded list records whether the requested action was observed, rejected or remains unconfirmed; absence does not establish lifetime absence.'}],
  ['dashboard.overview',{brief:'Visible work and outcomes observed in this dashboard session.',detail:'Overview always summarizes the complete current authorized context observation, excluding this dashboard; work may execute on multiple Engines. Retained history outcomes use their separate bounded/history source and Refresh behavior. Observed engines is the union of the local incarnation, current authorized execution-engine_id identities and retained pressure reports. Observed does not prove liveness or complete fleet membership. Open Engines for per-engine pressure and observed work; its filters never change Overview.'}],
- ['dashboard.contexts',{brief:'Lists currently observed nonterminal work in the selected scope.',detail:'Quick details and the workspace use retained observations. Capability labels do not confer permission. Engine-session labels are not physical hosts. Control requests are confirmed by observed state, not by clicking a button.'}],
+ ['dashboard.contexts',{brief:'Shows observed active contexts and recent completions.',detail:'The active-state filter applies to the active table. Recently finished shows up to eight matching terminal observations. Use the displayed context ID to find a run in History. Quick details and the workspace use retained observations. Capability labels do not confer permission. Engine-session labels are not physical hosts. Control requests are confirmed by observed state, not by clicking a button.'}],
  ['dashboard.graphs',{brief:'Lists captured registered and local definitions, not every graph that could exist.',detail:'Opening a captured definition does not execute it. Registry key/version, intrinsic graph ID and presentation identity remain distinct. Related contexts follow the current visible scope.'}],
  ['dashboard.stop-owner',{brief:'Stops this controller and closes its local dashboard service.',detail:'This is separate from controlling a selected workload. The existing confirmation explains the consequence; viewing help does not stop the dashboard.'}]
 ],['graph.reiteration','graph.requirements','progress.fraction','progress.elapsed','evidence.access','evidence.artifacts','evidence.retained','evidence.records','evidence.configuration','evidence.settings','evidence.activity','evidence.history','evidence.report','graph.identity','graph.captured','view.theme','action.copy']);
@@ -143,7 +143,7 @@ const copyText=__JAYRUN_COPY__;
 function helpButton(topic,label,variant=''){return help.info(topic,label,variant)}
 function sectionHeading(title,topic,label){const heading=make('div',null,{class:'section-heading'});heading.append(make('h2',title));if(topic)heading.append(helpButton(topic,label||'About '+title));return heading}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&engines?.selected&&!document.querySelector('dialog[open]')){closeEngineDetails();e.preventDefault();return}if(e.key==='Escape'&&!document.querySelector('dialog[open]')&&e.composedPath()[0]?.getRootNode()===document&&list?.selected){clearQuickSelection();e.preventDefault()}},true);
-window.addEventListener('resize',()=>{if(workspace?.tab==='records'&&workspace.data)renderRecords(workspace.data,workspace.body)});
+window.addEventListener('resize',()=>{syncQuickTable();if(workspace?.tabs)runPanels.revealTab(workspace.tabs.querySelector('[role=tab]:focus')||workspace.tabs.querySelector('[aria-selected=true]'));if(workspace?.tab==='records'&&workspace.data)renderRecords(workspace.data,workspace.body)});
 // Keep the select and its option nodes alive. While a native popup has focus,
 // defer option changes to blur so a polling response cannot change its target.
 function reconcileOptions(select,options,value){
@@ -405,7 +405,19 @@ function orderListRows(rows,kind,direction){
   return a.index-b.index;
  }).map(item=>item.row);
 }
-function mountList(kind,query){const saved={...routeStates[kind],selection:null};const value=(name,fallback='')=>query.has(name)?query.get(name):(saved[name]??fallback);const filters={search:value('search'),state:value('state'),graph_id:value('graph_id'),capability:value('capability'),sort:value('sort','oldest'),session:value('session'),date:value('date'),workloads:value('workloads'),engine_session:value('engine_session')};const states=kind==='history'?outcomeCards:['queued','routing','running','placement_waiting','paused','aborting','failing'];const invalidState=filters.state&&!states.includes(filters.state);if(invalidState){const previous=filters.state;filters.state='';query.set('state','');history.replaceState(null,'','#/'+kind+'?'+query);main.append(note(kind==='history'&&previous==='stopped'?'Legacy Stop filter cleared. Older outcomes remain available without a state filter.':'Unavailable '+kind+' state filter cleared.'))}const view=dataView(kind==='history'?'History':'Contexts',kind==='history'?'Retained terminal evidence · read-only':'Current nonterminal work',kind==='history'?'dashboard.history':'dashboard.contexts',kind==='history'?'history-list':'contexts-view'),content=view.content,deck=controlDeck(content),controls=deck.filters,quick=make('aside',null,{class:'box quick'});quick.hidden=!saved.selection;const search=make('input',null,{type:'search',placeholder:'Search context identity or graph','aria-label':'Search contexts'});search.value=filters.search;controls.append(search);list={kind,filters,page:saved.page||0,selected:saved.selection,quick,content,controls,body:make('tbody'),total:make('span'),rows:[],detail:null};const change=(k,v)=>{list.filters[k]=v;list.page=0;saveRoute();history.replaceState(null,'','#/'+list.kind+'?'+new URLSearchParams(list.filters));loadList(true)};search.oninput=()=>change('search',search.value);controls.append(inputFilter('State','state',[['','Any state'],...states.map(s=>[s,s])],filters.state,change),inputFilter('Graph/version','graph_id',[['','All captured graphs']],filters.graph_id,change),inputFilter('Cross-context access','capability',[['','Any capability'],['unknown','Unknown'],['observes','Observes'],['controls','Controls'],['neither','Neither']],filters.capability,change),inputFilter('Sort','sort',[['oldest','Oldest first'],['newest','Newest first']],filters.sort,change));if(kind==='history'){const sessionField=make('div',null,{class:'session-filter'}),sessionFilter=inputFilter('Session','session',[['','All retained sessions'],...(filters.session?[[filters.session,sessionIdentity(filters.session)]]:[])],filters.session,change),inspect=button('Inspect',()=>inspectSessions(content,inspect),{'aria-label':'Inspect engine sessions',title:'Inspect engine sessions'});sessionField.append(sessionFilter,inspect);deck.utility.append(sessionField);const date=make('input',null,{type:'date','aria-label':'Since date'});date.value=filters.date;date.onchange=()=>change('date',date.value);const dateLabel=make('label','Since date');dateLabel.append(date);deck.utility.append(dateLabel)}list.coverage=make('p',null,{class:'muted list-coverage',role:'status'});list.sessionNotice=make('p',null,{class:'session-notice',role:'status'});const notices=make('div',null,{class:'data-notices'});notices.append(list.coverage,list.sessionNotice);if(kind==='contexts'){const label=make('label','Include this dashboard',{class:'dashboard-switch'}),toggle=make('input',null,{type:'checkbox',role:'switch','data-dashboard-toggle':''});toggle.checked=filters.workloads!=='1';toggle.onchange=()=>change('workloads',toggle.checked?'':'1');label.append(toggle);deck.utility.append(label)} const table=make('table'),head=make('thead'),tr=make('tr');(kind==='history'?['Context','Engine session','Graph','Outcome','Completed','Elapsed','Details']:['Context','Graph / version','Execution location','State','Cross-context access','Estimated progress','Iteration']).forEach(s=>tr.append(make('th',s,{scope:'col'})));head.append(tr);table.append(head,list.body);const tw=make('div',null,{class:'table-wrap',tabindex:'-1','aria-label':kind==='history'?'History results':'Context results'});list.focusTarget=tw;tw.append(table);const {stage,footer}=tableShell(content);stage.append(tw,quick);footer.append(notices);quick.setAttribute('aria-label','Selected context details');quick.setAttribute('tabindex','-1');quick.inert=quick.hidden;const pager=make('div',null,{class:'pager'});pager.append(button('Previous',()=>{list.page=Math.max(0,list.page-1);loadList(true)}),list.total,button('Next',()=>{if(list.hasMore??((list.page+1)*25<list.count)){list.page++;loadList(true)}}));footer.append(pager);quick.append(note(kind==='history'?'Select a row for a quick summary. Use View summary for the full workspace.':'Select a row for a quick summary. Use Open context for the full workspace.'));const ticket=epoch;const loadGraphChoices=()=>api('/api/graphs').then(data=>{if(epoch!==ticket||!list)return;const select=controls.querySelector('select[aria-label="Graph/version"]');reconcileOptions(select,[['','All captured graphs'],...data.graphs.map(g=>[g.id,(g.key||'Local definition')+' · '+g.version])],filters.graph_id);pageState?.issues.delete('graph-choices');updatePageStatus()}).catch(e=>{if(list?.controls===controls)pageIssue('graph-choices','Graph filters unavailable: '+e.message,loadGraphChoices)});if(kind!=='history')loadGraphChoices();loadList(true).then(()=>{window.scrollTo(0,saved.scroll||0);if(list?.body.isConnected)list.body.closest('.table-wrap').scrollTop=saved.tableScroll||0})}
+function mountList(kind,query){const saved={...routeStates[kind],selection:null};const value=(name,fallback='')=>query.has(name)?query.get(name):(saved[name]??fallback);const filters={search:value('search'),state:value('state'),graph_id:value('graph_id'),capability:value('capability'),sort:value('sort','oldest'),session:value('session'),date:value('date'),workloads:value('workloads'),engine_session:value('engine_session')};const states=kind==='history'?outcomeCards:['queued','routing','running','placement_waiting','paused','aborting','failing'];const invalidState=filters.state&&!states.includes(filters.state);if(invalidState){const previous=filters.state;filters.state='';query.set('state','');history.replaceState(null,'','#/'+kind+'?'+query);main.append(note(kind==='history'&&previous==='stopped'?'Legacy Stop filter cleared. Older outcomes remain available without a state filter.':'Unavailable '+kind+' state filter cleared.'))}const view=dataView(kind==='history'?'History':'Contexts',kind==='history'?'Retained terminal evidence · read-only':'Active contexts and recently finished runs',kind==='history'?'dashboard.history':'dashboard.contexts',kind==='history'?'history-list':'contexts-view'),content=view.content,deck=controlDeck(content),controls=deck.filters,quick=make('aside',null,{class:'box quick'});quick.hidden=!saved.selection;const search=make('input',null,{type:'search',placeholder:'Search context identity or graph','aria-label':'Search contexts'});search.value=filters.search;controls.append(search);list={kind,filters,page:saved.page||0,selected:saved.selection,quick,content,controls,body:make('tbody'),total:make('span'),rows:[],detail:null};const owner=list;const change=(k,v)=>{if(list!==owner)return;list.filters[k]=v;list.page=0;saveRoute();history.replaceState(null,'','#/'+list.kind+'?'+new URLSearchParams(list.filters));loadList(true)};search.oninput=()=>change('search',search.value);controls.append(inputFilter('State','state',[['','Any state'],...states.map(s=>[s,s])],filters.state,change),inputFilter('Graph/version','graph_id',[['','All captured graphs']],filters.graph_id,change),inputFilter('Cross-context access','capability',[['','Any capability'],['unknown','Unknown'],['observes','Observes'],['controls','Controls'],['neither','Neither']],filters.capability,change),inputFilter('Sort','sort',[['oldest','Oldest first'],['newest','Newest first']],filters.sort,change));if(kind==='history'){const sessionField=make('div',null,{class:'session-filter'}),sessionFilter=inputFilter('Session','session',[['','All retained sessions'],...(filters.session?[[filters.session,sessionIdentity(filters.session)]]:[])],filters.session,change),inspect=button('Inspect',()=>inspectSessions(content,inspect),{'aria-label':'Inspect engine sessions',title:'Inspect engine sessions'});sessionField.append(sessionFilter,inspect);deck.utility.append(sessionField);const date=make('input',null,{type:'date','aria-label':'Since date'});date.value=filters.date;date.onchange=()=>change('date',date.value);const dateLabel=make('label','Since date');dateLabel.append(date);deck.utility.append(dateLabel)}list.coverage=make('p',null,{class:'muted list-coverage',role:'status'});list.sessionNotice=make('p',null,{class:'session-notice',role:'status'});const notices=make('div',null,{class:'data-notices'});notices.append(list.coverage,list.sessionNotice);if(kind==='contexts'){const label=make('label','Include this dashboard',{class:'dashboard-switch'}),toggle=make('input',null,{type:'checkbox',role:'switch','data-dashboard-toggle':''});toggle.checked=filters.workloads!=='1';toggle.onchange=()=>change('workloads',toggle.checked?'':'1');label.append(toggle);deck.utility.append(label)} const table=make('table'),head=make('thead'),tr=make('tr');(kind==='history'?['Context','Engine session','Graph','Outcome','Completed','Elapsed','Details']:['Context','Graph / version','Execution location','State','Cross-context access','Estimated progress','Iteration']).forEach(s=>tr.append(make('th',s,{scope:'col'})));head.append(tr);table.append(head,list.body);
+ const tw=make('div',null,{class:'table-wrap',tabindex:kind==='contexts'?'0':'-1','aria-label':kind==='contexts'?'Active contexts':'History results'});
+ tw.append(table);list.focusTarget=tw;
+ const {stage,footer}=tableShell(content);
+ if(kind==='contexts'){
+  stage.classList.add('context-results');stage.setAttribute('role','group');stage.setAttribute('aria-label','Context results');
+  tw.setAttribute('role','region');stage.append(tw,footer);mountRecentlyFinished(list,stage);
+ }else stage.append(tw);
+ stage.append(quick);footer.append(notices);quick.setAttribute('aria-label','Selected context details');quick.setAttribute('tabindex','-1');quick.inert=quick.hidden;const pager=make('div',null,{class:'pager'});
+ const previous=button('Previous',()=>{if(list.page>0){list.page--;loadList(true)}});
+ const next=button('Next',()=>{if(list.hasMore??((list.page+1)*25<list.count)){list.page++;loadList(true)}});
+ if(kind==='contexts'){list.pager={previous,next};list.total.tabIndex=-1;previous.hidden=next.hidden=true}
+ pager.append(previous,list.total,next);footer.append(pager);quick.append(note(kind==='history'?'Select a row for a quick summary. Use View summary for the full workspace.':'Select a row for a quick summary. Use Open context for the full workspace.'));const ticket=epoch;const loadGraphChoices=()=>api('/api/graphs').then(data=>{if(epoch!==ticket||!list)return;const select=controls.querySelector('select[aria-label="Graph/version"]');reconcileOptions(select,[['','All captured graphs'],...data.graphs.map(g=>[g.id,(g.key||'Local definition')+' · '+g.version])],filters.graph_id);pageState?.issues.delete('graph-choices');updatePageStatus()}).catch(e=>{if(list?.controls===controls)pageIssue('graph-choices','Graph filters unavailable: '+e.message,loadGraphChoices)});if(kind!=='history')loadGraphChoices();loadList(true).then(()=>{window.scrollTo(0,saved.scroll||0);if(list?.body.isConnected)list.body.closest('.table-wrap').scrollTop=saved.tableScroll||0})}
 async function inspectSessions(content,trigger){
  const existing=content.querySelector('dialog[data-session-inspector]');if(existing){if(!existing.open)existing.showModal();existing.querySelector('button')?.focus({preventScroll:true});return}
  const ticket=epoch,panel=make('dialog',null,{class:'session-inspector','data-session-inspector':'','aria-labelledby':'session-inspector-title'}),shell=make('div',null,{class:'session-inspector-shell'}),heading=make('div',null,{class:'session-inspector-heading'}),body=make('div',null,{class:'session-inspector-body'}),close=button('Close',()=>panel.close(),{'aria-label':'Close engine sessions'});
@@ -423,11 +435,41 @@ async function loadList(force=false){
   current.failures=0;current.retryAt=0;clearReadNotice(current.content);current.count=data.total;current.page=data.page;current.hasMore=data.has_more;current.loadedAt=Date.now();current.coverage.textContent=current.kind==='history'?(data.gap||data.capture_gap||''):[data.gap,data.capture_gap].filter(Boolean).join(' ');
   const durableCount=data.rows.length,limit=data.page_size||25;
   current.total.textContent=data.total==null?'Page '+(current.page+1)+' · '+durableCount+' committed headers · total unknown':(data.total?current.page*limit+1:0)+'–'+Math.min(current.page*limit+durableCount,data.total)+' of '+data.total;
-  data.rows=orderListRows(data.rows,current.kind,current.filters.sort);
-  if(current.kind==='history'){const ids=new Set(data.rows.map(r=>r.id));const recent=orderListRows((data.recent_rows||[]).filter(r=>!ids.has(r.id)).map(r=>r.finished_at||!r.updated_at?r:{...r,finished_at:r.updated_at}),current.kind,current.filters.sort);if(recent.length)data.rows=current.filters.sort==='newest'?[...recent,...data.rows]:[...data.rows,...recent]}
+  if(current.recent){
+   const {previous,next}=current.pager,focused=document.activeElement;
+   const singlePage=data.total<=limit;
+   previous.hidden=next.hidden=singlePage;
+   previous.disabled=current.page===0;
+   next.disabled=(current.page+1)*limit>=data.total;
+   if(singlePage)current.total.textContent=data.total+(data.total===1?' active context':' active contexts');
+   else current.total.textContent+=' active contexts';
+   if((focused===previous||focused===next)&&focused.disabled){
+    const target=singlePage?current.total:(previous.disabled?next:previous);
+    target.focus({preventScroll:true});
+   }
+   updateRecentlyFinished(current,data);
+  }
+  if(current.kind==='history'){const ids=new Set(data.rows.map(r=>r.id));const recent=orderListRows((data.recent_rows||[]).filter(r=>!ids.has(r.id)).map(r=>r.finished_at||!r.updated_at?r:{...r,finished_at:r.updated_at}),current.kind,current.filters.sort);data={...data,rows:[...data.rows,...recent]}}
+  data={...data,rows:orderListRows(data.rows,current.kind,current.filters.sort)};
   const scroll=current.body.closest('.table-wrap'),top=scroll.scrollTop;
   const anchor=[...current.body.children].find(tr=>tr.offsetTop>=top),anchorY=anchor?.getBoundingClientRect().top;
-  const ids=new Set(data.rows.map(r=>r.id));for(const tr of [...current.body.children])if(!ids.has(tr.dataset.context))tr.remove();
+  const ids=new Set(data.rows.map(r=>r.id));
+  let held=null,heldIndex=-1,focusAfterRemoval=null;
+  for(const [index,tr] of [...current.body.children].entries()){
+   if(ids.has(tr.dataset.context))continue;
+   if(tr.contains(document.activeElement)){
+    const finished=current.recent&&[...current.recent.items.children].find(li=>li.dataset.id===tr.dataset.context);
+    focusAfterRemoval=finished?.querySelector('a')||current.focusTarget;
+   }
+   if(current.kind==='contexts'&&tr.matches(':hover')&&(tr.dataset.context||tr.dataset.heldContext)){
+    held=tr;heldIndex=index;
+    const id=tr.dataset.context||tr.dataset.heldContext;delete tr.dataset.context;tr.dataset.heldContext=id;tr.tabIndex=-1;
+    const ended=data.recently_finished?.find(r=>r.id===id);
+    tr.cells[3].textContent=ended?ended.state.toUpperCase():'Left active results';
+    tr.cells[5].textContent=ended?duration(ended.elapsed_seconds):'';
+    tr.onpointerleave=()=>{if(tr.dataset.heldContext)tr.remove()};
+   }else tr.remove();
+  }
   data.rows.forEach((row,index)=>{
    let tr=current.body.querySelector('tr[data-context="'+row.id+'"]');
    if(!tr){tr=make('tr',null,{tabindex:'0','data-context':row.id});for(let i=0;i<7;i++)tr.append(make('td'))}
@@ -448,9 +490,19 @@ async function loadList(force=false){
    tr.classList.toggle('selected',current.selected===row.id);
    tr.onclick=e=>{if(!e.target.closest('button,a')&&!window.getSelection()?.toString())selectRow(row,false)};
    tr.onkeydown=e=>{if(e.target===tr&&(e.key==='Enter'||e.key===' ')){e.preventDefault();selectRow(row,true)}};
-   if(current.body.children[index]!==tr)current.body.insertBefore(tr,current.body.children[index]||null);
+   const slot=held&&index>=heldIndex?index+1:index;
+   if(current.body.children[slot]!==tr)current.body.insertBefore(tr,current.body.children[slot]||null);
   });
   if(anchor?.isConnected)scroll.scrollTop+=anchor.getBoundingClientRect().top-anchorY;else scroll.scrollTop=top;
+  if(focusAfterRemoval){
+   focusAfterRemoval.focus({preventScroll:true});
+   const items=current.recent?.items;
+   if(!held&&items?.contains(focusAfterRemoval)){
+    const item=focusAfterRemoval.getBoundingClientRect(),view=items.getBoundingClientRect();
+    if(item.bottom>view.bottom)items.scrollTop+=item.bottom-view.bottom;
+    else if(item.top<view.top)items.scrollTop+=item.top-view.top;
+   }
+  }
   if(current.kind==='history'){
    const graphSelect=current.controls.querySelector('select[aria-label="Graph/version"]');
    const choices=new Map((data.graphs||[]).map(g=>[g.id,g]));
@@ -468,32 +520,85 @@ async function loadList(force=false){
    reconcileOptions(select,[['','All retained sessions'],...sessions.map(session=>[session,session===fleet?.history_session?'Current engine session':'Engine session · '+sessionIdentity(session)])],current.filters.session);
    if(data.sessions_omitted)current.coverage.textContent+=' '+data.sessions_omitted+' session choices omitted by the selector bound; the current filter is retained.';
   }
-  current.rows=data.rows;if(!failure)lastViewResponses.set(current.kind,{path,data});pageAccepted('list');if(failure)pageIssue('list',failure.message,()=>loadList(true));if(!data.rows.length){const tr=make('tr');tr.append(make('td','No matching retained contexts.',{colspan:7}));current.body.append(tr)}
+  current.rows=data.rows;if(!failure)lastViewResponses.set(current.kind,{path,data});pageAccepted('list');if(failure)pageIssue('list',failure.message,()=>loadList(true));if(!data.rows.length){const tr=make('tr');tr.append(make('td',current.kind==='history'?'No matching retained contexts.':'No matching active contexts.',{colspan:7}));current.body.append(tr)}
   if(current.selected)await refreshQuick(current);
  }catch(e){if(list===current&&current.path===path){current.failures=(current.failures||0)+1;current.retryAt=Date.now()+Math.min(30000,1000*2**Math.min(5,current.failures));pageIssue('list',e.message,()=>loadList(true))}}
 }
-async function selectRow(row,keyboard=false){if(!list)return;list.selected=row.id;list.detail=null;list.quick.hidden=false;list.quick.inert=false;list.returnFocus=list.body.querySelector('[data-context="'+row.id+'"]');saveRoute();for(const tr of list.body.children)tr.classList.toggle('selected',tr.dataset.context===row.id);list.quick.replaceChildren(note('Loading selected context…'));await refreshQuick(list);if(keyboard)list?.quick.querySelector('button')?.focus({preventScroll:true})}
+function syncQuickTable(){
+ if(list?.recent)list.focusTarget.inert=!list.quick.hidden&&window.matchMedia('(max-width:620px)').matches;
+}
+async function selectRow(row,keyboard=false){
+ const current=list;if(!current)return;
+ current.selected=row.id;current.detail=null;current.quick.hidden=false;current.quick.inert=false;
+ current.returnFocus=current.body.querySelector('[data-context="'+row.id+'"]');
+ syncQuickTable();const focusDetails=keyboard||current.focusTarget.inert;
+ if(focusDetails)current.quick.focus({preventScroll:true});
+ saveRoute();for(const tr of current.body.children)tr.classList.toggle('selected',tr.dataset.context===row.id);
+ current.quick.replaceChildren(note('Loading selected context…'));
+ await refreshQuick(current);
+ if(focusDetails&&list===current&&current.selected===row.id)
+  current.quick.querySelector('[aria-label="Close quick details"]')?.focus({preventScroll:true});
+}
 async function refreshQuick(current){
  const key=current.selected;if(!key||current.quickReading)return;current.quickReading=true;
  try{const data=await api('/api/context?id='+key);if(list!==current||current.selected!==key)return;
  current.detail=data;renderQuick(data);clearReadNotice(current.quick);
  let gap=current.quick.querySelector('.filter-gap');
  if(!current.rows.some(r=>r.id===key)){if(!gap){gap=note('Selected context is outside this page or filter. Its details remain available.');gap.classList.add('filter-gap');current.quick.append(gap)}}else gap?.remove();
- }catch(e){if(list===current&&current.selected===key){if(!current.detail)current.quick.replaceChildren();readNotice(current.quick,'Selected evidence unavailable: '+e.message,()=>refreshQuick(current))}}
+ }catch(e){if(list===current&&current.selected===key){if(!current.detail)current.quick.replaceChildren(button('Close',clearQuickSelection,{'aria-label':'Close quick details'}));readNotice(current.quick,'Selected evidence unavailable: '+e.message,()=>refreshQuick(current))}}
  finally{current.quickReading=false;if(list===current&&current.selected!==key)refreshQuick(current)}
 }
 function clearQuickSelection(restoreFocus=true){
- if(!list)return;list.selected=null;list.detail=null;list.quick.hidden=true;list.quick.inert=true;list.quick.replaceChildren();
+ if(!list)return;const selected=list.selected;list.selected=null;list.detail=null;list.quick.hidden=true;list.quick.inert=true;list.quick.replaceChildren();syncQuickTable();
  for(const row of list.body.children)row.classList.remove('selected');saveRoute();
- if(restoreFocus)(list.returnFocus?.isConnected?list.returnFocus:list.focusTarget)?.focus({preventScroll:true});list.returnFocus=null;
+ if(restoreFocus){
+  const source=list.returnFocus;
+  const recent=list.recent&&[...list.recent.items.children].find(item=>item.dataset.id===selected)?.querySelector('a');
+  (source?.isConnected&&source.dataset.context===selected?source:recent||list.focusTarget)?.focus({preventScroll:true});
+ }
+ list.returnFocus=null;
 }
-function renderQuick(data){if(!list)return;list.quick.hidden=false;list.quick.inert=false;const q=make('div',null,{class:'quick-content'}),row=data.row,top=make('div',null,{class:'quick-heading'});top.append(sectionHeading('Context '+(list.kind==='history'?(row?.display_id||'unavailable'):data.context_id),'evidence.retained','About retained context evidence'),button('Close details',clearQuickSelection,{'aria-label':'Close quick details'}));q.append(top);if(!row){q.append(note(data.error||'Evidence unavailable'));const old=list.quick.querySelector(':scope > .quick-content');if(old)sync(old,q);else list.quick.replaceChildren(q);return}
+function renderQuick(data){if(!list)return;list.quick.hidden=false;list.quick.inert=false;const q=make('div',null,{class:'quick-content'}),row=data.row,top=make('div',null,{class:'quick-heading'});top.append(sectionHeading('Context '+(row?.display_id||data.context_id),'evidence.retained','About retained context evidence'),button(list.kind==='contexts'?'Close':'Close details',clearQuickSelection,{'aria-label':'Close quick details'}));q.append(top);if(!row){q.append(note(data.error||'Evidence unavailable'));const old=list.quick.querySelector(':scope > .quick-content');if(old)sync(old,q);else list.quick.replaceChildren(q);return}
+ const archived=list.kind==='history';
+ const open=button(archived?'View summary':'Open context',()=>go(contextLink(row.id,archived?'summary':'graph',list.kind)),{class:'wide'});
+ if(!archived)q.append(open);
  q.append(stateBadge(row),contextProgress(row),tree({graph:row.graph,version:row.version,iteration:row.iteration}),accessBox(row.access));if(data.summary_only)q.append(note('Recovered terminal summary only; detailed evidence was not captured.'));
  q.append(make('details',null,{class:'quick-provenance'}));q.lastChild.append(make('summary','Execution provenance'),tree({...locationDetails(row),capture_session:data.session||'Unknown'}));
- const archived=list.kind==='history';
- q.append(button(archived?'View summary':'Open context',()=>go(contextLink(row.id,archived?'summary':'graph',list.kind)),{class:'wide'}),lifecycle(row,archived));const old=list.quick.querySelector(':scope > .quick-content');if(old)sync(old,q);else list.quick.replaceChildren(q);
+ if(archived)q.append(open);
+ q.append(lifecycle(row,archived));const old=list.quick.querySelector(':scope > .quick-content');if(old)sync(old,q);else list.quick.replaceChildren(q);
 }
-function graphTitle(g){return g.key??'Local definition'}
+function mountRecentlyFinished(current,container){
+ const section=make('section',null,{class:'recent-finished','aria-label':'Recently finished'});
+ const heading=make('div',null,{class:'recent-heading'}),title=make('h2','Recently finished');
+ const history=make('a','View all finished runs',{href:'#/history?sort=newest'});
+ heading.append(title,history);const items=make('ul'),empty=make('p','No matching completions observed yet.',{class:'muted'});
+ section.append(heading,items,empty);container.append(section);current.recent={items,empty,history};
+}
+function updateRecentlyFinished(current,data){
+ const {items,empty,history}=current.recent,rows=data.recently_finished||[];
+ const filters={sort:'newest'};
+ for(const key of ['search','engine_session'])if(current.filters[key])filters[key]=current.filters[key];
+ if(data.history_graph_id)filters.graph_id=data.history_graph_id;
+ history.href='#/history?'+new URLSearchParams(filters);
+ history.onclick=event=>{if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();openList('history',filters)};
+ const focused=document.activeElement;
+ const existing=new Map([...items.children].map(li=>[li.dataset.id,li]));
+ for(const [index,row] of rows.entries()){
+  let li=existing.get(row.id);
+  if(!li){li=make('li',null,{'data-id':row.id});li.append(make('a'),make('span'),make('span'),make('time'),make('span'))}
+  existing.delete(row.id);
+  const [link,name,state,finished,elapsed]=li.children;
+  link.href='#'+contextLink(row.id,'summary','contexts');link.textContent=row.display_id||row.id;
+  name.textContent=row.graph;state.textContent=row.state.toUpperCase();
+  finished.textContent=localTime(row.finished_at);finished.dateTime=row.finished_at||'';
+  elapsed.textContent=duration(row.elapsed_seconds);elapsed.title='Elapsed time';
+  if(items.children[index]!==li)items.insertBefore(li,items.children[index]||null);
+ }
+ for(const li of existing.values()){if(li.contains(document.activeElement))history.focus({preventScroll:true});li.remove()}
+ if(focused?.isConnected&&items.contains(focused)&&document.activeElement!==focused)focused.focus({preventScroll:true});
+ empty.hidden=rows.length>0;
+}
+function graphTitle(g){return g.name||g.key||'Local definition'}
 function graphActions(g){
  const actions=make('div',null,{class:'graph-actions'});
  actions.append(button('Open definition',()=>go('/graphs?id='+encodeURIComponent(g.id))),
@@ -503,27 +608,38 @@ function graphActions(g){
 function graphCatalog(data,target){
  const saved=routeStates.graphs||{},deck=controlDeck(target),{stage,footer}=tableShell(target),state={search:saved.search||'',registration:saved.registration||'',sort:saved.sort||'name-asc'};
  target.catalog={state,scroll:null};deck.filters.classList.add('graph-filters');
- deck.utility.append(make('p',(data.pending?'Captured definitions':data.graphs.length+' captured '+(data.graphs.length===1?'definition':'definitions'))+' · Structural views, not execution results.',{class:'muted graph-catalog-summary'}));
+ const summary=make('p','',{class:'muted graph-catalog-summary'});deck.utility.append(summary);
  const search=make('input',null,{type:'search',placeholder:'Search graph name or identity','aria-label':'Search graph name or identity'});search.value=state.search;
  const wrap=make('div',null,{class:'table-wrap graph-catalog',tabindex:'0','aria-label':'Captured graph definitions'});target.catalog.scroll=wrap;
  const table=make('table'),head=make('thead'),labels=make('tr'),body=make('tbody'),empty=make('p','No definitions match these filters.',{class:'engine-empty',role:'status'});
  for(const title of ['Graph','Version','Registration','Actions'])labels.append(make('th',title,{scope:'col'}));head.append(labels);
- const rows=new Map();for(const g of data.graphs){
+ const rows=new Map();const graphRow=g=>{
   const row=make('tr',null,{'data-graph-id':g.id}),name=make('td'),version=make('td',g.version??'Unknown'),registration=make('td'),actions=make('td');
-  name.append(make('strong',graphTitle(g)));if(!g.registered)name.append(make('small','Capture reference: '+g.id,{class:'graph-capture-reference'}));
-  registration.append(make('span',g.registered?'Registered':'Local · unregistered',{class:'badge status-badge',title:g.registered?'Registered':'Local · unregistered'}));actions.append(graphActions(g));row.append(name,version,registration,actions);rows.set(g.id,row);
+  name.append(make('strong',graphTitle(g)));if(g.key&&g.key!==graphTitle(g))name.append(make('small','Registry key: '+g.key));if(!g.registered)name.append(make('small','Capture reference: '+g.id,{class:'graph-capture-reference'}));
+  registration.append(make('span',g.registered?'Registered':'Local · unregistered',{class:'badge status-badge',title:g.registered?'Registered':'Local · unregistered'}));actions.append(graphActions(g));row.append(name,version,registration,actions);return row;
  }
  const update=()=>{
-  const query=state.search.toLowerCase(),matches=data.graphs.filter(g=>(!query||[g.key,g.id].some(v=>String(v??'').toLowerCase().includes(query)))&&(!state.registration||String(Boolean(g.registered))===state.registration));
+  const query=state.search.toLowerCase(),matches=data.graphs.filter(g=>(!query||[g.name,g.key,g.id,g.intrinsic_id,g.version].some(v=>String(v??'').toLowerCase().includes(query)))&&(!state.registration||String(Boolean(g.registered))===state.registration));
   const version=state.sort.startsWith('version'),direction=state.sort.endsWith('desc')?-1:1;
   matches.sort((a,b)=>direction*String(version?a.version??'':graphTitle(a)).localeCompare(String(version?b.version??'':graphTitle(b)),undefined,{numeric:version})||a.id.localeCompare(b.id));
-  body.replaceChildren(...matches.map(g=>rows.get(g.id)));empty.hidden=matches.length>0;
+  const visible=new Set(matches.map(g=>g.id));
+  for(const row of [...body.children])if(!visible.has(row.dataset.graphId))row.remove();
+  matches.forEach((g,index)=>{
+   if(!rows.has(g.id))rows.set(g.id,graphRow(g));
+   const row=rows.get(g.id);if(body.children[index]!==row)body.insertBefore(row,body.children[index]||null);
+  });
+  empty.hidden=matches.length>0;summary.textContent=(data.pending?'Captured definitions':data.graphs.length+' captured '+(data.graphs.length===1?'definition':'definitions'))+' · Structural views, not execution results.';
   empty.textContent=data.pending?'Loading captured definitions…':data.graphs.length?'No definitions match these filters.':'No definition has been captured yet.';
   footer.replaceChildren();if(!data.pending){if(data.gap){const coverage=make('div',null,{class:'data-notices',tabindex:'0','aria-label':'Graph capture coverage'});coverage.append(make('p',data.gap));footer.append(coverage)}footer.append(make('span',matches.length+' of '+data.graphs.length+' captured definitions'))}saveRoute();
  };
  const change=(key,value)=>{state[key]=value;wrap.scrollTop=0;update()};search.oninput=()=>change('search',search.value);
- const statuses=[...new Set(data.graphs.map(g=>String(Boolean(g.registered))))].sort();
+ const statuses=['true','false'];
  deck.filters.append(search,inputFilter('Registration','registration',[['','Any status'],...statuses.map(v=>[v,v==='true'?'Registered':'Local · unregistered'])],state.registration,change),inputFilter('Sort','sort',[['name-asc','Graph name A–Z'],['name-desc','Graph name Z–A'],['version-asc','Version ascending'],['version-desc','Version descending']],state.sort,change));
+ target.catalog.refresh=next=>{
+  data=next;const retained=new Set(data.graphs.map(g=>g.id));
+  for(const id of rows.keys())if(!retained.has(id))rows.delete(id);
+  update();
+ };
  table.append(head,body);wrap.append(table,empty);stage.append(wrap);update();wrap.scrollTop=saved.tableScroll||0;
 }
 function mountGraphs(query){
@@ -531,11 +647,12 @@ function mountGraphs(query){
  const ticket=epoch,previous=lastViewResponses.get('graphs');
  if(previous&&!query.get('id')){graphCatalog(previous.data,target);pageAccepted()}
  else graphCatalog({graphs:[],pending:true},target);
- const load=async()=>{try{
+ const load=async()=>{if(target.loading)return;target.loading=true;try{
   const data=await api('/api/graphs');if(epoch!==ticket||graphList!==target)return;
   if(query.get('id')){const chosen=data.graphs.find(g=>g.id===query.get('id'));if(chosen){pageState.issues.delete('graphs');await openDefinition(chosen);return}}
-  saveRoute();pageState.restoreFocus=Boolean(pageState.empty?.contains(document.activeElement));target.replaceChildren();graphCatalog(data,target);if(query.get('id'))target.querySelector('.data-footer').prepend(make('span','Selected definition expired or unavailable.'));lastViewResponses.set('graphs',{data});pageAccepted('graphs');
- }catch(e){if(epoch===ticket&&graphList===target)pageIssue('graphs',e.message,load)}};load();
+  target.revision=data.revision;pageState.restoreFocus=Boolean(pageState.empty?.contains(document.activeElement));target.catalog.refresh(data);if(query.get('id'))target.querySelector('.data-footer').prepend(make('span','Selected definition expired or unavailable.'));lastViewResponses.set('graphs',{data});pageAccepted('graphs');
+ }catch(e){if(epoch===ticket&&graphList===target)pageIssue('graphs',e.message,load)}finally{target.loading=false}};
+ if(!query.get('id'))target.refresh=revision=>{if(revision!=null&&revision!==target.revision)void load()};load();
 }
 async function openDefinition(g){
  const ticket=epoch,target=graphList;
@@ -547,7 +664,7 @@ async function openDefinition(g){
   const actions=make('div',null,{class:'graph-actions'});
   actions.append(button('All captured graphs',()=>go('/graphs')),button('Related contexts',()=>openList('contexts',{graph_id:g.id})));
   heading.append(identity,actions);
-  target.replaceChildren(heading,note('Structural definition only. No execution is implied.'),accessBox());
+  target.replaceChildren(heading,note('Structural definition only. No execution is implied. Open a related context to inspect run-specific access and execution evidence.'));
   const host=make('div',null,{class:'graph-host'});target.append(host);const w=target.graphView={id:'definition:'+g.id,data:{graph_id:g.id},canvasScope:g.id,tab:'graph',viewer:mountCanvas(host,data.definition),graphState:lastGraphNavigation};restoreGraphState(w);if(pageState){pageState.shell=host;pageAccepted('definition')}
  }catch(e){if(epoch===ticket&&graphList===target)pageIssue('definition',e.message,()=>openDefinition(g))}
 }
@@ -558,7 +675,7 @@ function captureGraphState(w){
  w.graphState={context:w.id,scope:w.canvasScope??w.data?.graph_id,graph:v._graph.id,
   camera:[v.scale,v.viewport.scrollLeft,v.viewport.scrollTop,v.svg.style.margin,v.autoFit],
   margins:['marginLeft','marginTop','marginRight','marginBottom'].map(k=>v.svg.style[k]),
-  selection:v.selected,info:!v.graphInfo.hidden,details:!v.inspector.hidden,
+  selection:v.selected,infoView:v.graphInfoView,info:!v.graphInfo.hidden,details:!v.inspector.hidden,
   active:v.activePanel===v.graphInfo?'info':'details',reiteration:v.reiteration.checked,
   iteration:v.iterationSelect?.value,search:v.search.value,searchOpen:Boolean(v.searchResults.childElementCount),issue:v._graph.findings[v.issueIndex]?.id,
   infoScroll:v.graphInfo.querySelector('.panel-content')?.scrollTop||0,
@@ -571,6 +688,7 @@ function restoreGraphState(w){
  if(state.iteration!=null&&v.iterationSelect&&[...v.iterationSelect.options].some(o=>o.value===state.iteration)){v.iterationSelect.value=state.iteration;v.iterationSelect.dispatchEvent(new Event('change'))}
  if(state.reiteration&&!v.reiteration.disabled){v.reiteration.checked=true;v.reiteration.dispatchEvent(new Event('change'))}
  if(state.selection&&v.entities.has(state.selection))v.select(state.selection);
+ if(state.infoView&&v.graphInfoView!==state.infoView){v.graphInfoView=state.infoView;if(state.info)v.inspectGraph(true)}
  v._openGraphInfo(state.info);
  v.openInspector(state.details&&Boolean(v.selected));
  v.activePanel=state.active==='info'?v.graphInfo:v.inspector;v._updateDrawers();
@@ -609,12 +727,13 @@ function mountContext(id,tab,origin,same){
  if(changed&&w.body){w.body.classList.add('inactive');w.body.inert=true;w.body.setAttribute('aria-hidden','true')}
  w.tab=tab;
  w.tabs.querySelectorAll('button').forEach(n=>{const selected=n.dataset.tab===tab;n.setAttribute('aria-selected',String(selected));n.tabIndex=selected?0:-1});
+ runPanels.revealTab(w.tabs.querySelector('[aria-selected=true]'));
  w.panel.setAttribute('aria-labelledby','workspace-tab-'+tab);w.panel.dataset.tab=tab;
  let body=w.views.get(tab);if(!body){body=make('div',null,{class:'workspace-body','data-view':tab});w.views.set(tab,body);w.panel.append(body)}
  w.body=body;body.classList.remove('inactive');body.inert=false;body.removeAttribute('aria-hidden');
  if(changed&&tab==='graph'&&w.viewer)restoreGraphState(w);
  if(changed&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){body.getAnimations().forEach(a=>a.cancel());body.animate([{opacity:.55},{opacity:1}],{duration:120})}
- if(w.data){if(tab==='graph'&&w.viewer){refreshCanvas(w)}else renderTab(w.data,Boolean(body.childElementCount));}
+ if(w.data){if(tab==='graph'&&w.viewer&&w.data.graph_available===false){w.viewer.dispose();w.viewer=null}if(tab==='graph'&&w.viewer){refreshCanvas(w)}else renderTab(w.data,Boolean(body.childElementCount));}
  else if(!body.childElementCount)body.append(note(origin==='history'?'Opening…':'Loading '+tab+'…'));
  w.needsRender=!w.data;loadWorkspace(true);
 }
@@ -623,14 +742,15 @@ async function loadWorkspace(render=false){
  if(current.reading)return current.reading;
  current.reading=(async()=>{try{
   const data=await api('/api/context?id='+current.id);if(workspace!==current||requestServiceEpoch!==serviceEpoch)return;
-  current.failures=0;current.retryAt=0;current.data=data;current.status=data.error?'unavailable':data.loading?'unavailable':'ready';clearReadNotice(current.body);
+  const graphChanged=current.data?.graph_available!==data.graph_available;current.failures=0;current.retryAt=0;current.data=data;current.status=data.error?'unavailable':data.loading?'unavailable':'ready';clearReadNotice(current.body);
   const header=$('#work-state');
   if(data.row){header.parentNode.querySelector('h1').textContent='Context '+(data.row.display_id||data.row.id);workStatus(data.row);replaceStable($('#work-controls'),lifecycle(data.row,current.origin==='history'))}
   else header.textContent=data.error||'Context evidence unavailable';
   const f=routeStates[current.origin]||{},row=data.row;
-  const mismatch=row&&((f.state&&f.state!==row.state)||(f.graph_id&&f.graph_id!==data.graph_id)||(f.search&&!`${row.id} ${row.graph} ${row.version}`.toLowerCase().includes(f.search.toLowerCase())));
+  const mismatch=row&&((f.state&&f.state!==row.state)||(f.graph_id&&![data.graph_id,data.intrinsic_graph_id].includes(f.graph_id))||(f.search&&![row.id,row.display_id,data.context_id,row.graph,row.version,data.graph_id,data.intrinsic_graph_id,row.engine_id].join(' ').toLowerCase().includes(f.search.toLowerCase())));
   $('#work-filter-gap').textContent=mismatch?'This context no longer matches the originating list filter; the workspace remains open.':'';
-  if(current.needsRender||data.error||data.loading){current.needsRender=false;renderTab(data)}
+  if(current.tab==='graph'&&data.graph_available===false&&current.viewer){current.viewer.dispose();current.viewer=null}
+  if(current.needsRender||data.error||data.loading||(current.tab==='graph'&&graphChanged)){current.needsRender=false;renderTab(data)}
   else if(current.tab==='graph'){const stamp=current.body.querySelector('.evidence-stamp small');if(stamp)stamp.textContent='Evidence sampled: '+localTime(data.evidence_sampled_at);if(current.viewer&&current.canvasScope!==data.graph_id)await refreshCanvas(current);const caption=current.body.querySelector('.graph-caption');if(caption)caption.textContent=graphCaption(data);if(!current.viewer){const host=current.body.querySelector('.graph-host');if(host&&Date.now()>=(current.canvasRetryAt||0))await loadCanvas(host)}else await updateGraph()}
   else if(current.tab==='records')renderRecords(data,current.body);
   else renderTab(data,true);
@@ -646,8 +766,8 @@ function renderTab(data,incremental=false){
   const source=make('div',null,{class:'workspace-body','data-view':w.tab});buildTab(data,source);sync(w.body,source);
  }else{w.body.replaceChildren();buildTab(data,w.body)}
 }
-function graphCaption(data){return data.archived?'Captured definition for this archived run · read-only':data.finalized?'Captured definition with finalized execution evidence.':'Live graph · sampled iteration '+(data.observation?.progress?.iteration??'unavailable')+' · Short executions may finish between updates; execution counts restart each iteration.'}
-function buildTab(data,p){const w=workspace;if(data.loading){p.append(note('Evidence capture pending…'));return}if(data.error){p.append(note(data.error,true));return}if(data.capture_gap)p.append(note(data.capture_gap));if(['graph','summary','failure','records','activity'].includes(w.tab)){const stamp=make('div',null,{class:'inline evidence-stamp'});stamp.append(make('small','Evidence sampled: '+localTime(data.evidence_sampled_at)));p.append(stamp)}if(w.tab==='graph'&&data.archived&&!data.graph_available){p.append(note((data.graph_availability||'Graph unavailable: no captured definition in this archive row.')+(data.summary_only?' Only the recovered terminal summary is available.':' Retained report, records and artifact history remain available.')));return}if(w.tab==='graph'){p.append(make('p',graphCaption(data),{class:'muted graph-caption'}));const exportLink=make('a','Export graph',{class:'graph-export',href:'/context/'+encodeURIComponent(w.id)+'/graph',download:'context-'+(data.context_id||'archive')+'.html'});p.append(exportLink);const host=make('div',null,{class:'graph-host'});p.append(host);loadCanvas(host);return}runPanels.renderPanel(w.tab,data,p)}
+function graphCaption(data){return data.archived?'Captured definition for this archived run · read-only':data.finalized?'Captured definition for this finished run.':'Live graph · sampled iteration '+(data.observation?.progress?.iteration??'unavailable')+' · Short executions may finish between updates; execution counts restart each iteration.'}
+function buildTab(data,p){const w=workspace;if(data.loading){p.append(note('Evidence capture pending…'));return}if(data.error){p.append(note(data.error,true));return}if(data.capture_gap)p.append(note(data.capture_gap));if(['graph','summary','failure','records','activity'].includes(w.tab)){const stamp=make('div',null,{class:'inline evidence-stamp'});stamp.append(make('small','Evidence sampled: '+localTime(data.evidence_sampled_at)));p.append(stamp)}if(w.tab==='graph'&&data.graph_available===false){p.append(note((data.graph_availability||'No graph definition is available for this context.')+(data.summary_only?' Only the recovered terminal summary is available.':'')));return}if(w.tab==='graph'){p.append(make('p',graphCaption(data),{class:'muted graph-caption'}));const exportLink=make('a','Export graph',{class:'graph-export',href:'/context/'+encodeURIComponent(w.id)+'/graph',download:'context-'+(data.context_id||'archive')+'.html'});p.append(exportLink);const host=make('div',null,{class:'graph-host'});p.append(host);loadCanvas(host);return}runPanels.renderPanel(w.tab,data,p)}
 async function loadCanvas(host){const w=workspace,ticket=epoch,requestServiceEpoch=serviceEpoch;if(w.canvasReading)return;w.canvasReading=true;try{const data=await api('/api/canvas?id='+w.id);if(workspace!==w||ticket!==epoch||requestServiceEpoch!==serviceEpoch||!host.isConnected)return;if(data.loading){host.replaceChildren(note('Graph capture pending…'));return}w.canvasFailures=0;w.canvasRetryAt=0;w.viewer=mountCanvas(host,data.payload);w.canvasSignature=JSON.stringify(data.payload);w.canvasScope=w.data?.graph_id;restoreGraphState(w);w.graphFinalized=data.finalized;await updateGraph()}catch(e){if(workspace!==w||ticket!==epoch||requestServiceEpoch!==serviceEpoch)return;w.canvasFailures=(w.canvasFailures||0)+1;w.canvasRetryAt=Date.now()+Math.min(30000,1000*2**Math.min(5,w.canvasFailures));if(host.isConnected)host.replaceChildren(note('Graph unavailable: '+e.message,true),button('Retry graph',()=>loadCanvas(host)))}finally{w.canvasReading=false}}
 function mountCanvas(host,payload){const viewer=make('jayrun-graph',null,{theme:theme()}),data=make('script',JSON.stringify({payload,display:{theme:theme(),motion:false}}),{type:'application/json'});viewer.append(data);host.replaceChildren(viewer);const root=viewer.shadowRoot;if(root){runPanels.embedGraph(viewer);viewer.addEventListener('jayrun-selection',()=>{if(!workspace)return;const inspector=root.querySelector('#component-details');if(inspector&&!inspector.hidden&&!inspector.querySelector('.context-links')){const links=make('div',null,{class:'context-links'});links.append(button('View configuration',()=>go(contextLink(workspace.id,'configuration',workspace.origin))),button('View settings',()=>go(contextLink(workspace.id,'settings',workspace.origin))));inspector.append(links)}})}return viewer}
 async function refreshCanvas(w){
@@ -671,7 +791,7 @@ async function poll(){if(disposed||polling)return;clearTimeout(timer);if(documen
   // workload. Invalidate in-flight evidence reads and keep the last usable
   // workspace/graph until the replacement service supplies fresh data.
   serviceEpoch++;epoch++;lastViewResponses.clear();pausedDisplays.clear();pending.clear();cancelReads(()=>false);if(workspace){workspace.retryAt=0;workspace.canvasRetryAt=0}
- }if(next.pressure_gap&&!Array.isArray(next.pressures)&&fleet?.engine_id===next.engine_id)next.pressures=fleet.pressures;fleet=next;connectionLost=false;connectionFailure='';capturePressureReference(next);stale=!next.ready;received=Date.now();$('#engine-name').textContent='Local engine · '+next.engine;$('#connection').className=stale?'state-paused':'state-running';$('#connection').textContent=switched?'Reconnected · refreshing selected context':stale?'Initializing':'● Connected';$('#owner-id').textContent='Controller '+next.controller;$('#app-version').textContent='Version '+(next.version||'unavailable');for(const [id,p]of pending){const r=next.requests.find(r=>r.id===p.id);if(r&&r.status==='submitted')pending.set(id,{...r,message:r.message});if(r&&r.status!=='submitted'){pending.delete(id);const key='jayrun.control.'+id;if(r.action==='stop'&&r.status==='observed')sessionStorage.setItem(key,'Stop · observed');else if(r.status==='observed')sessionStorage.removeItem(key);else sessionStorage.setItem(key,r.action+' · '+r.status)}}updateOverview();updateEngines();if(overview)void loadOverviewOutcomes();if(list)await loadList(false);if(workspace)await loadWorkspace(false);updatePageStatus()}catch(e){stale=true;connectionLost=true;connectionFailure=e.message;updatePageStatus();$('#connection').className='state-paused';$('#connection').textContent='Disconnected · stale view';refreshControls()}finally{polling=false;if(!disposed)timer=setTimeout(poll,750)}}
+ }if(next.pressure_gap&&!Array.isArray(next.pressures)&&fleet?.engine_id===next.engine_id)next.pressures=fleet.pressures;fleet=next;connectionLost=false;connectionFailure='';capturePressureReference(next);stale=!next.ready;received=Date.now();$('#engine-name').textContent='Local engine · '+next.engine;$('#connection').className=stale?'state-paused':'state-running';$('#connection').textContent=switched?'Reconnected · refreshing selected context':stale?'Initializing':'● Connected';$('#owner-id').textContent='Controller '+next.controller;$('#app-version').textContent='Version '+(next.version||'unavailable');for(const [id,p]of pending){const r=next.requests.find(r=>r.id===p.id);if(r&&r.status==='submitted')pending.set(id,{...r,message:r.message});if(r&&r.status!=='submitted'){pending.delete(id);const key='jayrun.control.'+id;if(r.action==='stop'&&r.status==='observed')sessionStorage.setItem(key,'Stop · observed');else if(r.status==='observed')sessionStorage.removeItem(key);else sessionStorage.setItem(key,r.action+' · '+r.status)}}updateOverview();updateEngines();graphList?.refresh?.(next.graph_revision);if(overview)void loadOverviewOutcomes();if(list)await loadList(false);if(workspace)await loadWorkspace(false);updatePageStatus()}catch(e){stale=true;connectionLost=true;connectionFailure=e.message;updatePageStatus();$('#connection').className='state-paused';$('#connection').textContent='Disconnected · stale view';refreshControls()}finally{polling=false;if(!disposed)timer=setTimeout(poll,750)}}
 const receiptTimer=setInterval(()=>{updatePressureAges();$('#received').textContent=received?'Received '+Math.floor((Date.now()-received)/1000)+'s ago':''},1000);
 $('#owner-stop').onclick=()=>confirmAction('Stop dashboard '+(fleet?.controller||''),'Stop this controller and close the local dashboard service.',async()=>{try{await api('/api/owner',{action:'stop'})}catch(e){$('#connection').textContent=e.rejected?'Rejected: '+e.message:'Shutdown delivery unknown'}});
 window.addEventListener('pagehide',()=>{disposed=true;help.dispose();pausedDisplays.clear();clearTimeout(timer);clearInterval(receiptTimer);activeFetch.forEach(c=>c.abort());document.querySelectorAll('jayrun-graph').forEach(v=>v.dispose());saveRoute()},{once:true});

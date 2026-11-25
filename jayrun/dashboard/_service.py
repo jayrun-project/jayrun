@@ -476,7 +476,7 @@ class _Service:
                 if row.get('execution_location', {}).get('id') == local['id'] or row.get('engine_id') == self.runtime.engine_id:
                     row['execution_location'] = local
             payload.update({'version': __version__, 'execution_locations': self.location_summary(),
-                            'local_location': local})
+                            'local_location': local, 'graph_revision': self.workspace.graph_revision})
             payload['presentation_sampling'] = {'minimum_interval_seconds': self._projection_interval,
                 'coalesced_events': self._coalesced_events,
                 'coverage': 'Live display snapshots are sampled; committed records and terminal capture are not sampled.'}

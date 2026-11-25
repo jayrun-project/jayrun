@@ -1,3 +1,8 @@
+```{eval-rst}
+.. meta::
+   :description: Diagnose a rejected or failed Jayrun graph run, configure RetryPolicy, and choose graceful or forced shutdown for the Engine.
+```
+
 # Handle failures, retries and shutdown
 
 First identify where failure occurred. A rejected public call, a failed execution and an Engine fault need different recovery actions.

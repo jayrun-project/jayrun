@@ -1,18 +1,29 @@
-# Execution, ownership and lifetime
+```{eval-rst}
+.. meta::
+   :description: Follow a Jayrun graph run from submission to finalization. Learn when an iteration, operator execution or retry begins, and which artifacts and resources survive.
+```
 
-An Engine hosts context runs. Each iteration executes the declared graph. A step session may execute an operator more than once, and each execution may need several attempts.
+(execution-ownership-and-lifetime)=
+# Execution lifetime of a graph run
+
+A graph run's execution lifetime starts with submission to an `Engine` and ends at finalization. The application can keep the `ContextRun` handle after that point to read its report and retained outputs. The engine can also reuse a compatible resource in a later run.
+
+Within one run, a graph iteration is one pass through its steps. An operator can request another execution in the same step, and a failed invocation can have another attempt under its retry policy. Read `self.context.iteration` for the current graph pass and `self.execution.number` for the operator's execution within that step. Both start at 1.
 
 | Scope | Changes within it | Relevant limit |
 | --- | --- | --- |
 | Engine incarnation | Contexts, services, shared resources, observers | Engine capacity and history settings |
-| Context | Submitted values, records, graph iterations | `max_iterations` |
+| Context | Submitted values, application records, retained exits | `record_history_limit` per key |
+| Graph iteration | One pass through the graph, including the steps eligible to run | `max_iterations` counts passes that start |
 | Step session | Bound resources and operator repetitions | `max_repeats` |
 | Execution | One result to publish | Retry policy |
 | Attempt | One invocation attempt, possibly failing | `max_attempts`, including the first |
 
 A placement wait may restart the invocation from its beginning. Make stable placement requests before side effects. A retry also cannot undo an external write or in-place mutation performed by application code. See [failure handling](../guides/runs/failures.md).
 
-Artifact lifetime follows flow consumption and regeneration. Exit retention is configured by `ArtifactPolicy`; it is not a promise to preserve all intermediates. `release_entry_artifacts=True` releases the framework's entry ownership and clears the submitted builder at finalization; external Python references can keep the same payload alive.
+After a successful `submit()`, Jayrun removes the entry bindings from the caller's `ArtifactContext`. Refill the builder or make a fresh one for the next run. The run holds its own sealed artifact context. With the default policy, you can still read its submitted entries through `run.artifact_context` after finalization. With `release_entry_artifacts=True`, Jayrun releases its entry references as execution permits and clears any remaining submitted entries and recovery checkpoint at finalization.
+
+`ArtifactPolicy.retained_artifacts` separately selects the exit values available through `run.artifact(...)`. An application that still holds the input or output object keeps its own reference.
 
 A resource can outlive the context that first acquired it. Runtime reuse and eviction are separate from artifact retention. Conversely, a `ContextRun` held by an application can keep finalized evidence and retained outputs reachable after execution stops. Bound histories and release application handles when they are no longer needed.
 

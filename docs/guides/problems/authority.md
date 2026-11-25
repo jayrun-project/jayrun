@@ -1,5 +1,7 @@
 # Authority, observation and persistence problems
 
+Use this table to diagnose denied runtime operations, empty supervision scopes, observer overflow and missing database history.
+
 | Error or symptom | Cause | Correction |
 | --- | --- | --- |
 | Empty runtime run lists | No supervising scope, excluded caller, or no live targets | Check the submission grant and graph identity; do not infer engine idleness |

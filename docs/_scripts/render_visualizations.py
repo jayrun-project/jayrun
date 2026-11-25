@@ -114,8 +114,7 @@ def main() -> None:
     for name in outputs:
         path = destination / name
         path.write_text(documentation_canvas(path.read_text()))
-    # The dashboard is already a scaled landscape capture; do not wrap it twice.
-    # Preserve the captured dashboard as the canonical published static asset.
+    # The captured dashboard already has its own responsive frame.
     preview = destination / 'dashboard_preview.html'
     outputs.append('dashboard_preview.html')
     sources = [preview, Path(__file__).resolve(), *(ROOT / 'docs' / '_examples').glob('*.py'),

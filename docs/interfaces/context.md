@@ -44,7 +44,7 @@ Stop iteration after accepted work drains, preventing a next iteration.
 
 Request a pause at a controlled scheduling boundary.
 
-:param duration_seconds: Non-negative automatic-resume delay, or `None` to require a supervising context to resume this context.
+:param duration_seconds: Non-negative automatic-resume delay, or `None` for an indefinite pause. The application or an authorized supervising context can call `run.resume()`.
 ```
 
 [Source: pause](https://github.com/jayrun-project/jayrun/blob/main/jayrun/engine/interfaces/context.py)

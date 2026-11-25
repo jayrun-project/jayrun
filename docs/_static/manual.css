@@ -84,3 +84,7 @@
 @media (min-width: 63.001em) and (max-width: 67em) {
     .content { min-width: 0; width: calc(100vw - 20rem); }
 }
+
+@media(max-width:760px){
+    .graph-viewer[data-kind="dashboard"]{height:78vh;min-height:420px;aspect-ratio:auto}
+}

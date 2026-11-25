@@ -1,5 +1,7 @@
 # Execution, placement and shutdown problems
 
+Find the cause of a skipped operator, a stalled placement request, a failed run or a shutdown timeout from the state and evidence Jayrun reports.
+
 | Symptom | Likely boundary | How to resolve |
 | --- | --- | --- |
 | Operator is `SKIPPED` with `missing_input` | A connected input value is None | Inspect the producer/conditional route; optional binding does not change this rule |

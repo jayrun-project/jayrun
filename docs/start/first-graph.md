@@ -10,7 +10,7 @@ We will multiply `7` by `3`, inspect the graph, run it, and read `21`. The examp
 ## 1. Declare the data positions
 
 ```python
-from jayrun import Artifact
+from jayrun import Artifact, ArtifactField, BaseOperator, ConfigField
 
 source = Artifact(name="source")
 result = Artifact(name="result")
@@ -85,7 +85,7 @@ with Engine() as engine:
     print(run.records("scaled")[-1].value) # 21
 ```
 
-`ArtifactContext` supplies data to entry artifacts. `ConfigContext` supplies the factor to the operator's declared configuration field. The Engine starts on entering `with`, and shuts down when that block ends.
+`ArtifactContext` supplies data to entry artifacts. After a successful submission, `artifacts.get(source)` returns `None` because the entry binding has passed to the run. To run the graph again, supply a fresh builder or call `artifacts.set({source: 7})` first. The `ConfigContext` holding the factor can be reused. The Engine starts on entering `with` and shuts down when that block ends.
 
 Configuration answers **what this calculation should do**. Settings answer **how Jayrun should run it**: for example, a ContextSettings value can set an iteration limit, while EngineSettings can set worker capacity. This program uses the defaults. Read [execution settings](../guides/runs/settings.md) when you need to change them; they are not fields read through `self.factor`.
 

@@ -77,7 +77,7 @@
       root.append(style);
       const state = {id: data.context_id, data, recordKey: null, recordPage: 0};
       const panels = globalThis.JayrunRunPanels.create({make, button, note, download, copyText,
-        workspace: () => state, pins: Object.create(null), chartVisibility: new Map(),
+        workspace: () => state, showActivity: () => select('activity'), pins: Object.create(null), chartVisibility: new Map(),
         pausedDisplays: new Map(), serviceEpoch: () => 0,
         sectionHeading: title => make('h2', title),
         replaceStable: (target, source) => target.replaceChildren(source),
@@ -112,6 +112,7 @@
           control.setAttribute('aria-selected', String(control.dataset.tab === name));
           control.tabIndex = control.dataset.tab === name ? 0 : -1;
         }
+        panels.revealTab(tabs.querySelector('[aria-selected=true]'));
         let view = views.get(name);
         if (!view) {
           view = make('div', null, {class: 'workspace-body' + (name === 'graph' ? ' run-graph' : ''),

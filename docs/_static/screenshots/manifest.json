@@ -2,16 +2,22 @@
   "description": "README screenshots. Each image records its own provenance; IDs and timings describe its captured session.",
   "images": {
     "dashboard.png": {
-      "sha256": "bfd7b2440b066594b0dca328ef5c062cfe798bd231bba6f603c018dcd65d54f6",
-      "provenance": "User-provided dashboard image already present in the tracked baseline; preserved byte-for-byte during 0.3.0 release preparation. Capture source and session were not reproduced."
+      "provenance": "User-provided dashboard image already present in the tracked baseline; preserved byte-for-byte during 0.3.0 release preparation. Capture source and session were not reproduced.",
+      "sha256": "bfd7b2440b066594b0dca328ef5c062cfe798bd231bba6f603c018dcd65d54f6"
+    },
+    "first-run.png": {
+      "provenance": "Chromium capture of the three fitted graph nodes and their connecting edges in the completed Scale example. Captured at 2x pixel density.",
+      "sha256": "3e6125512439445481e75765a9739edd68422fe9ecc7632d87231a72a0dd6812",
+      "source": "docs/_static/first_run.html"
     },
     "split-and-join.png": {
-      "sha256": "c41072ac3c671426d7becbea70c49233c7cfb66ca36bb669adec397ea32cc4a4",
-      "source": "docs/_static/split_join.html",
-      "provenance": "Captured with Chromium from the bundled declaration viewer."
+      "provenance": "Captured with Chromium from the bundled declaration viewer.",
+      "sha256": "e5d9fd072a1e248fcd493451282712f42b7459b86620160cffd7e83a66ad8847",
+      "source": "docs/_static/split_join.html"
     }
   },
   "sources": {
-    "docs/_static/split_join.html": "84a455a7de1e60f3e94946de818fdaa0b239ba38f7b47e7640db646e3a1cfa8b"
+    "docs/_static/first_run.html": "17e4540440e67804943f687ea361292974e3adefd20fe91880c7171f4e39749d",
+    "docs/_static/split_join.html": "1bd97036255fca6d794b143171ea25b1df65ecde4869c5c38b0e0b97a9a42d65"
   }
 }

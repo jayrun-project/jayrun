@@ -552,7 +552,7 @@ h3 {
 @media(prefers-reduced-motion:reduce) {.progress-fill.indeterminate {animation:none!important}}
 
 
-.viewport.dragging{cursor:grabbing;user-select:none}.viewport svg{touch-action:none}
+.viewport{touch-action:none}.viewport.dragging{cursor:grabbing;user-select:none}.viewport svg{touch-action:none}
 
 /* Independently scrolling chrome, graph, details and legends share one viewport. */
 .chrome {flex:0 0 auto;min-height:0;overflow:visible}
@@ -634,8 +634,8 @@ h3 {
 .copy-row{display:inline-flex;align-items:center;gap:8px;max-width:100%;flex-wrap:wrap}
 .copy-feedback{display:inline-block;min-width:8ch;min-height:1.5em;font-size:12px;color:var(--accent);font-weight:600}
 .copy-feedback[data-outcome=failure]{color:var(--ink);text-decoration:underline}
-.disabled-reasons{font-size:11px;color:var(--muted);padding-top:4px;max-height:3em;overflow:auto;overflow-wrap:anywhere}
-.disabled-reasons[hidden]{display:none}
+.disabled-reasons{box-sizing:border-box;height:2em;min-height:2em;line-height:1.4;font-size:11px;color:var(--muted);padding-top:4px;overflow:auto;overflow-wrap:anywhere}
+.disabled-reasons:empty{visibility:hidden}
 .paused .elapsed-fact{border-inline-start:3px solid var(--accent);padding-inline-start:6px}
 .technical>small{display:block;margin-top:6px}
 summary:hover{color:var(--accent)}

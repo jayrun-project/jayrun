@@ -4,6 +4,21 @@ All notable changes to Jayrun are documented in this file.
 
 Release notes describe new capabilities, compatibility changes and fixes.
 
+## [0.3.4] - 2026-11-25
+
+### Added
+
+- The dashboard's **Contexts** tab shows up to eight recently finished runs. A run keeps its searchable display ID when it finishes, including when it finishes between active-list refreshes. Open its summary or continue to scoped History.
+- **Activity → Execution logs** shows retained `self.execution.log(message)` entries after finalization, labeled by step, iteration, execution and attempt. **Report** links to the logs. Application values recorded with `self.context.record(...)` remain available under **Records**.
+- `HistoryQuery` supports `by_finish=True` for completion-time ordering and `identity_digest` for exact display-ID lookup. Custom storage backends serving dashboard History should support both fields. Publication order remains the default.
+
+### Fixed
+
+- The active table, its quick-detail panel and the recently finished list keep their positions as jobs come and go. The active pager appears only when more than 25 matches need it. Keyboard focus and pointer selection follow short-lived runs through completion.
+- History orders matching contexts before pagination and can resolve a displayed run ID from recorded SQLite history after a dashboard restart. Run summaries copy the execution engine ID, preserve captured graph names and explain when a graph definition is unavailable.
+- Graph fit, zoom and pan preserve the intended point of focus. Camera position, selection and open issues survive run finalization. Narrow layouts keep the active workspace tab in view and make more room for the graph.
+- The documentation corrects the first-graph walkthrough, input ownership and recording-mode examples. Eight retired chapter URLs now lead to their replacements within the same manual version.
+
 ## [0.3.3] - 2026-11-23
 
 ### Added
