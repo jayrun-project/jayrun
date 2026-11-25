@@ -1,20 +1,28 @@
 # Jayrun
 
-Define a Python computation graph once, run it with different inputs, and reuse expensive resources across runs.
+**Build, run, and inspect Python computation graphs with reusable resources and a live dashboard.**
+
+Jayrun is a Python execution framework for pipelines, iterative experiments and application services. Define each step with a synchronous or asynchronous Python method. Jayrun passes artifact values between steps and manages the lifetimes of intermediate results and shared resources.
+
+[![PyPI version](https://img.shields.io/pypi/v/jayrun.svg)](https://pypi.org/project/jayrun/)
+[![Read the Docs](https://readthedocs.org/projects/jayrun/badge/?version=latest)](https://jayrun.readthedocs.io/en/latest/)
+[![Python 3.11 or later](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
+[![CI](https://github.com/jayrun-project/jayrun/actions/workflows/ci.yml/badge.svg)](https://github.com/jayrun-project/jayrun/actions/workflows/ci.yml)
+[![Apache 2.0 license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/jayrun-project/jayrun/blob/main/LICENSE)
+
+[Quick start](#quick-start) · [Documentation](https://jayrun.readthedocs.io/en/latest/) · [Tutorials](#tutorials) · [API reference](https://jayrun.readthedocs.io/en/latest/reference/imports.html) · [0.3.4 release notes](https://github.com/jayrun-project/jayrun/releases/tag/v0.3.4)
+
+## Quick start
+
+Install Jayrun with Python 3.11 or later.
 
 ```bash
 python -m pip install jayrun
 ```
 
-Python 3.11 or later · [Latest release 0.3.4](https://pypi.org/project/jayrun/0.3.4/) · [Release notes](https://github.com/jayrun-project/jayrun/releases/tag/v0.3.4)
-
-[Quick start](#quick-start) · [Documentation](https://jayrun.readthedocs.io/en/latest/) · [Tutorials](#tutorials) · [API reference](https://jayrun.readthedocs.io/en/latest/reference/imports.html)
-
 [![Completed graph showing the source artifact flowing through Scale to the result artifact](https://raw.githubusercontent.com/jayrun-project/jayrun/main/docs/_static/screenshots/first-run.png)](https://jayrun.readthedocs.io/en/latest/_static/first_run.html)
 
 Input **7**, factor **3**, result **21**. [Explore this completed run](https://jayrun.readthedocs.io/en/latest/_static/first_run.html).
-
-## Quick start
 
 Save this program as `first_graph.py` and run `python first_graph.py`. It reproduces the graph above and prints `21`.
 
@@ -126,10 +134,6 @@ Have a question or a workflow to share? Join [GitHub Discussions](https://github
 You can also help by reporting confusing examples, suggesting documentation improvements or sharing how you use Jayrun. The [documentation sources](https://github.com/jayrun-project/jayrun/blob/main/docs/index.md) are included in this repository.
 
 ## Scope and project status
-
-[![CI](https://github.com/jayrun-project/jayrun/actions/workflows/ci.yml/badge.svg)](https://github.com/jayrun-project/jayrun/actions/workflows/ci.yml)
-[![Documentation](https://github.com/jayrun-project/jayrun/actions/workflows/docs.yml/badge.svg)](https://github.com/jayrun-project/jayrun/actions/workflows/docs.yml)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/jayrun-project/jayrun/blob/main/LICENSE)
 
 Jayrun manages graph execution and ownership. Applications supply network transport, authentication, external side effects and checkpoint contents. Placement accounts for declared capacity rather than allocating devices, and cleanup releases framework references rather than guaranteeing an immediate drop in process memory. See [supported behavior and limitations](https://jayrun.readthedocs.io/en/latest/reference/limits.html).
 
