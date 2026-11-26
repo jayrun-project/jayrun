@@ -162,6 +162,7 @@ class ExecutionArtifactStore:
         self._recorder.initialize(
             artifacts=self._artifacts,
             iteration=self._iteration,
+            history_limit=self._settings.execution_history_limit,
         )
         self._artifact_data = {
             artifact: Data(value=None) for artifact in self._artifacts

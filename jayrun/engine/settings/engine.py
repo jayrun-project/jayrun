@@ -3,6 +3,7 @@ from enum import Enum
 from math import isfinite
 from typing import TypeAlias
 
+from .._snapshot_compat import restore_settings
 from ..resource.placement import Backend, Device
 
 
@@ -153,6 +154,25 @@ class RetryPolicy:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class TerminalHistoryPolicy:
+    """Bound finalized context summaries retained by one engine incarnation.
+
+    Args:
+        max_entries: Maximum number of summaries. Zero disables retention.
+        max_bytes: Maximum accounted JSON bytes across retained summaries.
+    """
+
+    max_entries: int = 1024
+    max_bytes: int = 1_048_576
+
+    def __post_init__(self) -> None:
+        if type(self.max_entries) is not int or self.max_entries < 0:
+            raise ValueError("max_entries must be a nonnegative integer")
+        if type(self.max_bytes) is not int or self.max_bytes < 1:
+            raise ValueError("max_bytes must be a positive integer")
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class EngineSettings:
     """Configure engine-wide execution, capacity, and reliability behavior.
 
@@ -182,11 +202,11 @@ class EngineSettings:
             capacity per engine incarnation, including pending/active/retired IDs.
             Accepted safety slots are never recycled; None preserves unbounded
             admission. Ordinary local-only contexts do not consume a slot.
-        terminal_history_limit: Retained finalized summaries per engine incarnation.
-            Default 1024; zero disables retention, but loss remains explicit.
-        terminal_history_max_bytes: Maximum accounted JSON bytes for terminal
-            summaries, not process RSS. Full snapshots and payloads are excluded.
+        terminal_history_policy: Count and byte limits for finalized summaries.
+            Evicted and oversized summaries produce observable cursor gaps.
     """
+
+    __setstate__ = restore_settings
 
     recording_mode: RecordingMode = RecordingMode.STANDARD
     failure_mode: FailureMode = FailureMode.CONTINUE
@@ -198,8 +218,7 @@ class EngineSettings:
     controller_policy: ControllerPolicy = ControllerPolicy.HOST_ONLY
     context_history_admission_limit: int | None = None
     remote_context_id_limit: int | None = None
-    terminal_history_limit: int = 1024
-    terminal_history_max_bytes: int = 1024 * 1024
+    terminal_history_policy: TerminalHistoryPolicy = field(default_factory=TerminalHistoryPolicy)
 
     def __post_init__(self) -> None:
         if not isinstance(self.recording_mode, RecordingMode):
@@ -214,11 +233,8 @@ class EngineSettings:
             raise TypeError("routing_mode must be a RoutingMode instance")
         self._validate_positive_integer(self.context_history_admission_limit, "context_history_admission_limit")
         self._validate_positive_integer(self.remote_context_id_limit, "remote_context_id_limit")
-        if type(self.terminal_history_limit) is not int or self.terminal_history_limit < 0:
-            raise ValueError("terminal_history_limit must be a nonnegative integer")
-        self._validate_positive_integer(self.terminal_history_max_bytes, "terminal_history_max_bytes")
-        if self.terminal_history_max_bytes is None:
-            raise ValueError("terminal_history_max_bytes must be a positive integer")
+        if not isinstance(self.terminal_history_policy, TerminalHistoryPolicy):
+            raise TypeError("terminal_history_policy must be a TerminalHistoryPolicy instance")
         self._validate_positive_integer(self.max_workers, "max_workers")
         self._validate_positive_integer(self.max_tasks, "max_tasks")
         runtime_devices = self._normalize_devices(self.runtime_devices)

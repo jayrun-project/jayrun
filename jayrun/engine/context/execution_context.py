@@ -104,7 +104,6 @@ class ExecutionContext:
             settings=self._settings,
             iteration=self._context.completed_iterations + 1,
         )
-        self._recorder.restore(self._context._execution_reports)
         self._reset_iteration_state()
 
     def dispatch_next(self, mode: ExecutionMode) -> ExecutionSession | None:
@@ -809,6 +808,7 @@ class ExecutionContext:
             raise
 
     def _finish_iteration(self) -> None:
+        checkpoint = self._artifact_store.checkpoint
         executions = self._recorder.complete_iteration(
             self._context.iteration_count,
         )
@@ -816,7 +816,7 @@ class ExecutionContext:
             context_id=self.context_id,
             origin=self._origin,
             executions=executions,
-            checkpoint=self._artifact_store.checkpoint,
+            checkpoint=checkpoint,
         ):
             self._artifact_store.repeat()
             self._reset_iteration_state()

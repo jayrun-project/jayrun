@@ -9,6 +9,8 @@ from .step_reference import StepReference
 
 @dataclass(frozen=True, slots=True)
 class ContextOutcome:
+    """Final handoff. Executions contains only the still-uncommitted terminal batch."""
+
     actor: CommandOrigin
     executions: tuple[ExecutionReport, ...]
     artifacts: dict[Artifact, ArtifactResult] | None

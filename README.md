@@ -10,7 +10,7 @@ Jayrun is a Python execution framework for pipelines, iterative experiments and 
 [![CI](https://github.com/jayrun-project/jayrun/actions/workflows/ci.yml/badge.svg)](https://github.com/jayrun-project/jayrun/actions/workflows/ci.yml)
 [![Apache 2.0 license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/jayrun-project/jayrun/blob/main/LICENSE)
 
-[Quick start](#quick-start) · [Documentation](https://jayrun.readthedocs.io/en/latest/) · [Tutorials](#tutorials) · [API reference](https://jayrun.readthedocs.io/en/latest/reference/imports.html) · [0.3.4 release notes](https://github.com/jayrun-project/jayrun/releases/tag/v0.3.4)
+[Quick start](#quick-start) · [Documentation](https://jayrun.readthedocs.io/en/latest/) · [Tutorials](#tutorials) · [API reference](https://jayrun.readthedocs.io/en/latest/reference/imports.html) · [0.3.5 release notes](https://github.com/jayrun-project/jayrun/releases/tag/v0.3.5)
 
 ## What Jayrun does
 
@@ -101,17 +101,15 @@ The quick start sends `source` through `Scale` to produce `result`. To save the 
 
 [Explore the completed Scale run](https://jayrun.readthedocs.io/en/latest/_static/first_run.html).
 
-You can also inspect a graph before running it. Save its declaration with `graph.plot.save("graph.html")`. This split-and-join example shows two processing branches meeting at a Join operator.
-
-[![Split-and-join graph with an explicit Splitter, two processing branches and a Join operator](https://raw.githubusercontent.com/jayrun-project/jayrun/main/docs/_static/screenshots/split-and-join.png)](https://jayrun.readthedocs.io/en/latest/guides/visualization/graphs.html)
-
-*A split-and-join graph with two processing branches. Click to explore the interactive declaration.*
+To inspect a declaration before running it, use `graph.plot.save("graph.html")`. [Explore the interactive split-and-join example](https://jayrun.readthedocs.io/en/latest/guides/visualization/graphs.html).
 
 For live work, the dashboard lets you follow running contexts and find recent completions.
 
 [![Jayrun dashboard listing running and paused contexts with graph versions, progress and iteration counts](https://raw.githubusercontent.com/jayrun-project/jayrun/main/docs/_static/screenshots/dashboard.png)](https://jayrun.readthedocs.io/en/latest/guides/visualization/dashboard.html)
 
 [Explore the dashboard](https://jayrun.readthedocs.io/en/latest/guides/visualization/dashboard.html) or [build a monitoring graph with a Controller](https://jayrun.readthedocs.io/en/latest/guides/runtime/controller.html). The [visualization and reporting guide](https://jayrun.readthedocs.io/en/latest/guides/evidence/plots.html) also covers declarations, registries and completed runs.
+
+For indefinite runs, `ContextSettings(max_iterations=None, execution_history_limit=8)` keeps detailed step reports for the latest eight reported iterations. Counts and timings cover the whole run. Use the context's optional `RecordPolicy` to tune values written through `self.context.record()`. [Capacity and retention](https://jayrun.readthedocs.io/en/latest/guides/runs/capacity.html).
 
 To keep diagnostic history beyond an Engine session, pass `Database("execution.sqlite")` from `jayrun.persistence` to `Engine(database=...)`. The Engine owns the database lifecycle. After computation finishes, call `engine.database.flush()` to check that pending history was stored successfully. The [Persistence and Database guide](https://jayrun.readthedocs.io/en/latest/guides/evidence/persistence.html) shows how to write history and read it after the Engine closes. Stored history is separate from application checkpoints and arbitrary artifact storage.
 

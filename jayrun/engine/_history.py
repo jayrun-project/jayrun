@@ -33,7 +33,7 @@ from .progress import ProgressSnapshot, StepProgress, StepProgressState
 from .recorders.artifact.record import ArtifactRecord
 from .recorders.artifact.artifact_state import ArtifactState
 from .artifact.actor import ArtifactActor
-from .recorders.context.report import ContextReport
+from .recorders.context.report import ContextReport, ExecutionStatistics
 from .recorders.execution.records import (AttemptRecord, ExecutionReport, ExecutionOutcome,
     FailureRecord, LogRecord, MetricRecord, RecordOrigin, TimerRecord)
 from .registry.context_status import (StateTransition, StopRequested, IterationStarted,
@@ -106,9 +106,18 @@ def _context_settings(settings: ContextSettings | CombinedContextSettings | None
             ids.append(reference.artifact_id)
         else:
             ids.append(registry.definition_for(reference).artifact_id)
-    result = {name: getattr(settings, name) for name in (
-        "max_iterations", "max_repeats", "record_history_limit", "record_max_keys",
-        "record_max_value_bytes", "record_max_total_bytes")}
+    record = settings.record_policy
+    result = {
+        "max_iterations": settings.max_iterations,
+        "max_repeats": settings.max_repeats,
+        "execution_history_limit": settings.execution_history_limit,
+        "record_policy": {
+            "history_per_key": record.history_per_key,
+            "max_keys": record.max_keys,
+            "max_value_bytes": record.max_value_bytes,
+            "max_total_bytes": record.max_total_bytes,
+        },
+    }
     result["retry_policy"] = None if settings.retry_policy is None else _retry(settings.retry_policy)
     result["artifact_policy"] = {"retained_artifacts": None if settings.artifact_policy.retained_artifacts is None else tuple(ids), "release_entry_artifacts": settings.artifact_policy.release_entry_artifacts}
     if hasattr(settings, "recording_mode"):
@@ -119,8 +128,9 @@ def _context_settings(settings: ContextSettings | CombinedContextSettings | None
 
 def _engine_settings(settings: EngineSettings) -> dict[str, object]:
     result = {name: getattr(settings, name) for name in (
-        "max_workers", "max_tasks", "context_history_admission_limit", "remote_context_id_limit",
-        "terminal_history_limit", "terminal_history_max_bytes")}
+        "max_workers", "max_tasks", "context_history_admission_limit", "remote_context_id_limit")}
+    policy = settings.terminal_history_policy
+    result["terminal_history_policy"] = {"max_entries": policy.max_entries, "max_bytes": policy.max_bytes}
     result.update(recording_mode=settings.recording_mode.value, failure_mode=settings.failure_mode.value,
                   routing_mode=settings.routing_mode.value,
                   controller_policy=settings.controller_policy.value, retry_policy=_retry(settings.retry_policy))
@@ -131,7 +141,7 @@ def _engine_settings(settings: EngineSettings) -> dict[str, object]:
     return result
 
 
-_FACT_TYPES = (ContextReport, ExecutionReport, AttemptRecord, TimerRecord, MetricRecord,
+_FACT_TYPES = (ContextReport, ExecutionStatistics, ExecutionReport, AttemptRecord, TimerRecord, MetricRecord,
                LogRecord, FailureRecord, ContextRecord, ArtifactRecord, StepReference,
                StateTransition, StopRequested, IterationStarted, ControlRequested, EngineChanged,
                EngineOrigin, RuntimeModuleOrigin, ContextOrigin, StepOrigin, ProgressSnapshot, StepProgress)
@@ -197,7 +207,11 @@ class _Facts:
                     safe.append(ValueMarker("unsupported", "Non-scalar exception argument excluded"))
             return {"type": self.copy(_qualified(cls), depth + 1), "arguments": tuple(safe)}
         if cls in _FACT_TYPES:
-            return {field.name: self.copy(getattr(value, field.name), depth + 1) for field in fields(value)}
+            names = (field.name for field in fields(value))
+            if cls is ContextReport and value.execution_statistics is None:
+                # Preserve the original durable report shape for full-history runs.
+                names = (name for name in names if name not in ("execution_statistics", "history_omitted"))
+            return {name: self.copy(getattr(value, name), depth + 1) for name in names}
         if cls in (dict, MappingProxyType, tuple, list):
             if len(value) > self.limits.max_items:
                 raise PersistenceBackpressure("final diagnostic collection exceeds its item limit")
@@ -387,6 +401,10 @@ class _ContextCapture:
                 evidence["artifacts"] = tuple(artifacts)
                 if not facts.complete:
                     coverage.append("Unsupported non-scalar diagnostic facts are explicitly marked; no live objects retained.")
+                if report.execution_statistics is not None:
+                    coverage.append(f"Native history retained {len(report.executions)} of "
+                                    f"{report.execution_statistics.report_count} step reports and omitted "
+                                    f"{report.history_omitted} older lifecycle entries.")
                 if len(records) != sequence:
                     coverage.append("Context records contain only live-policy-retained values; earlier records were pruned/unavailable.")
                 coverage.extend(("Artifact payloads, checkpoints, exception tracebacks and placement leases are excluded.",

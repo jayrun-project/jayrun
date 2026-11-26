@@ -140,6 +140,16 @@ These returned values describe committed or captured evidence; they do not grant
 ```
 
 ```{eval-rst}
+.. autoclass:: jayrun.context.ExecutionStatistics
+   :members:
+```
+
+```{eval-rst}
+.. autoclass:: jayrun.context.LifecycleCheckpoint
+   :members:
+```
+
+```{eval-rst}
 .. autoclass:: jayrun.context.ContextReport
    :members:
 ```

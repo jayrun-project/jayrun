@@ -214,12 +214,15 @@ def _key(submission: _NormalizedSubmission, settings: CombinedContextSettings,
         data = submission.configs.instances.get(by_id[config_id])
         values.append((config_id, ["missing"] if data is None else encoder.encode(data.value)))
     configuration_key = _CONFIG_PREFIX + _digest(("selected-resolved-configs-1", selected, values))
+    records = settings.record_policy
     execution = ({"standard": "production", "diagnostic": "debug", "minimal": "performance"}[settings.recording_mode.value], settings.failure_mode.value,
                  settings.max_iterations, settings.max_repeats, settings.retry_policy.max_attempts,
                  tuple(_qualified(cls) for cls in settings.retry_policy.retry_on),
-                 settings.record_history_limit, settings.record_max_keys, settings.record_max_value_bytes,
-                 settings.record_max_total_bytes, settings.artifact_policy.release_entry_artifacts,
+                 records.history_per_key, records.max_keys, records.max_value_bytes,
+                 records.max_total_bytes, settings.artifact_policy.release_entry_artifacts,
                  tuple(graph._specification.artifacts.definition_for(a).artifact_id
                        for a in settings.artifact_policy.retained_artifacts))
+    if settings.execution_history_limit is not None:
+        execution += (settings.execution_history_limit,)
     compatibility_key = _COMPATIBILITY_PREFIX + _digest(("active-step-and-local-wall-1", signature, environment, execution))
     return _TimingKey(graph.graph_id, graph.version, configuration_key, compatibility_key, len(graph._compiled_graph.steps))

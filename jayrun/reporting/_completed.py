@@ -5,7 +5,7 @@ changes runtime state, or turns absence of a record into a successful outcome.
 """
 from __future__ import annotations
 
-from dataclasses import fields, is_dataclass
+from dataclasses import asdict, fields, is_dataclass
 from datetime import datetime
 from enum import Enum
 import json
@@ -171,6 +171,9 @@ def _completed_evidence(
             'stdout': 'not captured; free-text labels/logs/exceptions are not a credential detector',
         },
     }
+    if report.execution_statistics is not None:
+        data['execution_statistics'] = asdict(report.execution_statistics)
+        data['coverage'].update(executions_omitted=report.executions_omitted, history_omitted=report.history_omitted)
     data.update(submission_evidence(snapshot, graph))
     _encode(data)
     return data
@@ -332,6 +335,8 @@ def _format_evidence(data: dict, *, compact: bool = False) -> str:
              'FAILED STEP', *_text_tree(data['failed_step']),
              'COVERAGE', *_text_tree(data['coverage']),
              'FAILURE', *_text_tree(data['failure'])]
+    if data.get('execution_statistics') is not None:
+        lines.extend(['CUMULATIVE EXECUTION STATISTICS', *_text_tree(data['execution_statistics'])])
     lines.extend(['CONFIGURATION', *_text_tree(data.get('configuration', {'availability':'not captured'})),
                   'Configuration entries omitted: '+str(data.get('configuration_omitted', 'unknown')),
                   'SETTINGS', *_text_tree(data.get('settings', {'availability':'not captured'}))])

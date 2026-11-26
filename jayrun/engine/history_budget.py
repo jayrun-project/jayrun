@@ -16,8 +16,9 @@ if TYPE_CHECKING:
 
 
 class _HistoryBudget:
-    def __init__(self, limit: int | None) -> None:
+    def __init__(self, limit: int | None, *, track: bool = False) -> None:
         self.limit = limit
+        self._track = track or limit is not None
         self._used = 0
         self._lock = threading.Lock()
 
@@ -40,10 +41,10 @@ class _HistoryBudget:
         )
 
     def admit(self) -> bool:
-        if self.limit is None:
+        if not self._track:
             return True
         with self._lock:
-            if self._used >= self.limit:
+            if self.limit is not None and self._used >= self.limit:
                 return False
             self._used += 1
             return True
@@ -54,12 +55,12 @@ class _HistoryBudget:
 
     def account(self, count: int = 1) -> None:
         # Never stop cleanup or lose factual evidence for already admitted work.
-        if self.limit is not None:
+        if self._track:
             with self._lock:
                 self._used += count
 
     def restore(self, snapshot: ContextSnapshot) -> None:
-        if self.limit is not None:
+        if self._track:
             with self._lock:
                 self._used = max(self._used, self.cost(snapshot))
 
@@ -70,7 +71,8 @@ class _HistoryBudget:
 
     @staticmethod
     def cost(snapshot: ContextSnapshot) -> int:
-        return (len(snapshot.history) + len(snapshot.reports)
+        retained = (len(snapshot.history) + len(snapshot.reports)
                 + sum(len(report.attempts) + sum(len(a.records) for a in report.attempts)
                       for report in snapshot.reports)
                 + sum(len(result.history) for _, result in snapshot.artifacts))
+        return max(retained, snapshot.history_admissions)

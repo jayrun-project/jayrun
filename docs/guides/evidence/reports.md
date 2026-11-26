@@ -19,6 +19,10 @@ Use `run.report.data` when application code needs structured fields rather than 
 
 ## Walk from a report to an execution record
 
+With [bounded native history](../runs/capacity.md#keep-a-rolling-execution-history), `run.snapshot().execution_statistics` and the finalized `run.report.data.execution_statistics` count committed work over the lifetime of the context. `finished`, `skipped`, `failed` and `cancelled` count step sessions. Their sum is `report_count`. `executions` includes repeats and `attempts` includes retries. The snapshot also exposes `iteration_count` and `completed_iterations`, including after recovery.
+
+Use `report.executions_omitted` and `report.history_omitted` on the structured terminal report to find out how much detail precedes the retained window. The final failure and failed step remain available. Stored history and dashboard reports show the lifetime counters alongside retained detail. An observer receives newly emitted events according to its own capacity.
+
 Follow `run.report.data.executions` to a step, then read `step.attempts` and each `attempt.records`. A step report identifies its outcome even when an attempt has no optional records. Read explicit application values separately through `run.records(key)`.
 
 This complete program records a sum and prints the step outcome and diagnostic record types:

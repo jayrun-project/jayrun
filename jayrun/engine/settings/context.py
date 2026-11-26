@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
+import sys
 from typing import TypeAlias
 
+from .._snapshot_compat import restore_settings
 from ...core.artifact.base import Artifact
 from ...core.graph.definition.artifact import ArtifactDefinition
 from .engine import RetryPolicy
@@ -48,6 +50,50 @@ class ArtifactPolicy:
             raise TypeError("release_entry_artifacts must be a bool")
 
 
+def _validate_positive_integer(
+    value: int | None,
+    name: str,
+) -> None:
+    if isinstance(value, bool):
+        raise TypeError(f"{name} must be an int or None")
+
+    if value is None:
+        return
+
+    if not isinstance(value, int):
+        raise TypeError(f"{name} must be an int or None")
+
+    if value < 1:
+        raise ValueError(f"{name} must be greater than or equal to one")
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class RecordPolicy:
+    """Bound application values written through a context's record interface.
+
+    Args:
+        history_per_key: Keep the latest N committed records per key. None
+            keeps every admitted record for that key.
+        max_keys: Maximum distinct keys across retained and pending records.
+        max_value_bytes: Maximum accounted bytes per value, up to 64 MiB.
+        max_total_bytes: Maximum accounted bytes across retained and pending values.
+    """
+
+    history_per_key: int | None = 64
+    max_keys: int = 256
+    max_value_bytes: int = 65_536
+    max_total_bytes: int = 8_388_608
+
+    def __post_init__(self) -> None:
+        _validate_positive_integer(self.history_per_key, "history_per_key")
+        for name in ("max_keys", "max_value_bytes", "max_total_bytes"):
+            value = getattr(self, name)
+            if type(value) is not int or value < 1:
+                raise ValueError(f"{name} must be a positive integer")
+        if self.max_value_bytes > 64 * 1024 * 1024:
+            raise ValueError("max_value_bytes cannot exceed 64 MiB")
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ContextSettings:
     """Configure execution behavior for one submitted context.
@@ -59,32 +105,27 @@ class ContextSettings:
             iteration controlled through runtime supervision.
         max_repeats: Maximum additional executions per step session, or ``None`` for
             no context-level cap.
-        record_history_limit: Retained records per key: 1 for latest, N for last N, None
-            for explicit full history. Default 64. Reads expose retained history.
-        record_max_keys: Maximum distinct retained or pending record keys.
-        record_max_value_bytes: Maximum accounted bytes per value (16 per node plus
-            UTF-8 string bytes and integer magnitude bytes).
-        record_max_total_bytes: Bound on retained and pending accounted value
-            bytes. Requests exceeding a bound fail before queueing.
+        execution_history_limit: Number of recent graph iterations with detailed
+            step reports. Also bounds lifecycle entries and diagnostic transitions
+            per artifact. None keeps full native history (the default).
+        record_policy: Retention and admission limits for application records.
     """
+
+    __setstate__ = restore_settings
 
     artifact_policy: ArtifactPolicy = field(default_factory=ArtifactPolicy)
     retry_policy: RetryPolicy | None = None
     max_iterations: int | None = 1
     max_repeats: int | None = None
-    record_history_limit: int | None = 64
-    record_max_keys: int = 256
-    record_max_value_bytes: int = 65536
-    record_max_total_bytes: int = 8388608
+    execution_history_limit: int | None = None
+    record_policy: RecordPolicy = field(default_factory=RecordPolicy)
 
     def __post_init__(self) -> None:
-        self._validate_positive_integer(self.record_history_limit, "record_history_limit")
-        for name in ("record_max_keys", "record_max_value_bytes", "record_max_total_bytes"):
-            value = getattr(self, name)
-            if type(value) is not int or value < 1:
-                raise ValueError(f"{name} must be a positive integer")
-        if self.record_max_value_bytes > 64 * 1024 * 1024:
-            raise ValueError("record_max_value_bytes cannot exceed 64 MiB")
+        _validate_positive_integer(self.execution_history_limit, "execution_history_limit")
+        if self.execution_history_limit is not None and self.execution_history_limit > sys.maxsize:
+            raise ValueError("execution_history_limit exceeds the maximum collection size")
+        if not isinstance(self.record_policy, RecordPolicy):
+            raise TypeError("record_policy must be a RecordPolicy instance")
         if not isinstance(self.artifact_policy, ArtifactPolicy):
             raise TypeError("artifact_policy must be an ArtifactPolicy instance")
 
@@ -94,7 +135,7 @@ class ContextSettings:
         ):
             raise TypeError("retry_policy must be a RetryPolicy instance or None")
 
-        self._validate_positive_integer(
+        _validate_positive_integer(
             self.max_iterations,
             "max_iterations",
         )
@@ -102,20 +143,3 @@ class ContextSettings:
             raise TypeError("max_repeats must be an int or None")
         if self.max_repeats is not None and self.max_repeats < 0:
             raise ValueError("max_repeats must be a non-negative int or None")
-
-    @staticmethod
-    def _validate_positive_integer(
-        value: int | None,
-        name: str,
-    ) -> None:
-        if isinstance(value, bool):
-            raise TypeError(f"{name} must be an int or None")
-
-        if value is None:
-            return
-
-        if not isinstance(value, int):
-            raise TypeError(f"{name} must be an int or None")
-
-        if value < 1:
-            raise ValueError(f"{name} must be greater than or equal to one")

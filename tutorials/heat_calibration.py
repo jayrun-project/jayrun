@@ -16,7 +16,7 @@ import jayrun
 from jayrun import (Artifact, ArtifactContext, ArtifactField, ArtifactFlow, BaseOperator,
                     BaseResource, ConfigField, Data, Engine, GraphDefinition, ResourceField)
 from jayrun.context import ContextState
-from jayrun.settings import ArtifactPolicy, ContextSettings, EngineSettings
+from jayrun.settings import ArtifactPolicy, ContextSettings, RecordPolicy, EngineSettings
 
 
 @dataclass(frozen=True, slots=True)
@@ -157,7 +157,7 @@ def source_manifest() -> dict[str, object]:
 def run_demo(*, output_directory: Path | None = None) -> dict[str, object]:
     problem = make_problem()
     graph, artifact = build_graph()
-    settings = ContextSettings(max_iterations=None, record_history_limit=4,
+    settings = ContextSettings(max_iterations=None, record_policy=RecordPolicy(history_per_key=4),
         artifact_policy=ArtifactPolicy(release_entry_artifacts=True))
     evidence: list[dict[str, object]] = []
     best: SimulationState | None = None

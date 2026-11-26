@@ -3,7 +3,7 @@ from dataclasses import dataclass, field, replace
 from ...core.artifact.base import Artifact
 from ...core.graph.definition.artifact import ArtifactDefinition
 from ...core.graph.registry.artifact import ArtifactRegistry
-from .context import ArtifactPolicy, ContextSettings
+from .context import ArtifactPolicy, ContextSettings, RecordPolicy
 from ._instrumentation import _InstrumentationPolicy
 from .engine import (
     EngineSettings,
@@ -21,10 +21,8 @@ class CombinedContextSettings:
     artifact_policy: ArtifactPolicy
     max_iterations: int | None
     max_repeats: int | None
-    record_history_limit: int | None = 64
-    record_max_keys: int = 256
-    record_max_value_bytes: int = 65536
-    record_max_total_bytes: int = 8388608
+    execution_history_limit: int | None = None
+    record_policy: RecordPolicy = field(default_factory=RecordPolicy)
     instrumentation: _InstrumentationPolicy = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -66,10 +64,8 @@ class CombinedContextSettings:
             artifact_policy=artifact_policy,
             max_iterations=context_settings.max_iterations,
             max_repeats=context_settings.max_repeats,
-            record_history_limit=context_settings.record_history_limit,
-            record_max_keys=context_settings.record_max_keys,
-            record_max_value_bytes=context_settings.record_max_value_bytes,
-            record_max_total_bytes=context_settings.record_max_total_bytes,
+            execution_history_limit=context_settings.execution_history_limit,
+            record_policy=context_settings.record_policy,
         )
 
     @classmethod

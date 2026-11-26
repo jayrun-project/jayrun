@@ -7,17 +7,17 @@
     },
     "first-run.png": {
       "provenance": "Chromium capture of the three fitted graph nodes and their connecting edges in the completed Scale example. Captured at 2x pixel density.",
-      "sha256": "3e6125512439445481e75765a9739edd68422fe9ecc7632d87231a72a0dd6812",
+      "sha256": "91c6a7c78ef978668ec6a4d5be820f01c871f55a7289e509406d88070d2cb157",
       "source": "docs/_static/first_run.html"
     },
     "split-and-join.png": {
       "provenance": "Captured with Chromium from the bundled declaration viewer.",
-      "sha256": "e5d9fd072a1e248fcd493451282712f42b7459b86620160cffd7e83a66ad8847",
+      "sha256": "fc567508384f9c706072ea5219bcc4524e7a2bcb9b3a8afec21b35721fc000b1",
       "source": "docs/_static/split_join.html"
     }
   },
   "sources": {
-    "docs/_static/first_run.html": "17e4540440e67804943f687ea361292974e3adefd20fe91880c7171f4e39749d",
-    "docs/_static/split_join.html": "1bd97036255fca6d794b143171ea25b1df65ecde4869c5c38b0e0b97a9a42d65"
+    "docs/_static/first_run.html": "68927f90ea49733f71f579bdb7f01ee70cb811f0b64cb34dff0ba4cfae4bc091",
+    "docs/_static/split_join.html": "cc237653d434ba69b1e6c2260c59469eab9c804cf78341a233847f8679355656"
   }
 }

@@ -17,6 +17,7 @@ from .registry.context_state import ContextState
 
 if TYPE_CHECKING:
     from .registry.context_instance import ContextInstance
+    from .settings.engine import TerminalHistoryPolicy
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,10 +75,9 @@ class _TerminalHistory:
     _MAX_ENTRY_BYTES = 8192
     _MAX_PAGE = 256
 
-    def __init__(self, engine: str, limit: int, max_bytes: int) -> None:
+    def __init__(self, engine: str, policy: TerminalHistoryPolicy) -> None:
         self._engine = engine
-        self._limit = limit
-        self._max_bytes = max_bytes
+        self._policy = policy
         self._entries: deque[tuple[TerminalSummary, int]] = deque()
         self._bytes = 0
         self._sequence = 0
@@ -132,11 +132,11 @@ class _TerminalHistory:
             data.update(state=summary.state.value, created_at=summary.created_at.isoformat(),
                         finished_at=summary.finished_at.isoformat())
             size = len(json.dumps(data, ensure_ascii=True, separators=(',', ':')).encode('utf-8'))
-            if self._limit and size <= min(self._MAX_ENTRY_BYTES, self._max_bytes):
+            if self._policy.max_entries and size <= min(self._MAX_ENTRY_BYTES, self._policy.max_bytes):
                 self._entries.append((summary, size))
                 self._bytes += size
             # Skipped entries still advance the cursor, so loss is detectable.
-            while len(self._entries) > self._limit or self._bytes > self._max_bytes:
+            while len(self._entries) > self._policy.max_entries or self._bytes > self._policy.max_bytes:
                 _, size = self._entries.popleft()
                 self._bytes -= size
 

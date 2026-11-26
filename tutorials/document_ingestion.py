@@ -26,7 +26,7 @@ from jayrun import (Artifact, ArtifactContext, ArtifactField, ArtifactFlow, Base
                     BaseResource, ConfigContext, ConfigField, Data, Engine,
                     GraphDefinition, ResourceField)
 from jayrun.context import ContextState
-from jayrun.settings import ArtifactPolicy, ContextSettings
+from jayrun.settings import ArtifactPolicy, ContextSettings, RecordPolicy
 
 
 class DocumentRequest(BaseModel):
@@ -279,7 +279,7 @@ def create_app(*, storage: str | Path | None = None, max_active: int = 4,
             configs.set({app.state.parse.review: request.review})
             try:
                 run = app.state.engine.submit(app.state.graph, inputs, configs,
-                    settings=ContextSettings(record_history_limit=4,
+                    settings=ContextSettings(record_policy=RecordPolicy(history_per_key=4),
                         artifact_policy=ArtifactPolicy(release_entry_artifacts=True)))
             except Exception:
                 await asyncio.to_thread(app.state.store.delete, digest)

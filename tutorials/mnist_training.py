@@ -9,7 +9,7 @@ from jayrun import (Artifact, ArtifactContext, ArtifactField, ArtifactFlow, Base
                     ConfigContext, ConfigField, Data, Engine, GraphDefinition, Supervisor)
 from jayrun.context import ContextState
 from jayrun.placement import Device
-from jayrun.settings import ArtifactPolicy, ContextSettings
+from jayrun.settings import ArtifactPolicy, ContextSettings, RecordPolicy
 from tutorials.mnist_data import Classifier, Dataset, engine_settings, load_data
 
 
@@ -151,7 +151,7 @@ def run_demo(*, real_mnist: bool = False, device: str = "cpu") -> dict[str, obje
     graph, dataset, state_artifact, train = build_training_graph()
     selection_graph, trigger, select = build_selection_graph()
     runs = []
-    settings = ContextSettings(max_iterations=None, record_history_limit=4,
+    settings = ContextSettings(max_iterations=None, record_policy=RecordPolicy(history_per_key=4),
         artifact_policy=ArtifactPolicy(retained_artifacts=(state_artifact,), release_entry_artifacts=True))
     with Engine(engine_settings(device)) as engine:
         def submit(state: TrainingState):

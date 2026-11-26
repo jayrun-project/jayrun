@@ -16,15 +16,16 @@ from ..persistence.values import (DiagnosticCodec, VALUE_SCHEMA, ValueLimits,
                                  ValueMarker, ValuePath, ValueSnapshot, _json, encode_value)
 
 _DEFAULT_LIMITS = ValueLimits()
-_REQUESTED = tuple(sorted(('max_iterations', 'max_repeats', 'record_history_limit',
-    'record_max_keys', 'record_max_value_bytes', 'record_max_total_bytes',
-    'retry_policy', 'artifact_policy')))
+_REQUESTED = ('artifact_policy', 'execution_history_limit', 'max_iterations', 'max_repeats',
+              'record_policy', 'retry_policy')
 _EFFECTIVE = tuple(sorted((*_REQUESTED, 'recording_mode', 'failure_mode')))
+_SETTINGS_BY_LENGTH = {len(names): names for names in (_REQUESTED, _EFFECTIVE)}
 _ARTIFACT = ('release_entry_artifacts', 'retained_artifacts')
+_RECORD = ('history_per_key', 'max_keys', 'max_total_bytes', 'max_value_bytes')
 _RETRY = ('max_attempts', 'retry_on')
 _CONFIG = ('layout_position', 'name', 'owner', 'value')
 _KEYS = MappingProxyType({name: ('str', name)
-                         for name in (*_EFFECTIVE, *_ARTIFACT, *_RETRY, *_CONFIG)})
+                         for name in (*_EFFECTIVE, *_ARTIFACT, *_RECORD, *_RETRY, *_CONFIG)})
 
 
 def _matches(value: object, names: tuple[str, ...]) -> bool:
@@ -68,8 +69,8 @@ def _sequence(value: object, item_type: type, maximum: int = 64) -> tuple | None
 
 
 def _settings(value: dict) -> tuple | None:
-    names = _REQUESTED if len(value) == len(_REQUESTED) else _EFFECTIVE
-    if not _matches(value, names):
+    names = _SETTINGS_BY_LENGTH.get(len(value))
+    if names is None or not _matches(value, names):
         return None
     policy = value['artifact_policy']
     if not _matches(policy, _ARTIFACT):
@@ -88,9 +89,19 @@ def _settings(value: dict) -> tuple | None:
         if attempts is None or retry_on is None:
             return None
         retry = ('dict', [(_KEYS['max_attempts'], attempts), (_KEYS['retry_on'], retry_on)])
+    record = value['record_policy']
+    if not _matches(record, _RECORD):
+        return None
+    record_pairs = []
+    for name in _RECORD:
+        node = _scalar(record[name])
+        if node is None:
+            return None
+        record_pairs.append((_KEYS[name], node))
+    policies = {'artifact_policy': artifact, 'record_policy': ('dict', record_pairs), 'retry_policy': retry}
     pairs = []
     for name in names:
-        node = artifact if name == 'artifact_policy' else retry if name == 'retry_policy' else _scalar(value[name])
+        node = policies[name] if name in policies else _scalar(value[name])
         if node is None:
             return None
         pairs.append((_KEYS[name], node))

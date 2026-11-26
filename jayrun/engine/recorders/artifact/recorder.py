@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections import deque
+
 from ...history_budget import _HistoryBudget
 
 from ....core.artifact.base import Artifact
@@ -24,6 +26,7 @@ class ArtifactRecorder:
         artifacts: tuple[Artifact, ...],
         *,
         iteration: int = 1,
+        history_limit: int | None = None,
     ) -> None:
         if self._state is RecorderState.RUNNING:
             raise RuntimeError("recorder is already running")
@@ -31,13 +34,9 @@ class ArtifactRecorder:
             raise ValueError("iteration must be a positive int")
         self._iteration = iteration
         self._state = RecorderState.RUNNING
-        self._records: dict[Artifact, list[ArtifactRecord] | ArtifactRecord | None] = {}
-
-        for artifact in artifacts:
-            if self._keep_history:
-                self._records[artifact] = []
-            else:
-                self._records[artifact] = None
+        self._records: dict[Artifact, deque[ArtifactRecord] | ArtifactRecord | None] = {
+            artifact: deque(maxlen=history_limit) if self._keep_history else None for artifact in artifacts
+        }
 
         self._report: dict[Artifact, tuple[ArtifactRecord, ...]] | None = None
 
@@ -94,15 +93,10 @@ class ArtifactRecorder:
 
         self._report = {}
         for artifact, records in self._records.items():
-            if self._keep_history:
-                artifact_records = tuple(records)
-            elif records is None:
-                artifact_records = ()
+            if isinstance(records, deque):
+                artifact_records = tuple(records) or (self._unregistered_record(),)
             else:
-                artifact_records = (records,)
-
-            if not artifact_records:
-                artifact_records = (self._unregistered_record(),)
+                artifact_records = (records or self._unregistered_record(),)
 
             self._report[artifact] = artifact_records
 
@@ -135,16 +129,13 @@ class ArtifactRecorder:
             iteration=self._iteration,
         )
 
-        if self._keep_history:
-            records = self._records[artifact]
-            if not isinstance(records, list):
-                raise TypeError("artifact history store is invalid")
+        records = self._records[artifact]
+        if isinstance(records, deque):
             if self._history_budget is not None:
                 self._history_budget.account()
             records.append(record)
-            return
-
-        self._records[artifact] = record
+        else:
+            self._records[artifact] = record
 
     def _unregistered_record(self) -> ArtifactRecord:
         return ArtifactRecord(

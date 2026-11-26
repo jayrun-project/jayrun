@@ -19,7 +19,7 @@ class ContextRecordRepository:
     def __init__(
         self, settings: CombinedContextSettings | ContextSettings, context_id: int,
     ) -> None:
-        self._settings = settings
+        self._policy = settings.record_policy
         self._context_id = context_id
         self._records: dict[str, deque[ContextRecord]] = {}
         self._record_snapshots: dict[str, tuple[ContextRecord, ...]] = {}
@@ -34,18 +34,18 @@ class ContextRecordRepository:
         self._closed = False
 
     def enqueue(self, record: ContextRecord, submit: Callable[[], None]) -> None:
-        _, size = _freeze_value(record.value, max_bytes=self._settings.record_max_value_bytes)
+        _, size = _freeze_value(record.value, max_bytes=self._policy.max_value_bytes)
         with self._lock:
             if self._closed:
                 raise RuntimeError("context record repository is closed")
             if record.sequence != 0 or record.context_id != self._context_id:
                 raise ValueError("record request identity is invalid")
             keys = self._records.keys() | self._pending_keys.keys() | {record.key}
-            if len(keys) > self._settings.record_max_keys:
+            if len(keys) > self._policy.max_keys:
                 raise ValueError("record key limit exceeded")
             # Conservatively reserve in-flight values; no accepted request relies
             # on a future prune to fit the declared total budget.
-            if self._total_bytes + self._pending_bytes + size > self._settings.record_max_total_bytes:
+            if self._total_bytes + self._pending_bytes + size > self._policy.max_total_bytes:
                 raise ValueError("record total byte limit exceeded")
             self._release_pending(record)
             self._pending[id(record)] = (record, size)
@@ -83,7 +83,7 @@ class ContextRecordRepository:
             if records is None:
                 records = self._records[record.key] = deque()
             records.append(committed)
-            limit = self._settings.record_history_limit
+            limit = self._policy.history_per_key
             while limit is not None and len(records) > limit:
                 old = records.popleft()
                 self._total_bytes -= self._sizes.pop(old.sequence)
@@ -155,7 +155,7 @@ class ContextRecordRepository:
             if not previous < record.sequence <= sequence:
                 raise ValueError("snapshot record sequences must be ordered and unique")
             previous = record.sequence
-            _, size = _freeze_value(record.value, max_bytes=self._settings.record_max_value_bytes)
+            _, size = _freeze_value(record.value, max_bytes=self._policy.max_value_bytes)
             values = grouped.get(record.key)
             if values is None:
                 values = grouped[record.key] = deque()
@@ -163,20 +163,20 @@ class ContextRecordRepository:
             sizes[record.sequence] = size
         if (sequence > 0 and previous != sequence) or (sequence == 0 and records):
             raise ValueError("snapshot must retain its latest record")
-        limit = self._settings.record_history_limit
+        limit = self._policy.history_per_key
         required = sequence if limit is None else min(sequence, limit)
         if len(records) < required or any(
             record.sequence != sequence - required + index + 1
             for index, record in enumerate(records[len(records) - required:])
         ):
             raise ValueError("snapshot is missing records required by retention")
-        if len(grouped) > self._settings.record_max_keys:
+        if len(grouped) > self._policy.max_keys:
             raise ValueError("snapshot record key limit exceeded")
-        if self._settings.record_history_limit is not None and any(
-            len(values) > self._settings.record_history_limit for values in grouped.values()
+        if limit is not None and any(
+            len(values) > limit for values in grouped.values()
         ):
             raise ValueError("snapshot record retention limit exceeded")
-        if sum(sizes.values()) > self._settings.record_max_total_bytes:
+        if sum(sizes.values()) > self._policy.max_total_bytes:
             raise ValueError("snapshot record total byte limit exceeded")
         return grouped, sizes
 

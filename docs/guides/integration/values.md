@@ -8,4 +8,6 @@ The [serialization reference](../../reference/serialization.md) lists signatures
 
 A whole `ContextSnapshot` contains more than config/record values: identities, ownership generations, requests, committed revisions, artifacts and other evidence. Neither codec pair is a whole-snapshot transport serializer. Your application must define the envelope, validate its peer and deliver it to an authorized Engine/runtime `apply` call.
 
+Portable context settings carry the nested `record_policy` and the independent `execution_history_limit`. Use matching Jayrun versions when transferring live snapshots. A pickle of 0.3.4 settings uses a different field layout and cannot restore a 0.3.5 context. Existing SQLite diagnostic records retain the settings captured when each run was submitted. Update any settings redaction paths to include the policy name, for example `("requested_settings", "record_policy", "max_keys")`.
+
 Diagnostic persistence codecs are another boundary: they encode bounded evidence for inspection, not arbitrary executable objects or recoverable model state. Use application checkpoints for that purpose.

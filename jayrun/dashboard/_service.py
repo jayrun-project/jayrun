@@ -435,7 +435,7 @@ class _Service:
                                    revision=snapshot.revision + 1, updated_at=now, history=history,
                                    request_duration=None, artifact_context=(), artifacts=(),
                                    config_context=(), records=(), reports=(), report=None,
-                                   context_settings=ContextSettings())
+                                   context_settings=ContextSettings(execution_history_limit=snapshot.context_settings.execution_history_limit))
         self.runtime.apply(request_snapshot)
         request = {'id':request_id,'context':context_id,'action':action,'status':'submitted',
                    'submitted_at':now.isoformat(),

@@ -243,8 +243,19 @@
       if (this.payload.completed) {
         const label = element("label", "Iteration");
         this.iterationSelect = element("select", null, {"aria-label": "Completed iteration"});
-        const count = this.payload.completed.iteration_count;
-        for (let i = count ? 1 : 0; i <= count; i++) this.iterationSelect.append(element("option", count ? String(i) : "No iteration started", {value: String(i)}));
+        const evidence = this.payload.completed;
+        const count = evidence.iteration_count;
+        const addIteration = i => this.iterationSelect.append(element("option", count ? String(i) : "No iteration started", {value: String(i)}));
+        if (evidence.execution_statistics != null || count > 50000) {
+          const retained = new Set([count]);
+          for (const item of [...evidence.executions, ...evidence.records]) retained.add(item.iteration);
+          for (const artifact of evidence.artifacts) {
+            for (const transition of artifact.history) retained.add(transition.iteration);
+          }
+          for (const i of [...retained].filter(Number.isSafeInteger).sort((a, b) => a - b)) addIteration(i);
+        } else {
+          for (let i = count ? 1 : 0; i <= count; i++) addIteration(i);
+        }
         this.iterationSelect.value = String(count);
         label.append(this.iterationSelect); this.toolbar.append(label);
         this.toolbar.append(element("small", "Bars compare active session durations, not progress or a timeline.", {class: "duration-key"}));

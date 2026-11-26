@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from itertools import count
@@ -28,7 +29,8 @@ from ..progress import (
     _ProgressTracker,
     _ProgressUpdate,
 )
-from ..recorders.context.report import ContextReport
+from ..progress_history import ProgressHistory, _MutableStepProfile
+from ..recorders.context.report import ContextReport, ExecutionStatistics
 from ..recorders.execution.records import ExecutionReport, FailureRecord
 from ..settings.combined_context import CombinedContextSettings
 from ..settings.context import ArtifactPolicy, ContextSettings
@@ -191,11 +193,14 @@ class ContextInstance:
         self.artifact_context = submission.artifacts
         self.config_context = submission.configs
 
-        self._history_budget = _HistoryBudget(history_limit)
-        self.status = ContextStatus(_budget=self._history_budget)
+        limit = settings.execution_history_limit
+        self._history_budget = _HistoryBudget(history_limit, track=limit is not None)
+        self.status = ContextStatus(history=deque(maxlen=limit), _budget=self._history_budget)
         self._snapshot_revision = 0
         self._published_state = ContextState.SUBMITTED
-        self._executions: list[ExecutionReport] = []
+        self._executions: deque[ExecutionReport] = deque()
+        self._execution_statistics = None if limit is None else ExecutionStatistics()
+        self._evicted_timing: list[_MutableStepProfile] | None = None
         self._executions_snapshot: tuple[ExecutionReport, ...] | None = ()
         self._record_repository = ContextRecordRepository(settings, context_id)
         self._report: ContextReport | None = None
@@ -501,14 +506,35 @@ class ContextInstance:
             self.failed_step = None
             self._transition(ContextState.FINISHED, actor)
 
-    def _load_executions(
-        self,
-        executions: tuple[ExecutionReport, ...],
-    ) -> None:
+    def _commit_final_executions(self, executions: tuple[ExecutionReport, ...]) -> None:
         with self._inspection_lock:
-            self._executions = list(executions)
-            self._executions_snapshot = executions
+            # Emergency cleanup can retry the same terminal handoff if artifact
+            # serialization failed after recording this partial iteration.
+            if executions and (not self._executions or executions[0].iteration > self._executions[-1].iteration):
+                self._append_executions_locked(executions)
             self._touch_snapshot_locked()
+
+    def _append_executions_locked(self, executions: tuple[ExecutionReport, ...]) -> None:
+        if not executions:
+            return
+        self._executions.extend(executions)
+        self._executions_snapshot = None
+        limit = self._settings.execution_history_limit
+        if self._execution_statistics is None:
+            return
+        self._execution_statistics = self._execution_statistics._including(executions)
+        first = executions[-1].iteration - limit + 1
+        evicted = []
+        while self._executions[0].iteration < first:
+            evicted.append(self._executions.popleft())
+        # Finite timing profiles commit once, at finalization. Fold older
+        # observations now without publishing intermediate timing samples.
+        if evicted and self._settings.max_iterations is not None and self._settings.instrumentation.learn_progress:
+            step_count = len(self.graph._compiled_graph.steps)
+            if self._evicted_timing is None:
+                self._evicted_timing = [_MutableStepProfile() for _ in range(step_count)]
+            for item in ProgressHistory._observations(tuple(evicted), step_count):
+                self._evicted_timing[item.step_index].observe(item.state, item.duration)
 
     def _load_artifacts(self, artifacts: dict[Artifact, ArtifactResult]) -> None:
         with self._inspection_lock:
@@ -525,8 +551,7 @@ class ContextInstance:
     ) -> None:
         with self._inspection_lock:
             self._completed_iterations = self.status.iteration_count
-            self._executions.extend(executions)
-            self._executions_snapshot = None
+            self._append_executions_locked(executions)
             self._checkpoint_data = dict(checkpoint)
             self._artifact_context_snapshot = self._encode_artifact_data(
                 self._checkpoint_data
@@ -689,7 +714,7 @@ class ContextInstance:
             )
             self.status.iteration_count = snapshot.iteration_count
             self.status.stop_requested = snapshot.stop_requested
-            stop = next((entry for entry in snapshot.history if isinstance(entry, StopRequested)), None)
+            stop = snapshot._accepted_stop
             self.status.stop_requested_by = stop.actor if stop is not None else None
             self.status.stop_requested_at = stop.recorded_at if stop is not None else None
             self.status.created_at = snapshot.created_at
@@ -698,13 +723,18 @@ class ContextInstance:
             self.status.started_at = snapshot.started_at
             self.status.finished_at = snapshot.finished_at
             self._history_budget.restore(snapshot)
-            self.status.history = list(snapshot.history)
+            self.status.history = deque(snapshot.history, maxlen=self._settings.execution_history_limit)
+            self.status.history_prefix = snapshot.history_prefix
             self._published_state = snapshot.state
             self._snapshot_revision = snapshot.revision
             self._completed_iterations = snapshot.completed_iterations
             self._remote_progress = snapshot.progress
             self._record_repository.replace(snapshot.records, snapshot.record_sequence)
-            self._executions = [] if snapshot.finalized else list(snapshot.reports)
+            self._executions.clear()
+            if not snapshot.finalized:
+                self._executions.extend(snapshot.reports)
+            self._execution_statistics = snapshot.execution_statistics
+            self._evicted_timing = None
             self._executions_snapshot = snapshot.reports
             self._report = snapshot.report
             self._artifacts = dict(artifacts)
@@ -819,6 +849,9 @@ class ContextInstance:
             records=self._record_repository.snapshot,
             record_sequence=self._record_repository.sequence,
             reports=self._execution_reports,
+            execution_statistics=self._execution_statistics,
+            history_prefix=self.status.history_prefix,
+            history_admissions=self._history_budget.used if self._execution_statistics is not None else 0,
             report=self._report,
             artifacts=self._artifact_results_snapshot,
             artifact_context=self._artifact_context_snapshot,
@@ -862,6 +895,8 @@ class ContextInstance:
                 finished_at=finished_at,
                 history=tuple(self.status.history),
                 executions=self._execution_reports,
+                execution_statistics=self._execution_statistics,
+                history_omitted=self.status.history_prefix.count if self.status.history_prefix is not None else 0,
                 failure=self.failure,
                 failed_step=self.failed_step,
             )
@@ -878,6 +913,7 @@ class ContextInstance:
             # The finalized tuple now owns the evidence. Do not retain a second
             # mutable reference array for as long as a client keeps its run.
             self._executions.clear()
+            self._evicted_timing = None
 
             if (
                 self.settings is not None
@@ -1223,10 +1259,8 @@ class ContextInstance:
             retry_policy=self._settings.retry_policy,
             max_iterations=self._settings.max_iterations,
             max_repeats=self._settings.max_repeats,
-            record_history_limit=self._settings.record_history_limit,
-            record_max_keys=self._settings.record_max_keys,
-            record_max_value_bytes=self._settings.record_max_value_bytes,
-            record_max_total_bytes=self._settings.record_max_total_bytes,
+            execution_history_limit=self._settings.execution_history_limit,
+            record_policy=self._settings.record_policy,
         )
 
     def _reset_progress_tracker(self, previous: ProgressSnapshot) -> None:

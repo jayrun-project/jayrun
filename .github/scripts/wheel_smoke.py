@@ -46,7 +46,8 @@ def main() -> None:
         from jayrun.persistence import Database
         from jayrun.dashboard import prepare_dashboard
         from jayrun import Artifact, ArtifactFlow, BaseOperator, GraphDefinition
-        from jayrun.settings import ContextSettings, ControllerPolicy, EngineSettings
+        from jayrun.settings import (ContextSettings, ControllerPolicy, EngineSettings, RecordPolicy,
+                                     TerminalHistoryPolicy)
         from runtime_control import Answer
         answer = Artifact(name='answer')
         delegated = GraphDefinition(ArtifactFlow(Answer(outputs=(answer,))),
@@ -90,12 +91,21 @@ def main() -> None:
             restored = ConfigContext()
             restored.load_yaml(configs.to_yaml(graph), graph)
             configs = restored
-        with Engine(database=Database(Path(temporary) / 'history.sqlite')) as engine:
-            run = engine.submit(graph, ArtifactContext({source: 7}), configs)
+        settings = ContextSettings(max_iterations=3, execution_history_limit=1,
+                                   record_policy=RecordPolicy(history_per_key=1))
+        database = Database(Path(temporary) / 'history.sqlite')
+        with Engine(EngineSettings(terminal_history_policy=TerminalHistoryPolicy(max_entries=1)), database=database) as engine:
+            run = engine.submit(graph, ArtifactContext({source: 7}), configs, settings=settings)
             run.wait(timeout=10)
             assert run.state is ContextState.FINISHED and run.artifact(result).value == 21
             assert '<jayrun-graph' in run.plot.to_html()
+            assert run.report.data.executions_omitted == 2 and run.report.data.execution_statistics.finished == 3
             engine.database.flush(timeout=10)
+        with database:
+            session = database.get_session(engine.engine_id)
+            entry = database.get_context(engine.engine_id, f'{run.context_id}:0')
+            assert session.settings.decode()['terminal_history_policy']['max_entries'] == 1
+            assert entry.effective_settings.decode()['record_policy']['history_per_key'] == 1
         with Engine() as engine:
             prepared = prepare_dashboard(port=0, duration=0.05)
             run = engine.submit(prepared.graph, artifacts=prepared.artifacts,

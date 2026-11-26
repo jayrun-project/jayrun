@@ -13,7 +13,7 @@ Within one run, a graph iteration is one pass through its steps. An operator can
 | Scope | Changes within it | Relevant limit |
 | --- | --- | --- |
 | Engine incarnation | Contexts, services, shared resources, observers | Engine capacity and history settings |
-| Context | Submitted values, application records, retained exits | `record_history_limit` per key |
+| Context | Submitted values, native execution history, application records, retained exits | `execution_history_limit` for native history, `record_policy.history_per_key` per application key |
 | Graph iteration | One pass through the graph, including the steps eligible to run | `max_iterations` counts passes that start |
 | Step session | Bound resources and operator repetitions | `max_repeats` |
 | Execution | One result to publish | Retry policy |

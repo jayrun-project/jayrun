@@ -17,7 +17,7 @@
     "docs/_examples/split_join.py": "8723cf8cd8c2a7b9593187e55bf1d70089874bca2b24cb27f920aa24d7a3a55e",
     "docs/_examples/validation.py": "af3a7e65b8cc0b643b365f8585db9a13cdd2874db72ed260601d0b6e02120298",
     "docs/_scripts/render_visualizations.py": "a42ba197f02bc58358b7083fbe6e071e62eb7b2cd2770cb690acac548b781e63",
-    "docs/_static/dashboard_preview.html": "ddb7364071900bf9b505d91891092ac44c30ba67f4e03766ca3fc714c3716d55",
+    "docs/_static/dashboard_preview.html": "1424556e32bea49961d99b52c29b335d3d161d08eaa1d9d489f54752dbe20403",
     "jayrun/visualization/__init__.py": "94c4e5110ded1baa4ffb70b322f00f0cd389c95887efdaec07ea8fb376de3852",
     "jayrun/visualization/_copy.js": "6e447d249340244efcb7afdb3b719db0fddf6396260f58f5f06cc60d5c0e00ea",
     "jayrun/visualization/_facade.py": "f36bf980dea8146558e92e046edb3b06ef2c5e6061177bc2bf9d04b443cc1dda",
@@ -30,7 +30,7 @@
     "jayrun/visualization/_segments.py": "8d13a8ee085eb8a4edc04a36621523e66b80bb966b0901bed50f4a14894377dd",
     "jayrun/visualization/_theme.css": "7cbaecb27ad9bb54d24450030c389f6b869cbe4cd82a4a5ebd04d333766ac847",
     "jayrun/visualization/_workspace.css": "1469b15e781d586c1f6f7607e1a31fab5c7bcd75704f60eaa7d9d58e9e6bae32",
-    "jayrun/visualization/_workspace.js": "ba7f7e956690dece09a567ad1e4b3affe23152024293d6d46f0fcd9a37abb493",
+    "jayrun/visualization/_workspace.js": "49f7e3c5c731081d5311f5bfee8a7476ea30f4b0297de2799a5467bd6787849e",
     "jayrun/visualization/_workspace.py": "0e0bc94a035e8cd33f34b56a5b7d244e83d01905017964f441d6dccdf0acccf4",
     "jayrun/visualization/adapters/__init__.py": "b6310935879bef4f1673dcb452717f14ebe7f26dfa583ac5b4079f9617c07bca",
     "jayrun/visualization/adapters/_legacy_history.py": "b63c15d637ca425393994d98351623679435bc492398d27e7f447547777bd0c6",
@@ -41,22 +41,22 @@
     "jayrun/visualization/adapters/live.py": "acde7b7e85f274217a7b61963ccdaa46ac3d820091cb433ec965c424178b468c",
     "jayrun/visualization/adapters/registry.py": "80dbd73252e065b6ee0b5b96c602bb1381a8e94bb75f627500ba9d465edc90c0",
     "jayrun/visualization/colors.py": "7cb3bb384086b7a4ca4615aa3c4fee3a286056a7f5ef5bba34a3c936700d55d8",
-    "jayrun/visualization/contract.py": "cc5c760953667d4236e5107e19a3da04879712825a5d473a8282382aa46bb335",
+    "jayrun/visualization/contract.py": "6b79c94329e02a9145232466646f20668c383455305bdb2778457019a2390391",
     "jayrun/visualization/layout.py": "bcbf2b9d56b8f099b2ecdadae90f5951b87225b0cbcb98b8acb1aa59d963d5d8",
     "jayrun/visualization/renderer.py": "c96622c87428b692b0ef017466afb418a56276b80cba67d3e136eb32c423e51f",
     "jayrun/visualization/viewer.css": "507313c7b0735918f8c71e49d0d68935c68c6189d590892e8ef2aa46ffe7445c",
-    "jayrun/visualization/viewer.js": "622b4dc6f5819583e9b680f97223f18607279dbdbe79d2711f478ab5a8fb37ee"
+    "jayrun/visualization/viewer.js": "03d25068bb2d9aa47e0d96e914bb73f98a65732f7db648e2449384c84b90d18e"
   },
   "outputs": {
-    "split_join.html": "1bd97036255fca6d794b143171ea25b1df65ecde4869c5c38b0e0b97a9a42d65",
-    "conditional_routes.html": "e2296d26389445e09be8aa322d60940b6466d7d7024684432d22ca089a2c65e5",
-    "conditional_run.html": "2b7be0c732a60ee2bc72c4c397d9755177eac55e24757e2df789912b8e2346f6",
-    "plot_property_mismatch.html": "8fdaf02c700289b4933f77d83cf3b7b2f4fcfbd366bc36b4d3f27c25683f7436",
-    "first_graph.html": "bb039cb43f806233b1078b7f93a30194c6895c6d200bb96546f32e36359740bc",
-    "first_run.html": "17e4540440e67804943f687ea361292974e3adefd20fe91880c7171f4e39749d",
-    "lifetimes_graph.html": "140b89a30527c70c300654297b0b2d6dc3cd09a630b072499872d14cf7fa2b91",
-    "lifetimes_run.html": "093124e317c4cbf9f8b0962096658e9fddcbd778be117e5b1a49c78dffbec857",
-    "registry.html": "18fd4dd47cc7e3b07d73267a58eac713bcbddda2e9b200f5f4a829faa223a459",
-    "dashboard_preview.html": "ddb7364071900bf9b505d91891092ac44c30ba67f4e03766ca3fc714c3716d55"
+    "split_join.html": "cc237653d434ba69b1e6c2260c59469eab9c804cf78341a233847f8679355656",
+    "conditional_routes.html": "b364bca68e9d8c5de6a741ac2663a617302daa819d0a257de6c0b529edf4a2b4",
+    "conditional_run.html": "9a77a3fc6b26705988fbdcdb55039bc257183e642b514266eea91f7eb06520e8",
+    "plot_property_mismatch.html": "efc70658c655b498f28c519c7e52284e7e3df0cab825370db7cb27d5f0792f2b",
+    "first_graph.html": "656c5a4a6d619cb3837b31519da212e2e683ba932fcc559660839c3ec83d3e75",
+    "first_run.html": "68927f90ea49733f71f579bdb7f01ee70cb811f0b64cb34dff0ba4cfae4bc091",
+    "lifetimes_graph.html": "8eaaff99cc96d7a28ab75350c412b1d2530aee32ab06a54f42dd06a258fe7e08",
+    "lifetimes_run.html": "d4a8c8f235a2ff16863864484dd50953c8166a4d0068c017755ce5ceb5ae41d3",
+    "registry.html": "7284510327e554cf78ac35994aef415c554781cb02b957604b197996ef80bdd3",
+    "dashboard_preview.html": "1424556e32bea49961d99b52c29b335d3d161d08eaa1d9d489f54752dbe20403"
   }
 }

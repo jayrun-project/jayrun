@@ -33,7 +33,7 @@ import numpy as np
 from pathlib import Path
 from jayrun import ArtifactContext, Engine
 from jayrun.context import ContextState
-from jayrun.settings import ContextSettings
+from jayrun.settings import ContextSettings, RecordPolicy
 from tutorials import heat_calibration as lesson
 
 problem = lesson.make_problem()
@@ -51,7 +51,7 @@ def run_one_trial(diffusivity):
     graph, state = lesson.build_graph()
     with Engine() as engine:
         run = engine.submit(graph, ArtifactContext({state: lesson.initial_state(problem, diffusivity)}),
-                            settings=ContextSettings(max_iterations=None, record_history_limit=4))
+                            settings=ContextSettings(max_iterations=None, record_policy=RecordPolicy(history_per_key=4)))
         run.wait(timeout=30)
         if run.state is not ContextState.FINISHED:
             raise RuntimeError(str(run.report.data.failure))

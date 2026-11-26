@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from ...history_budget import _HistoryBudget
 
-from collections import deque
 from collections.abc import Callable
 from functools import partial
 
@@ -23,7 +22,6 @@ class ContextRecorder:
     ) -> None:
         self._execution_recorder_type = execution_recorder_type
         self._artifact_recorder_type = artifact_recorder_type
-        self._records: deque[ExecutionReport] = deque()
         self._iteration_records: list[ExecutionReport] = []
         self._state = RecorderState.RUNNING
         self._executions: tuple[ExecutionReport, ...] | None = None
@@ -48,19 +46,7 @@ class ContextRecorder:
         self._require_running()
         if self._history_budget is not None:
             self._history_budget.account()
-        self._records.append(record)
         self._iteration_records.append(record)
-
-    def restore(self, reports: tuple[ExecutionReport, ...]) -> None:
-        """Restore reports committed before this local execution generation."""
-        self._require_running()
-        if not isinstance(reports, tuple):
-            raise TypeError("reports must be a tuple")
-        if any(not isinstance(report, ExecutionReport) for report in reports):
-            raise TypeError("reports must contain ExecutionReport instances")
-        if self._records or self._iteration_records:
-            raise RuntimeError("reports can only be restored into an empty recorder")
-        self._records.extend(reports)
 
     def record_skipped(
         self,
@@ -113,8 +99,9 @@ class ContextRecorder:
     def stop(self) -> None:
         if self._state is RecorderState.STOPPED:
             return
-        self._executions = tuple(self._records)
-        self._records.clear()
+        # Completed iterations already belong to ContextInstance. Only a partial
+        # final iteration (failure, abort or startup rollback) remains here.
+        self._executions = tuple(self._iteration_records)
         self._iteration_records.clear()
         self._state = RecorderState.STOPPED
 

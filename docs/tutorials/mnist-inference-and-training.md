@@ -115,7 +115,7 @@ import asyncio
 import inspect
 from jayrun import ArtifactContext, ConfigContext, Engine
 from jayrun.context import ContextState
-from jayrun.settings import ContextSettings
+from jayrun.settings import ContextSettings, RecordPolicy
 from tutorials import mnist_training as lesson
 from tutorials.mnist_data import load_data
 
@@ -136,7 +136,7 @@ def inspect_pause_boundary():
         run = engine.submit(
             graph, ArtifactContext({dataset: data, state: lesson.new_state(11)}),
             ConfigContext({train.pause_at: (2,)}),
-            settings=ContextSettings(max_iterations=None, record_history_limit=4),
+            settings=ContextSettings(max_iterations=None, record_policy=RecordPolicy(history_per_key=4)),
         )
         try:
             run.wait(ContextState.PAUSED, timeout=30)

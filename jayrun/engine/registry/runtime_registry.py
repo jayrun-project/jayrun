@@ -52,7 +52,7 @@ from ..observation import (
 from ..pressure import PressureSnapshot
 from ..progress import ProgressSnapshot, _ProgressUpdate
 from ..recorders.context.recorder import ContextRecorder
-from ..recorders.context.report import ContextReport
+from ..recorders.context.report import ContextReport, ExecutionStatistics
 from ..recorders.execution.records import (
     ExecutionReport,
     FailureRecord,
@@ -77,6 +77,7 @@ from .context_instance import ContextInstance
 from .context_state import ContextRequest, ContextState
 from .context_status import (
     ControlRequested,
+    LifecycleCheckpoint,
     IterationStarted,
     EngineChanged,
     StateTransition,
@@ -115,8 +116,7 @@ class RuntimeRegistry(RuntimeModule):
         settings = self._engine_runtime.engine_settings
         self._history_readers: dict[int, DatabaseReader] = {}
         self._terminal_history = _TerminalHistory(
-            self._engine_runtime.engine_id, settings.terminal_history_limit,
-            settings.terminal_history_max_bytes,
+            self._engine_runtime.engine_id, settings.terminal_history_policy,
         )
 
     def register(
@@ -1298,7 +1298,7 @@ class RuntimeRegistry(RuntimeModule):
         self._learn_from_snapshot(context, snapshot)
         local_snapshot = context.snapshot
         if snapshot.stop_requested and not previously_stopped:
-            entry = next(entry for entry in snapshot.history if isinstance(entry, StopRequested))
+            entry = snapshot._accepted_stop
             self._publish_lifecycle_entry(context, entry)
         if created or previous_state is not snapshot.state:
             self._publish_synchronized_state(
@@ -1519,21 +1519,6 @@ class RuntimeRegistry(RuntimeModule):
             )
         ):
             raise ValueError("snapshot progress does not match its context")
-        if snapshot.report is not None:
-            report = snapshot.report
-            if (
-                not isinstance(report, ContextReport)
-                or report.context_id != snapshot.context_id
-                or report.state is not snapshot.state
-                or report.stop_requested is not snapshot.stop_requested
-                or report.revision > snapshot.revision
-                or not self._execution_reports_match(
-                    report.executions,
-                    snapshot.reports,
-                )
-                or report.history != snapshot.history
-            ):
-                raise ValueError("terminal report does not match its snapshot")
         history_types = (
             StateTransition,
             StopRequested,
@@ -1548,28 +1533,45 @@ class RuntimeRegistry(RuntimeModule):
         ):
             raise ValueError("snapshot lifecycle history is invalid")
         self._validate_snapshot_history(snapshot)
+        if snapshot.report is not None:
+            report = snapshot.report
+            if (
+                not isinstance(report, ContextReport)
+                or report.context_id != snapshot.context_id
+                or report.state is not snapshot.state
+                or report.stop_requested is not snapshot.stop_requested
+                or report.revision > snapshot.revision
+                or not self._execution_reports_match(
+                    report.executions,
+                    snapshot.reports,
+                )
+                or report.execution_statistics != snapshot.execution_statistics
+                or report.history_omitted != snapshot.history_omitted
+                or report.iteration_count != snapshot.iteration_count
+                or report.history != snapshot.history
+            ):
+                raise ValueError("terminal report does not match its snapshot")
 
         step_count = len(graph._compiled_graph.steps)
         history = self._engine_runtime.progress_history
-        if snapshot.context_settings.max_iterations is None:
-            for iteration in range(1, snapshot.completed_iterations + 1):
-                reports = tuple(
-                    report
-                    for report in snapshot.reports
-                    if report.iteration == iteration
-                )
-                observations = history._observations(
-                    reports,
-                    step_count,
-                    iteration,
-                )
-                if {item.step_index for item in observations} != set(
-                    range(step_count)
-                ):
-                    raise ValueError(
-                        "completed iteration reports must cover every graph step"
-                    )
-        elif snapshot.finalized and snapshot.started_at is not None:
+        limit = snapshot.context_settings.execution_history_limit
+        if limit is not None:
+            self._validate_retained_reports(snapshot, step_count)
+            if any(len(result.history) > limit for _, result in snapshot.artifacts):
+                raise ValueError("snapshot artifact history exceeds its retention limit")
+            committed = snapshot.execution_statistics.report_count + len(snapshot.history) + snapshot.history_omitted
+            if type(snapshot.history_admissions) is not int or snapshot.history_admissions < committed:
+                raise ValueError("invalid cumulative history admissions")
+        elif snapshot.execution_statistics is not None or snapshot.history_admissions != 0:
+            raise ValueError("unexpected bounded history metadata")
+        if limit is None and snapshot.context_settings.max_iterations is None:
+            # Unique (iteration, step) identities plus the exact count establish
+            # full coverage without scanning the whole history once per iteration.
+            history._observations(snapshot.reports, step_count)
+            completed = sum(report.iteration <= snapshot.completed_iterations for report in snapshot.reports)
+            if completed != step_count * snapshot.completed_iterations:
+                raise ValueError("completed iteration reports must cover every graph step")
+        elif limit is None and snapshot.finalized and snapshot.started_at is not None:
             history._observations(snapshot.reports, step_count)
         history_limit = self._engine_runtime.engine_settings.context_history_admission_limit
         if history_limit is not None:
@@ -1580,16 +1582,54 @@ class RuntimeRegistry(RuntimeModule):
                 raise ContextHistoryLimitError("received full history exceeds this engine context_history_admission_limit")
         return graph
 
+    def _validate_retained_reports(self, snapshot: ContextSnapshot, step_count: int) -> None:
+        reports = snapshot.reports
+        stats = snapshot.execution_statistics
+        if not isinstance(stats, ExecutionStatistics) or any(type(n) is not int or n < 0 for n in (
+            stats.finished, stats.skipped, stats.failed, stats.cancelled, stats.executions, stats.attempts
+        )):
+            raise ValueError("invalid cumulative execution statistics")
+        if (type(snapshot.completed_iterations) is not int or type(snapshot.iteration_count) is not int
+                or not 0 <= snapshot.completed_iterations <= snapshot.iteration_count <= snapshot.completed_iterations + 1):
+            raise ValueError("invalid retained iteration counters")
+        if len(reports) > step_count * snapshot.context_settings.execution_history_limit:
+            raise ValueError("snapshot exceeds the retained step report window")
+        self._engine_runtime.progress_history._observations(reports, step_count)
+        latest = max(snapshot.completed_iterations, reports[-1].iteration if reports else 0)
+        first = max(1, latest - snapshot.context_settings.execution_history_limit + 1)
+        if (latest > max(1, snapshot.iteration_count)
+                or any(report.iteration < first for report in reports)
+                or any(a.iteration > b.iteration for a, b in zip(reports, reports[1:]))):
+            raise ValueError("snapshot reports are outside the retained iteration window")
+        partial = sum(report.iteration > snapshot.completed_iterations for report in reports)
+        completed = max(0, snapshot.completed_iterations - first + 1)
+        if (len(reports) != completed * step_count + partial
+                or stats.report_count != snapshot.completed_iterations * step_count + partial):
+            raise ValueError("completed iteration reports must cover every retained graph step")
+        retained = ExecutionStatistics()._including(reports)
+        if (not stats._covers(retained) or stats.attempts < stats.executions
+                or stats.executions < stats.report_count - stats.skipped
+                or (stats.report_count == len(reports) and stats != retained)):
+            raise ValueError("execution statistics disagree with retained reports")
+
     @staticmethod
     def _validate_snapshot_history(snapshot: ContextSnapshot) -> None:
         """Validate the deterministic lifecycle encoded by a snapshot."""
-        state = ContextState.SUBMITTED
-        iteration = 0
-        generation = 0
-        engine_id: str | None = None
-        stop_requested = False
-        previous_revision = 0
-        reassignment_pending = False
+        prefix = snapshot.history_prefix
+        limit = snapshot.context_settings.execution_history_limit
+        if prefix is not None:
+            if not isinstance(prefix, LifecycleCheckpoint) or limit is None or len(snapshot.history) < limit:
+                raise ValueError("invalid snapshot lifecycle checkpoint")
+            prefix._validate(snapshot.revision)
+        if limit is not None and len(snapshot.history) > limit + int(snapshot.request is not None):
+            raise ValueError("snapshot lifecycle history exceeds its retention limit")
+        anchor = prefix or LifecycleCheckpoint()
+        state, iteration, generation = anchor.state, anchor.iteration, anchor.generation
+        engine_id = anchor.engine_id
+        stop_requested = anchor.stop is not None
+        previous_revision = anchor.revision
+        reassignment_pending = anchor.awaiting_queue
+        validated, started = anchor.validated, anchor.started
 
         for entry in snapshot.history:
             if (
@@ -1628,6 +1668,8 @@ class RuntimeRegistry(RuntimeModule):
                 ]:
                     raise ValueError("snapshot contains an invalid state transition")
                 state = entry.next_state
+                validated |= state is ContextState.VALIDATED
+                started |= state is ContextState.RUNNING
                 continue
 
             if isinstance(entry, IterationStarted):
@@ -1705,16 +1747,6 @@ class RuntimeRegistry(RuntimeModule):
             or (engine_id is not None and engine_id != snapshot.engine_id)
         ):
             raise ValueError("snapshot lifecycle summary is inconsistent")
-        validated = any(
-            isinstance(entry, StateTransition)
-            and entry.next_state is ContextState.VALIDATED
-            for entry in snapshot.history
-        )
-        started = any(
-            isinstance(entry, StateTransition)
-            and entry.next_state is ContextState.RUNNING
-            for entry in snapshot.history
-        )
         if validated != (snapshot.validated_at is not None):
             raise ValueError("snapshot validation timestamp is inconsistent")
         if started != (snapshot.started_at is not None):
@@ -1825,18 +1857,27 @@ class RuntimeRegistry(RuntimeModule):
                 "a committed snapshot cannot replace a locally owned context"
             )
         if current.stop_requested:
-            accepted_stop = next(entry for entry in current.history if isinstance(entry, StopRequested))
-            if not snapshot.stop_requested or accepted_stop not in snapshot.history:
+            accepted_stop = current._accepted_stop
+            if not snapshot.stop_requested or accepted_stop != snapshot._accepted_stop:
                 raise ValueError("snapshot would replace committed stop acceptance")
         if not self._context_records_extend(snapshot, current):
             raise ValueError("snapshot would replace committed records")
-        if snapshot.generation == current.generation and (
-            not self._execution_reports_extend(
-                snapshot.reports,
-                current.reports,
-            )
-        ):
-            raise ValueError("snapshot would replace committed records or reports")
+        if snapshot.generation == current.generation:
+            previous = current.reports
+            if snapshot.execution_statistics is not None:
+                before, after = current.execution_statistics, snapshot.execution_statistics
+                dropped = after.report_count - len(snapshot.reports)
+                # Match only the overlap of the two suffixes, using lifetime report ordinals.
+                previous_start = before.report_count - len(previous)
+                previous = previous[max(0, dropped - previous_start):]
+                new = snapshot.reports[len(previous):]
+                expected = before._including(new)
+                if (snapshot.completed_iterations < current.completed_iterations
+                        or not after._covers(expected)
+                        or (dropped <= before.report_count and after != expected)):
+                    raise ValueError("snapshot would replace cumulative execution statistics")
+            if not self._execution_reports_extend(snapshot.reports, previous):
+                raise ValueError("snapshot would replace committed records or reports")
 
     @staticmethod
     def _context_records_extend(incoming: ContextSnapshot, current: ContextSnapshot) -> bool:
@@ -1847,7 +1888,7 @@ class RuntimeRegistry(RuntimeModule):
         by_key: dict[str, list[int]] = {}
         for record in incoming.records:
             by_key.setdefault(record.key, []).append(record.sequence)
-        limit = incoming.context_settings.record_history_limit
+        limit = incoming.context_settings.record_policy.history_per_key
         for record in current.records:
             replacement = by_sequence.get(record.sequence)
             if replacement is not None:
@@ -2127,7 +2168,7 @@ class RuntimeRegistry(RuntimeModule):
             self._finalize_context(context_id)
             return
 
-        context._load_executions(outcome.executions)
+        context._commit_final_executions(outcome.executions)
 
         if outcome.artifacts is not None:
             context._load_artifacts(outcome.artifacts)
@@ -2248,6 +2289,7 @@ class RuntimeRegistry(RuntimeModule):
                 context._execution_reports,
                 step_count,
                 graph_seconds=context.progress.elapsed_seconds if complete else None,
+                prior_steps=context._evicted_timing,
             )
             if scope is not None:
                 context._replace_progress_profile(profile)

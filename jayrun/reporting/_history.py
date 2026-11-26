@@ -139,6 +139,11 @@ def history_evidence(entry: ContextHistoryEntry) -> dict | None:
         "progress": "Captured matching final snapshot" if progress_valid else "Absent or inconsistent snapshot; no progress inferred",
         "record_types": "Original record class discriminants were not stored; field values are retained",
         "connections": "Only explicit stored ports, step correspondence and matching artifact history are attributed"}
+    stats = report.get("execution_statistics")
+    outcomes = ("finished", "skipped", "failed", "cancelled")
+    if type(stats) is dict and all(type(stats.get(name)) is int for name in outcomes):
+        total = sum(stats[name] for name in outcomes)
+        coverage.update(executions_omitted=total - len(executions), history_omitted=report.get("history_omitted", 0))
     return {"context_id": entry.header.context_id, "runtime_context_id": str(report["context_id"]),
         "graph_key": key[0] if type(key) in (tuple, list) and key else None,
         "graph_version": entry.header.graph_version, "intrinsic_graph_id": entry.header.graph_id,
@@ -147,6 +152,7 @@ def history_evidence(entry: ContextHistoryEntry) -> dict | None:
         "outcome": entry.header.outcome, "iteration_count": iterations, "completed_iterations": completed,
         "stop_requested": report.get("stop_requested"), "created_at": _display(created), "finished_at": _display(finished),
         "elapsed_wall_seconds": elapsed, "failure": _display(report.get("failure")),
+        "execution_statistics": _display(stats),
         "failed_step": _display(report.get("failed_step")), "executions": executions, "records": records,
         "record_sequence": str(raw.get("record_sequence", "unknown")), "records_complete": raw.get("records_complete"),
         "artifacts": artifacts, "connections": [], "history": _display(report.get("history", ())), "coverage": coverage,

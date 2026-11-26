@@ -18,7 +18,7 @@ from jayrun import (Artifact, ArtifactContext, ArtifactField, ArtifactFlow, Base
                     ConfigContext, ConfigField, Data, Engine, GraphDefinition)
 from jayrun.context import ContextState
 from jayrun.placement import Backend, Device
-from jayrun.settings import ArtifactPolicy, ContextSettings, EngineSettings, RuntimeDevice
+from jayrun.settings import ArtifactPolicy, ContextSettings, RecordPolicy, EngineSettings, RuntimeDevice
 
 DATA = Path(__file__).with_name("data")
 
@@ -219,7 +219,7 @@ def run_training(state: TrainingState, dataset: TokenDataset, *, total_updates: 
                  train.reservation_gb: reservation_gb})
     with Engine(settings) as engine:
         run = engine.submit(graph, inputs, configs, settings=ContextSettings(
-            max_iterations=None, record_history_limit=4,
+            max_iterations=None, record_policy=RecordPolicy(history_per_key=4),
             artifact_policy=ArtifactPolicy(release_entry_artifacts=True)))
         run.wait(timeout=600)
         if run.state is not ContextState.FINISHED:

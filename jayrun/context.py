@@ -16,7 +16,7 @@ from .engine.observation import (
 )
 from .engine.pressure import PressureSnapshot
 from .engine.progress import ProgressSnapshot, StepProgress, StepProgressState
-from .engine.recorders.context.report import ContextReport
+from .engine.recorders.context.report import ContextReport, ExecutionStatistics
 from .engine.registry.context_state import ContextRequest, ContextState
 from .engine.limits import OwnershipCapacityError, ContextHistoryLimitError
 from .engine.snapshot import ContextSnapshot
@@ -38,6 +38,7 @@ from .engine.recorders.execution.records import (
     ExecutionReport,
 )
 from .engine.registry.context_status import (
+    LifecycleCheckpoint,
     StateTransition,
     StopRequested,
     IterationStarted,
@@ -85,6 +86,8 @@ __all__ = (
     "ContextEvent",
     "ContextObserver",
     "ContextReport",
+    "ExecutionStatistics",
+    "LifecycleCheckpoint",
     "ContextRun",
     "ContextState",
     "ContextStateChanged",

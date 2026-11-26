@@ -268,9 +268,12 @@ def _completed(graph: dict) -> None:
     if evidence.get('outcome') not in {'finished', 'stopped', 'failed', 'aborted', 'rejected'}:
         raise ValueError('completed outcome must be a supported terminal state')
     _text(evidence.get('context_id'), 'completed.context_id')
+    # Bounded histories have sparse iteration selectors; cumulative counters
+    # need only fit the viewer's exact integer range.
+    count_limit = 2**53 - 1 if evidence.get('execution_statistics') is not None else 50000
     for name in ('iteration_count', 'completed_iterations'):
         value = evidence.get(name)
-        if type(value) is not int or not 0 <= value <= 50000:
+        if type(value) is not int or not 0 <= value <= count_limit:
             raise ValueError('completed iteration counts must be bounded nonnegative integers')
     if evidence['completed_iterations'] > evidence['iteration_count']:
         raise ValueError('completed iterations exceed started iterations')

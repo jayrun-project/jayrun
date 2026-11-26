@@ -1,6 +1,6 @@
 """Public engine and context settings."""
 
-from .engine.settings.context import ArtifactPolicy, ContextSettings
+from .engine.settings.context import ArtifactPolicy, ContextSettings, RecordPolicy
 from .engine.settings.engine import (
     ControllerPolicy,
     EngineSettings,
@@ -9,6 +9,7 @@ from .engine.settings.engine import (
     RoutingMode,
     RuntimeDevice,
     RecordingMode,
+    TerminalHistoryPolicy,
 )
 
 __all__ = (
@@ -17,8 +18,10 @@ __all__ = (
     "ControllerPolicy",
     "EngineSettings",
     "FailureMode",
+    "RecordPolicy",
     "RetryPolicy",
     "RoutingMode",
     "RuntimeDevice",
     "RecordingMode",
+    "TerminalHistoryPolicy",
 )

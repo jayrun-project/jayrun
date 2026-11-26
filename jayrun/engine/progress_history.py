@@ -54,12 +54,35 @@ class _MutableStepProfile:
         self.mean_seconds += difference / self.completion_count
         self.squared_deviation += difference * (duration - self.mean_seconds)
 
+    def merge(self, prior: _MutableStepProfile) -> None:
+        count = self.completion_count + prior.completion_count
+        if prior.completion_count:
+            difference = prior.mean_seconds - self.mean_seconds
+            self.mean_seconds += difference * prior.completion_count / count
+            self.squared_deviation += (prior.squared_deviation
+                + difference ** 2 * self.completion_count * prior.completion_count / count)
+        self.observation_count += prior.observation_count
+        self.completion_count = count
+        self.skipped_count += prior.skipped_count
+        self.failure_count += prior.failure_count
+
 
 @dataclass(slots=True)
 class _MutableProgressProfile:
     run_count: int
     steps: list[_MutableStepProfile]
     graph: _MutableStepProfile = field(default_factory=_MutableStepProfile)
+
+    def add_run(self, observations: tuple[_ProgressObservation, ...],
+                graph_seconds: float | None, prior_steps: list[_MutableStepProfile] | None) -> None:
+        if prior_steps is not None:
+            for step, prior in zip(self.steps, prior_steps, strict=True):
+                step.merge(prior)
+        for observation in observations:
+            self.steps[observation.step_index].observe(observation.state, observation.duration)
+        self.run_count += 1
+        if graph_seconds is not None:
+            self.graph.observe(StepProgressState.COMPLETED, graph_seconds)
 
 
 @dataclass(slots=True)
@@ -147,6 +170,7 @@ class ProgressHistory:
         executions: tuple[ExecutionReport, ...],
         step_count: int,
         *, graph_seconds: float | None = None,
+        prior_steps: list[_MutableStepProfile] | None = None,
     ) -> _ProgressProfile:
         """Atomically learn from one finalized finite context.
 
@@ -160,7 +184,7 @@ class ProgressHistory:
             executions=executions,
             step_count=step_count,
         )
-        return self._commit(graph_scope, step_count, observations, graph_seconds)
+        return self._commit(graph_scope, step_count, observations, graph_seconds, prior_steps)
 
     def commit_iteration(
         self,
@@ -191,6 +215,7 @@ class ProgressHistory:
         step_count: int,
         observations: tuple[_ProgressObservation, ...],
         graph_seconds: float | None = None,
+        prior_steps: list[_MutableStepProfile] | None = None,
     ) -> _ProgressProfile:
         with self._lock:
             # Validation in _observations above is unconditional: suppressing
@@ -211,16 +236,9 @@ class ProgressHistory:
                     )
                 profile = self._copy_profile(current)
 
-            for observation in observations:
-                profile.steps[observation.step_index].observe(
-                    observation.state,
-                    observation.duration,
-                )
-            profile.run_count += 1
-            if graph_seconds is not None:
-                profile.graph.observe(StepProgressState.COMPLETED, float(graph_seconds))
+            profile.add_run(observations, graph_seconds, prior_steps)
             if isinstance(graph_scope, _TimingKey):
-                self._contribute(graph_scope, observations, graph_seconds)
+                self._contribute(graph_scope, observations, graph_seconds, prior_steps)
             # An indivisible oversized graph receives cold estimates next time;
             # retain neither a partial vector nor a graph-owned diagnostic cache.
             if (step_count > self._max_step_profiles
@@ -459,7 +477,7 @@ class ProgressHistory:
                 self._loaded_profiles += 1
 
     def _contribute(self, key: _TimingKey, observations: tuple[_ProgressObservation, ...],
-                    graph_seconds: float | None) -> None:
+                    graph_seconds: float | None, prior_steps: list[_MutableStepProfile] | None = None) -> None:
         """Called under the learning lock; numeric work/reservation only, no I/O."""
         database, owner = self._database, self._database_owner
         if database is None or owner is None:
@@ -483,11 +501,7 @@ class ProgressHistory:
             self._pending_bytes += key.charge
         # Detached handoffs own earlier profile objects. Only this current pending
         # accumulator is mutated, while the lock excludes a concurrent drain.
-        for observation in observations:
-            pending.profile.steps[observation.step_index].observe(observation.state, observation.duration)
-        pending.profile.run_count += 1
-        if graph_seconds is not None:
-            pending.profile.graph.observe(StepProgressState.COMPLETED, float(graph_seconds))
+        pending.profile.add_run(observations, graph_seconds, prior_steps)
         if (len(self._pending) >= max(1, min(self._max_pending_profiles * 3 // 4,
                                            database.limits.pending_items // 4))
                 or self._pending_bytes >= self._max_pending_bytes * 3 // 4):

@@ -4,6 +4,18 @@ All notable changes to Jayrun are documented in this file.
 
 Release notes describe new capabilities, compatibility changes and fixes.
 
+## [0.3.5] - 2026-11-26
+
+### Added
+
+- `ContextSettings(execution_history_limit=N)` retains detailed step reports for the latest N reported graph iterations, N lifecycle entries and up to N diagnostic transitions per artifact. This supports indefinite runs with a fixed history window. Reports, snapshots, the dashboard and SQLite history preserve lifetime counts and identify omitted detail. The default `None` keeps full native history. The engine’s independent `context_history_admission_limit` still charges lifetime admissions.
+
+### Changed
+
+- **Breaking settings API.** Pass `record_policy=RecordPolicy(...)` to `ContextSettings`. Move `record_history_limit`, `record_max_keys`, `record_max_value_bytes` and `record_max_total_bytes` to `history_per_key`, `max_keys`, `max_value_bytes` and `max_total_bytes` on the policy.
+- Pass `terminal_history_policy=TerminalHistoryPolicy(...)` to `EngineSettings`. Move `terminal_history_limit` and `terminal_history_max_bytes` to `max_entries` and `max_bytes`. Both policies are immutable and supplied by default. All six numerical defaults are unchanged.
+- New diagnostic captures store these policies as nested settings. Older SQLite entries retain their original fields. Finish or checkpoint work on the old version before upgrading workers that exchange live context snapshots. The new settings layout rejects old settings pickles.
+
 ## [0.3.4] - 2026-11-25
 
 ### Added

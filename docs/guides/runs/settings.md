@@ -40,7 +40,9 @@ A context's `retry_policy=None` inherits the Engine retry policy. Other context 
 | Run multiple graph iterations | Context `max_iterations` | [Repeat and iterate](iteration.md) |
 | Limit operator-requested repetitions | Context `max_repeats` | [Execution interface](../components/execution.md) |
 | Keep only selected final outputs | Context `artifact_policy` | [Capacity and retention](capacity.md) |
-| Keep the last few values for each record key | Context `record_history_limit` | [Records](../evidence/records.md) |
+| Keep recent native history while a context continues running | Context `execution_history_limit` | [Rolling history](capacity.md#keep-a-rolling-execution-history) |
+| Keep the last few values for each record key | Context `record_policy.history_per_key` | [Records](../evidence/records.md) |
+| Bound the number and size of finalized summaries | Engine `terminal_history_policy` | [Capacity and retention](capacity.md) |
 | Stop the Engine when ordinary execution fails | Engine `failure_mode` | [Failure handling](failures.md) |
 | Describe accelerator capacity | Engine `runtime_devices` | [Placement interface](../components/placement.md) |
 

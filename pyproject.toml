@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jayrun"
-version = "0.3.4"
+version = "0.3.5"
 description = "Artifact-centric execution for iterative graphs, shared resources, and placement-aware workloads"
 readme = {file = "README.md", content-type = "text/markdown"}
 license = "Apache-2.0"

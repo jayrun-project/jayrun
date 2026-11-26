@@ -4,14 +4,15 @@ import math
 from dataclasses import dataclass
 from datetime import datetime
 
+from ._snapshot_compat import restore_fields
 from ..core.context.runtime_data import Data
 from .artifact.result import ArtifactResult
 from .interfaces.context_record import ContextRecord
 from .progress import ProgressSnapshot
-from .recorders.context.report import ContextReport
+from .recorders.context.report import ContextReport, ExecutionStatistics
 from .recorders.execution.records import ExecutionReport
 from .registry.context_state import ContextRequest, ContextState
-from .registry.context_status import ContextHistoryEntry
+from .registry.context_status import ContextHistoryEntry, LifecycleCheckpoint, StopRequested
 from .settings.context import ContextSettings
 
 
@@ -62,7 +63,10 @@ class ContextSnapshot:
         records: Retained context records in committed sequence order.
         record_sequence: Highest committed record sequence, preserved by transfer.
             Gaps in retained sequences indicate unavailable history.
-        reports: Completed execution reports available so far.
+        reports: Step reports retained at completed iteration boundaries and finalization.
+        execution_statistics: Cumulative totals at the same boundary when native history is bounded.
+        history_prefix: Lifecycle facts preceding the retained entries after eviction.
+        history_admissions: Cumulative admission charges when native history is bounded.
         report: Terminal context report, when finalized.
         artifacts: Final artifact results keyed by graph artifact ID.
         artifact_context: Safe entry or feedback checkpoint keyed by artifact ID.
@@ -73,6 +77,8 @@ class ContextSnapshot:
             changes record the completed-iteration checkpoint used by the next
             generation.
     """
+
+    __setstate__ = restore_fields
 
     context_id: int
     graph_key: str | None
@@ -103,6 +109,21 @@ class ContextSnapshot:
     validated_at: datetime | None
     started_at: datetime | None
     finished_at: datetime | None
+
+    execution_statistics: ExecutionStatistics | None = None
+    history_prefix: LifecycleCheckpoint | None = None
+    history_admissions: int = 0
+
+    @property
+    def history_omitted(self) -> int:
+        """Number of lifecycle entries represented by the prefix checkpoint."""
+        return self.history_prefix.count if self.history_prefix is not None else 0
+
+    @property
+    def _accepted_stop(self) -> StopRequested | None:
+        if self.history_prefix is not None and self.history_prefix.stop is not None:
+            return self.history_prefix.stop
+        return next((entry for entry in self.history if isinstance(entry, StopRequested)), None)
 
     def __post_init__(self) -> None:
         if type(self.context_id) is not int or self.context_id < 0:

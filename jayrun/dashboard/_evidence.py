@@ -1,5 +1,5 @@
 """Bounded detached dashboard evidence from public run and snapshot interfaces."""
-from dataclasses import fields, is_dataclass
+from dataclasses import asdict, fields, is_dataclass
 from enum import Enum
 import math
 import json
@@ -114,12 +114,12 @@ def detached(snapshot, graph=None, *, declared_artifact_count: int | None = None
                           'payload':'Not collected by dashboard', 'history_omitted':max(0,len(v.history)-256), 'coverage':'Retained lifecycle order; completeness unknown.'}
                          for k,v in snapshot.artifacts[:256]],
             'artifacts_omitted':max(0,len(snapshot.artifacts)-256),
-            'artifact_history_policy': 'Only recorded entries are available. PRODUCTION and PERFORMANCE retain the latest artifact lifecycle entry; DEBUG retains the recorded sequence. The public snapshot does not identify the recording mode. Missing earlier entries cannot be reconstructed.',
+            'artifact_history_policy': 'STANDARD and MINIMAL retain the latest artifact lifecycle entry. DIAGNOSTIC retains the recorded sequence up to the configured native history limit. The public snapshot does not identify the recording mode. Missing earlier entries cannot be reconstructed.',
             'artifact_history_availability':_artifact_history_availability(
                 retained=bool(snapshot.artifacts), finalized=snapshot.finalized,
                 declared_count=declared_artifact_count),
             'activity':[_record(h) for h in snapshot.history[-256:]],
-            'activity_omitted':max(0,len(snapshot.history)-256),'failure':_failure(snapshot.failure),
+            'activity_omitted':snapshot.history_omitted + max(0,len(snapshot.history)-256),'failure':_failure(snapshot.failure),
             'access':{'observes':'Unknown','controls':'Unknown','scope':'Public granted-access metadata unavailable'},
             'report':None,'report_availability':'Finalized formatter unavailable until a finalized run handle is acquired.'}
 
@@ -160,6 +160,7 @@ def terminal_evidence(snapshot):
         'failure': _failure(report.failure),
         'failed_step': None if report.failed_step is None else _record(report.failed_step),
         'executions': executions,
+        'execution_statistics': asdict(report.execution_statistics) if report.execution_statistics is not None else None,
         'artifacts': [{'id':'artifact-'+str(key), 'availability':'Not collected by dashboard',
                        'history':[dict(_record(h),retained_index=i+1) for i,h in enumerate(value.history[:256])],
                        'history_omitted':max(0,len(value.history)-256),
@@ -170,10 +171,10 @@ def terminal_evidence(snapshot):
         'coverage': {'artifact_values':'Not collected by dashboard',
                      'context_records':'complete' if snapshot.records_complete and len(retained)==len(snapshot.records) else 'missing/pruned/display-limited',
                      'committed_record_sequence':str(snapshot.record_sequence),
-                     'executions_omitted':max(0,len(report.executions)-256),
+                     'executions_omitted':report.executions_omitted + max(0,len(report.executions)-256),
                      'artifacts_omitted':max(0,len(snapshot.artifacts)-256),
                      'records_omitted':max(0,len(snapshot.records)-len(retained)),
-                     'history_omitted':max(0,len(report.history)-256),
+                     'history_omitted':report.history_omitted + max(0,len(report.history)-256),
                      'connections':'Exact finalized connection correspondence unavailable without a temporary finalized run.',
                      'timing':'Recorded durations only; no fabricated timeline'},
     }

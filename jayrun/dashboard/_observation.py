@@ -39,6 +39,11 @@ def control_version(snapshot):
     """Control-relevant public history; recording/iteration revisions are independent."""
     revisions = [(type(entry).__name__, entry.revision) for entry in snapshot.history
                  if isinstance(entry, (StateTransition, StopRequested, ControlRequested))]
+    if snapshot.context_settings.execution_history_limit is not None:
+        # Evicting a previously observed transition while iterations advance
+        # must not invalidate a control based on the same lifecycle state.
+        prefix_revision = snapshot.history_prefix.control_revision if snapshot.history_prefix else 0
+        revisions = max((revision for _, revision in revisions), default=prefix_revision)
     value = (snapshot.engine_id, snapshot.generation, snapshot.state.value,
              snapshot.finalized, snapshot.stop_requested, revisions)
     return sha256(json.dumps(value).encode()).hexdigest()
@@ -70,7 +75,7 @@ def project(snapshot, *, own=False):
         'records_omitted': max(0, len(snapshot.records)-32),
         'records_complete': snapshot.records_complete,
         'history': [_record(h) for h in snapshot.history[-32:]],
-        'history_omitted': max(0, len(snapshot.history)-32),
+        'history_omitted': snapshot.history_omitted + max(0, len(snapshot.history)-32),
         'failure': _failure(snapshot.failure),
         'artifacts': [{'id':str(key), 'history':[{'retained_index':i, **_record(entry)} for i,entry in enumerate(result.history) if i>=max(0,len(result.history)-8)],
                        'history_omitted':max(0,len(result.history)-8),
