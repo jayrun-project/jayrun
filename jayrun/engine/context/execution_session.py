@@ -25,7 +25,7 @@ class ExecutionSession:
     recorder: ExecutionRecorder
     supervising: bool = False
     state: ExecutionState = ExecutionState.IDLE
-    result: tuple[object, ...] | None = None
+    result: tuple[Data[object], ...] | None = None
     report: ExecutionReport | None = None
     failure: Exception | None = None
     placement_request: PlacementRequest | None = None
@@ -79,7 +79,7 @@ class ExecutionSession:
                 self._fail(failure)
                 return
 
-            normalized_result = result
+            normalized_result = (result[0],)
 
         elif isinstance(self.step, ExecutionOperator):
             normalized_result = tuple(
@@ -193,7 +193,7 @@ class ExecutionSession:
         self.state = ExecutionState.FAILED
         self.failure = failure
 
-    def _finish(self, result: tuple[object, ...]) -> None:
+    def _finish(self, result: tuple[Data[object], ...]) -> None:
         self.placement_request = None
         self.placement_requests = self.step.proxy.placement.placement_requests
         self.state = ExecutionState.FINISHED

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import replace
 from functools import cached_property
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from ...engine.execution.execution_mode import ExecutionMode
 from ..artifact.base import Artifact
@@ -14,6 +14,7 @@ from ..resource.base import BaseResource
 from ..resource.context import ResourceContext
 from ..resource.field import ResourceField
 from ..serializer.base import BaseSerializer
+from ._attachment import ArtifactRef, Attachment, attach_flows
 from .artifact_flow import ArtifactFlow
 from .compiled_graph import (
     CompiledGraph,
@@ -82,8 +83,8 @@ class GraphDefinition:
         self._confirm_flows()
         self._collect_artifacts()
         self._generate_layout()
-        active_operator_outputs = self._validate_layout()
         self._layout._freeze()
+        active_operator_outputs = self._validate_layout()
         self._set_exit_artifacts(active_operator_outputs)
 
         self._state = GraphState.CREATED
@@ -146,6 +147,9 @@ class GraphDefinition:
 
             resolved_resources[field] = resource
 
+        # Attachment can carry already selected destination resources into a
+        # fresh graph. The caller may complete or replace that selection.
+        resolved_resources = {**self._resource_context.instances, **resolved_resources}
         self._validate_required_resources(resolved_resources)
 
         ordered_resources = {
@@ -157,7 +161,7 @@ class GraphDefinition:
         candidate = ResourceContext()
         candidate.set(ordered_resources)
         # Discovery stages all fallible input checks before committing selection.
-        self._specification.proceed(candidate.instances)
+        self._specification.proceed(candidate.instances, self._timing_config_fields)
         self._resource_context.set(candidate.instances)
         self._state = GraphState.RESOURCES_BOUND
 
@@ -235,17 +239,9 @@ class GraphDefinition:
             raise TypeError("Expected a mapping of serializers.")
 
         registry = self._specification.artifacts
-        definitions_by_id = {
-            definition.artifact_id: definition
-            for definition in registry.definitions
-        }
         resolved: dict[Artifact, BaseSerializer] = {}
-
         for reference, serializer in serializers.items():
-            artifact = self._resolve_serializer_artifact(
-                reference,
-                definitions_by_id=definitions_by_id,
-            )
+            artifact = registry.resolve(reference)
             if artifact in resolved:
                 raise ValueError(
                     "Multiple serializer keys resolve to the same Artifact."
@@ -281,36 +277,6 @@ class GraphDefinition:
         self._inspection._bind_serializers()
         self.__dict__.pop("_compiled_graph", None)
 
-    def _resolve_serializer_artifact(
-        self,
-        reference: int | Artifact | ArtifactDefinition,
-        *,
-        definitions_by_id: Mapping[int, ArtifactDefinition],
-    ) -> Artifact:
-        registry = self._specification.artifacts
-
-        if type(reference) is int:
-            try:
-                definition = definitions_by_id[reference]
-            except KeyError:
-                raise KeyError(f"Unknown artifact ID: {reference!r}.") from None
-            return registry.source_for(definition)
-
-        if isinstance(reference, ArtifactDefinition):
-            for definition in registry.definitions:
-                if definition is reference:
-                    return registry.source_for(definition)
-            raise KeyError("The ArtifactDefinition does not belong to this graph.")
-
-        if isinstance(reference, Artifact):
-            if reference not in registry.sources:
-                raise KeyError("The Artifact does not belong to this graph.")
-            return reference
-
-        raise TypeError(
-            "Serializer references must be int, Artifact, or ArtifactDefinition"
-        )
-
     def _resolve_resource_field(
         self,
         resource: int | ResourceField | ResourceDefinition,
@@ -328,13 +294,10 @@ class GraphDefinition:
             return registry.source_for(definition)
 
         if isinstance(resource, ResourceDefinition):
-            if resource not in registry.definitions:
-                raise KeyError("The ResourceDefinition does not belong to this graph.")
-
             return registry.source_for(resource)
 
         if isinstance(resource, ResourceField):
-            if resource not in registry.sources:
+            if not registry._contains_source(resource):
                 raise KeyError("The ResourceField does not belong to this graph.")
 
             return resource
@@ -380,7 +343,7 @@ class GraphDefinition:
 
     def _confirm(self) -> None:
         if not self._specification.complete:
-            self._specification.proceed(self._resource_context.instances)
+            self._specification.proceed(self._resource_context.instances, self._timing_config_fields)
         self._inspection._proceed()
         self._state = GraphState.CONFIRMED
 
@@ -389,6 +352,12 @@ class GraphDefinition:
 
     def _collect_artifacts(self) -> None:
         flow_by_artifact: dict[Artifact, ArtifactFlow] = {}
+        known: dict[Artifact, Artifact] = {}
+        operators: dict[BaseOperator, BaseOperator] = {}
+
+        def register(artifact: Artifact) -> None:
+            if known.setdefault(artifact, artifact) is not artifact:
+                raise ValueError("Distinct artifact identities compare equal in this graph.")
 
         for flow in self._flows:
             artifact = flow.artifact
@@ -396,6 +365,7 @@ class GraphDefinition:
             if artifact is None:
                 continue
 
+            register(artifact)
             if artifact in flow_by_artifact:
                 raise ValueError(f"Artifact {artifact!r} is assigned to multiple flows")
 
@@ -412,7 +382,13 @@ class GraphDefinition:
 
         for flow in self._flows:
             for operator in flow.operators:
+                if operator in operators:
+                    if operators[operator] is not operator:
+                        raise ValueError("Distinct operator declarations compare equal in this graph.")
+                    continue
+                operators[operator] = operator
                 for artifact in operator.input_artifacts:
+                    register(artifact)
                     if artifact not in flow_by_artifact:
                         raise ValueError(
                             f"Artifact {artifact!r}, consumed by "
@@ -420,6 +396,7 @@ class GraphDefinition:
                         )
 
                 for artifact in operator.output_artifacts:
+                    register(artifact)
                     if artifact in flow_by_artifact:
                         generated_artifacts.add(artifact)
                     else:
@@ -435,6 +412,7 @@ class GraphDefinition:
                     "an entry artifact nor generated by an operator"
                 )
 
+        self._flow_by_artifact = flow_by_artifact
         ordered_artifacts = tuple(flow_by_artifact) + tuple(unused_artifacts)
 
         self._artifacts = {}
@@ -479,6 +457,9 @@ class GraphDefinition:
 
         if any(id(entry_flow) not in flow_ids for entry_flow in self._entry_flows):
             raise ValueError("Every entry flow must also be included in 'flows'")
+
+        if len(set(map(id, self._entry_flows))) != len(self._entry_flows):
+            raise ValueError("An entry flow may be specified only once.")
 
         for entry_flow in self._entry_flows:
             if entry_flow.artifact is None:
@@ -587,20 +568,11 @@ class GraphDefinition:
         active_artifacts = set(self.entry_artifacts)
         active_operator_outputs: set[Artifact] = set()
 
-        for column_index in range(self._layout.shape[1]):
-            operators: list[BaseOperator] = []
-
-            for operator in self._layout.col(column_index):
-                if operator is None:
-                    continue
-
-                if not any(existing is operator for existing in operators):
-                    operators.append(operator)
-
+        for column_index, occurrences in enumerate(self._layout.columns):
             consumers: dict[Artifact, BaseOperator] = {}
             producers: dict[Artifact, BaseOperator] = {}
 
-            for operator in operators:
+            for _, operator in occurrences:
                 for artifact in operator.input_artifacts:
                     previous_consumer = consumers.get(artifact)
 
@@ -636,7 +608,7 @@ class GraphDefinition:
                             "in one execution stage."
                         )
 
-                    if artifact in active_artifacts and artifact not in consumers:
+                    if artifact in active_artifacts and artifact not in operator.input_artifacts:
                         raise ValueError(
                             f"Fan-in detected at layout column {column_index}: "
                             f"operator {operator!r} produces artifact {artifact!r}, "
@@ -682,6 +654,61 @@ class GraphDefinition:
     def flows(self) -> tuple[ArtifactFlow, ...]:
         """Artifact flows in declaration order."""
         return self._flows
+
+    def flow(self, artifact: ArtifactRef) -> ArtifactFlow | None:
+        """Return the authored root flow for an exact artifact or graph-local ID.
+
+        Accepts an Artifact, this graph's ArtifactDefinition, or a nonnegative
+        graph-local integer ID. Returns None for a known artifact with no
+        authored flow, including an unconsumed output. Unknown or foreign
+        references raise KeyError. Names and booleans raise TypeError.
+        """
+        return self._flow_by_artifact.get(self._specification.artifacts.resolve(artifact))
+
+    def attach(
+        self, source: ArtifactFlow, destination: ArtifactRef | None = None, *,
+        position: Literal["start", "end"] = "end",
+        translations: Mapping[Artifact, ArtifactRef] | None = None,
+        entry_artifacts: Iterable[ArtifactRef] | None = None,
+        serializers: Mapping[ArtifactRef, BaseSerializer] | None = None,
+    ) -> GraphDefinition:
+        """Return a new unconfirmed graph with one flow prepended or appended.
+
+        The source flow's artifact becomes the selected destination at every
+        imported port, including regenerated outputs. Omitting the destination
+        keeps the source artifact. An artifact-free root uses no destination.
+        See attach_many for secondary ports, entries and serializer coverage.
+        """
+        return self.attach_many((source, destination, position), translations=translations,
+                                entry_artifacts=entry_artifacts, serializers=serializers)
+
+    def attach_many(
+        self, *attachments: Attachment,
+        translations: Mapping[Artifact, ArtifactRef] | None = None,
+        entry_artifacts: Iterable[ArtifactRef] | None = None,
+        serializers: Mapping[ArtifactRef, BaseSerializer] | None = None,
+    ) -> GraphDefinition:
+        """Attach (source flow, destination, position) triples atomically.
+
+        Include all rows of a shared multi-input occurrence in the same call.
+        Each call allocates one local field set per distinct imported operator.
+        Within each boundary, triples retain argument order. Untranslated
+        artifacts keep their authored identities. Extra translations map
+        secondary inputs or outputs to exact artifacts, including new ones.
+        All integer and inspected references refer to the receiving graph.
+
+        By default the receiver supplies the new entry set. entry_artifacts
+        replaces that entire set. Destination resource selections and timing
+        fields carry over. Bind imported resource fields on the new graph.
+        Nonempty destination codec coverage is preserved on surviving boundary
+        artifacts. If new boundaries lack codecs, supply a complete replacement
+        via serializers, or opt out explicitly with an empty mapping.
+
+        Structural and known first-pass property conflicts reject the whole
+        call. Resource selection and explicit confirmation remain available on
+        the result. Neither receiver nor source is modified.
+        """
+        return attach_flows(self, attachments, translations, entry_artifacts, serializers)
 
     @property
     def inspect(self) -> GraphInspection:
@@ -802,6 +829,8 @@ class GraphDefinition:
         if self._state is not GraphState.CONFIRMED:
             raise RuntimeError("The graph must be confirmed before compilation.")
 
+        from ..validation.validation import incompatible_feedback
+
         validation = self.validate()
         if not validation.valid:
             raise ValueError(
@@ -809,29 +838,14 @@ class GraphDefinition:
                 f"{len(validation.mismatched_edges)} incompatible artifact edge(s)."
             )
 
-        row_count, column_count = self._layout.shape
-
         steps: list[CompiledStep] = []
         successor_indices: list[set[int]] = []
         producer_by_artifact: dict[Artifact, int] = {}
+        consumer_by_artifact: dict[Artifact, int] = {}
         entry_artifact_set = set(self.entry_artifacts)
 
-        for column in range(column_count):
-            compiled_operator_ids: set[int] = set()
-
-            for row in range(row_count):
-                operator = self._layout.rows[row][column]
-
-                if operator is None:
-                    continue
-
-                operator_id = id(operator)
-
-                if operator_id in compiled_operator_ids:
-                    continue
-
-                compiled_operator_ids.add(operator_id)
-
+        for column, occurrences in enumerate(self._layout.columns):
+            for row, operator in occurrences:
                 artifact_predecessors: set[int] = set()
 
                 for field in operator.bound_artifact_fields:
@@ -851,13 +865,22 @@ class GraphDefinition:
                             f"layout position {(row, column)!r}."
                         )
 
+                # A previous reader releases the old slot when it completes.
+                # An independent publisher must wait for that release as well.
+                artifact_predecessors.update(
+                    consumer_by_artifact[artifact] for artifact in operator.output_artifacts
+                    if artifact in consumer_by_artifact
+                )
                 bound_resources: list[tuple[ResourceField, BaseResource]] = []
+                unbound_resources: list[ResourceField] = []
 
                 for field in operator.resource_fields:
                     resource = self._resource_context.get(field)
 
                     if resource is not None:
                         bound_resources.append((field, resource))
+                    else:
+                        unbound_resources.append(field)
 
                 group_start = len(steps)
                 operator_index = group_start + len(bound_resources)
@@ -918,8 +941,10 @@ class GraphDefinition:
                     declared_artifact_fields=operator.declared_artifact_fields,
                     config_fields=operator.config_fields,
                     bound_resources=tuple(bound_resources),
+                    unbound_resources=tuple(unbound_resources),
                     output_fields=output_fields,
                     operator_name=operator.display_name,
+                    repeat_mismatches=incompatible_feedback(operator.bound_artifact_fields, output_fields),
                 )
 
                 steps.append(operator_step)
@@ -939,6 +964,7 @@ class GraphDefinition:
 
                     if artifact is not None:
                         producer_by_artifact.pop(artifact, None)
+                        consumer_by_artifact[artifact] = operator_index
 
                 for field, active in zip(
                     output_fields,
@@ -946,6 +972,7 @@ class GraphDefinition:
                 ):
                     if active:
                         producer_by_artifact[field.artifact] = operator_index
+                        consumer_by_artifact.pop(field.artifact, None)
 
         compiled_steps = tuple(
             replace(

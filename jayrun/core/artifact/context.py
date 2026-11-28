@@ -162,27 +162,7 @@ class ArtifactContext(DataContext[_ArtifactReference, Data[object]]):
         artifact: _ArtifactReference,
         registry: ArtifactRegistry,
     ) -> Artifact:
-        if isinstance(artifact, Artifact):
-            if not any(artifact is source for source in registry.sources):
-                raise KeyError("The Artifact does not belong to this graph.")
-            return artifact
-
-        if type(artifact) is int:
-            for definition in registry.definitions:
-                if definition.artifact_id == artifact:
-                    return registry.source_for(definition)
-            raise KeyError(f"Unknown artifact ID: {artifact!r}.")
-
-        if isinstance(artifact, ArtifactDefinition):
-            for definition in registry.definitions:
-                if artifact is definition:
-                    return registry.source_for(definition)
-            raise KeyError("The ArtifactDefinition does not belong to this graph.")
-
-        raise TypeError(
-            "Expected int, Artifact, or ArtifactDefinition, "
-            f"got {type(artifact).__name__!r}."
-        )
+        return registry.resolve(artifact)
 
     @staticmethod
     def _validate_reference(artifact: object) -> None:

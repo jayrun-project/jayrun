@@ -11,27 +11,28 @@ class DataRegistry(Generic[SourceT, DefinitionT]):
         self,
         definitions: Mapping[SourceT, DefinitionT],
     ) -> None:
-        self._definitions = dict(definitions)
-        self._sources = {
-            definition: source for source, definition in self._definitions.items()
-        }
+        self._sources = tuple(definitions)
+        self._definitions = tuple(definitions.values())
+        self._definition_by_source = {id(s): d for s, d in definitions.items()}
+        self._source_by_definition = {id(d): s for s, d in definitions.items()}
+        if len(self._sources) != len(self._source_by_definition):
+            raise ValueError("Definitions must have a one-to-one relationship with sources.")
 
-        if len(self._definitions) != len(self._sources):
-            raise ValueError(
-                "Definitions must have a one-to-one relationship with sources."
-            )
+    def _contains_source(self, source: SourceT) -> bool:
+        # Strong references in the registry keep these object IDs live.
+        return id(source) in self._definition_by_source
 
     def definition_for(self, source: SourceT) -> DefinitionT:
         try:
-            return self._definitions[source]
-        except KeyError as error:
-            raise KeyError(f"{source!r} is not registered.") from error
+            return self._definition_by_source[id(source)]
+        except KeyError:
+            raise KeyError(f"{type(source).__name__} does not belong to this graph.") from None
 
     def source_for(self, definition: DefinitionT) -> SourceT:
         try:
-            return self._sources[definition]
-        except KeyError as error:
-            raise KeyError(f"{definition!r} is not registered.") from error
+            return self._source_by_definition[id(definition)]
+        except KeyError:
+            raise KeyError(f"{type(definition).__name__} does not belong to this graph.") from None
 
     def to_definitions(
         self,
@@ -49,14 +50,14 @@ class DataRegistry(Generic[SourceT, DefinitionT]):
 
     @property
     def sources(self) -> tuple[SourceT, ...]:
-        return tuple(self._sources.values())
+        return self._sources
 
     @property
     def definitions(self) -> tuple[DefinitionT, ...]:
-        return tuple(self._definitions.values())
+        return self._definitions
 
     def __iter__(self) -> Iterator[DefinitionT]:
-        return iter(self._definitions.values())
+        return iter(self._definitions)
 
     def __len__(self) -> int:
         return len(self._definitions)

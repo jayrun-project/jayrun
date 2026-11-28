@@ -7,6 +7,7 @@ from inspect import iscoroutinefunction
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ..operator._binding import implementation
 from ..validation.graph import OperatorNode
 
 if TYPE_CHECKING:
@@ -38,7 +39,7 @@ class GraphReporter:
         """Return a compact AI-facing declaration, or indented JSON on request.
 
         Both forms preserve every supported value and supplied description.
-        Tuple values use explicit tags; limitations distinguish unavailable or
+        Tuple and numeric configuration defaults use explicit tags. Limitations distinguish unavailable or
         redacted construction data from genuine nulls. No code is reconstructed.
         """
         if indent is not None and (type(indent) is not int or not 0 <= indent <= 8):
@@ -203,7 +204,7 @@ def _format_graph(graph: GraphDefinition, compact: bool = False) -> str:
         if isinstance(node, OperatorNode):
             operator = node.operator
             node_rows.append(
-                f"N{node.node_id} OPERATOR: name={_text(operator.display_name)}; implementation={_type(operator)}; "
+                f"N{node.node_id} OPERATOR: name={_text(operator.display_name)}; implementation={_type(implementation(operator))}; "
                 f"execution={'async' if iscoroutinefunction(operator.execute) else 'sync'}; "
                 f"layout={node.layout_position}; predecessors=[{_refs('N', predecessors)}]; successors=[{_refs('N', successors)}]"
                 + _description(operator)

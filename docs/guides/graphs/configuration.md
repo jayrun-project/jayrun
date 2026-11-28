@@ -42,3 +42,10 @@ assert restored.get(scale.factor).value == 3
 ```
 
 See {py:class}`~jayrun.ConfigContext` for accepted keys and loading errors. Choose timing-relevant fields before confirmation with `graph.select_timing_configs(...)`. The [resource lifetime example](../../model/lifetime.md#compare-three-submissions) shows how resource configuration affects reuse.
+
+A YAML entry with `omitted: true` and no `value` leaves the builder alone. Add
+`value: null` to supply an explicit optional null. Defaults are metadata until
+normalization. Loading a template into an empty builder reproduces its supplied
+bindings, including nested tuples, signed zero and large integers. YAML documents
+have an 8 MiB limit. The binary `encode_configs` / `decode_configs` envelope uses
+graph-local IDs and explicit type tags for portable exchange.

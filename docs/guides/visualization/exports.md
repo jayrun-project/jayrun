@@ -38,7 +38,7 @@ The viewer offers two JSON downloads:
 - **Export graph data** saves the visualization payload, including layout and the
   captured declaration report when available.
 - **Export declaration report** saves the exact compact JSON from
-  `graph.report.to_json()`, with schema `jayrun.declaration/1`. Authored descriptions,
+  `graph.report.to_json()`, with schema `jayrun.declaration/2`. Authored descriptions,
   component references, configuration defaults and reconstruction limitations are
   preserved, including integer values too large for JavaScript numbers.
 

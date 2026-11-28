@@ -35,13 +35,14 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix='jayrun-wheel-') as temporary:
         examples = Path(temporary) / 'examples'
         shutil.copytree(root / 'docs/_examples', examples, ignore=shutil.ignore_patterns('__pycache__'))
-        for path in sorted(examples.glob('*.py')):
+        example_paths = sorted(examples.glob('*.py'))
+        for path in example_paths:
             subprocess.run([sys.executable, '-I', '-B', '-c',
                             'import sys,runpy;sys.path.insert(0,sys.argv[1]);runpy.run_path(sys.argv[2],run_name="__main__")',
                             str(examples), str(path)], cwd=temporary, check=True, timeout=30)
         sys.path.insert(0, str(examples))
         from first_graph import build_graph
-        from jayrun import ArtifactContext, ConfigContext, Controller, Engine, GraphRegistry
+        from jayrun import ArtifactContext, ConfigContext, Controller, Engine, GraphRegistry, Submission
         from jayrun.context import ContextState
         from jayrun.persistence import Database
         from jayrun.dashboard import prepare_dashboard
@@ -55,10 +56,13 @@ def main() -> None:
         delegated.confirm()
         declaration = delegated.report.to_json()
         assert json.loads(declaration) == delegated.report.to_dict()
-        assert json.loads(declaration)['schema'] == 'jayrun.declaration/1'
+        assert json.loads(declaration)['schema'] == 'jayrun.declaration/2'
         assert delegated.plot.build()['declaration_report_json'] == declaration
         assert delegated.plot.build()['description'] == delegated.description
         assert 'Export declaration report' in delegated.plot.to_html()
+
+        child_inputs = Submission(delegated, settings=ContextSettings(max_iterations=1),
+                                  authority=Controller())
 
         class SubmitController(BaseOperator):
             def __init__(self):
@@ -66,9 +70,7 @@ def main() -> None:
                 self.outputs = ()
 
             async def execute(self):
-                child = self.runtime.submit(delegated,
-                                            settings=ContextSettings(max_iterations=1),
-                                            authority=Controller())
+                child = self.runtime.submit(**child_inputs.arguments())
                 await child.wait_async(timeout=10)
                 assert child.state is ContextState.FINISHED, child.report.data.failure
                 self.context.record('child_answer', child.artifact(answer).value)
@@ -93,9 +95,11 @@ def main() -> None:
             configs = restored
         settings = ContextSettings(max_iterations=3, execution_history_limit=1,
                                    record_policy=RecordPolicy(history_per_key=1))
+        inputs = Submission(graph, artifacts=ArtifactContext({source: 7}), configs=configs, settings=settings)
+        assert inputs.inspect()['configs'][0]['origin'] == 'explicit'
         database = Database(Path(temporary) / 'history.sqlite')
         with Engine(EngineSettings(terminal_history_policy=TerminalHistoryPolicy(max_entries=1)), database=database) as engine:
-            run = engine.submit(graph, ArtifactContext({source: 7}), configs, settings=settings)
+            run = engine.submit(**inputs.arguments())
             run.wait(timeout=10)
             assert run.state is ContextState.FINISHED and run.artifact(result).value == 21
             assert '<jayrun-graph' in run.plot.to_html()
@@ -112,7 +116,9 @@ def main() -> None:
                                 configs=prepared.configs, settings=prepared.settings, authority=Controller())
             run.wait(timeout=10)
             assert run.state is ContextState.FINISHED and run.records('dashboard_url')
-    print(f'PASS installed wheel {jayrun.__version__}: {jayrun.__file__}; public exports, README, 15 examples, persistence, viewers, dashboard, declaration reports and delegated submission' + (' and YAML' if args.yaml else ''))
+    print(f'PASS installed wheel {jayrun.__version__} at {jayrun.__file__}. '
+          f'Checked public exports, README, {len(example_paths)} examples, persistence, viewers, dashboard, '
+          'declaration reports and prepared host and Controller submission' + (' and YAML' if args.yaml else ''))
 
 
 if __name__ == '__main__':

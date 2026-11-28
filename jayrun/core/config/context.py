@@ -162,11 +162,25 @@ class ConfigContext(DataContext[_ConfigReference, Data[object]]):
             )
         }
 
-        return yaml.safe_dump(
+        class ConfigDumper(yaml.SafeDumper):
+            pass
+
+        def represent_integer(dumper, number):
+            # Avoid interpreter-dependent decimal digit limits for large integers.
+            if number.bit_length() > 512:
+                return dumper.represent_scalar("tag:yaml.org,2002:int", hex(number))
+            return dumper.represent_int(number)
+
+        ConfigDumper.add_representer(int, represent_integer)
+        document = yaml.dump(
             {"configs": configs},
+            Dumper=ConfigDumper,
             sort_keys=False,
             allow_unicode=True,
         )
+        if len(document.encode("utf-8")) > 8 * 1024 * 1024:
+            raise ValueError("config YAML exceeds 8 MiB")
+        return document
 
     def load_yaml(self, content: str, graph: GraphDefinition) -> None:
         """Load graph-resolved values from YAML produced by :meth:`to_yaml`.
@@ -229,6 +243,8 @@ class ConfigContext(DataContext[_ConfigReference, Data[object]]):
                 raise TypeError(f"Config {config_id!r} must be a mapping")
 
             if "value" not in config:
+                if config.get("omitted") is True:
+                    continue
                 raise ValueError(f"Config {config_id!r} is missing 'value'")
 
             values[registry.source_for(definition)] = yaml_config_value(config["value"])
@@ -269,7 +285,7 @@ class ConfigContext(DataContext[_ConfigReference, Data[object]]):
             "attribute_name": definition.attribute_name,
             "value_type": self._type_name(definition.value_type),
             "default": definition.default,
-            "value": instance.value if instance is not None else definition.default,
+            **({"value": instance.value} if instance is not None else {"omitted": True}),
         }
 
     def _require_registry(self) -> ConfigRegistry:

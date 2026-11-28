@@ -19,3 +19,9 @@ A scoped Supervisor may apply only authorized context targets; applying remote p
 During shutdown, committed updates for known contexts can still settle while new work/control requests are rejected. Do not treat every apply failure as retryable network loss; inspect type, identity, authority, capacity and lifecycle errors first.
 
 A remote shadow is an observation of logical work, not a second worker executing it. See [recovery](recovery.md) for iteration boundaries and the limits of resume/replay claims.
+
+Entry checkpoints carry only entry artifact IDs. A newer committed snapshot
+must preserve the context's effective configuration. Validation compares the
+resolved fields, nested value types and the sign of zero. A defaultless optional
+field that was omitted cannot be changed into an explicit null by a later
+revision. Invalid updates leave the receiving context at its prior revision.

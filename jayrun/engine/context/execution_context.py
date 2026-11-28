@@ -5,6 +5,7 @@ from collections import deque
 
 from ...core.artifact.base import Artifact
 from ...core.context.runtime_data import Data
+from ...core.config.values import config_key
 from ...core.graph.compiled_graph import (
     CompiledOperatorStep,
     CompiledResourceStep,
@@ -332,6 +333,8 @@ class ExecutionContext:
             layout_position=step.layout_position,
         )
         proxy = self._create_proxy(step.execution_mode)
+        for field in step.unbound_resources:
+            setattr(proxy, field.attribute_name, None)
         resource_bindings = tuple(
             (
                 field,
@@ -619,18 +622,27 @@ class ExecutionContext:
             )
 
     def _collect_finished(self, session: ExecutionSession, index: int) -> None:
+        if session.result is None:
+            raise RuntimeError("finished session has no result")
         requests: ExecutionRequests = session.step.proxy.execution._requests
         if requests.repeat_requested and (
             self._max_repeats is None or session.repeat_count < self._max_repeats
         ):
+            step = self._compiled_steps[index]
+            if isinstance(step, CompiledOperatorStep) and step.repeat_mismatches:
+                conflicts = tuple(
+                    field.artifact for field, output in zip(step.output_fields, session.result, strict=True)
+                    if field.artifact in step.repeat_mismatches and output.value is not None
+                )
+                if conflicts:
+                    session._fail(ValueError(f"Incompatible feedback for operator repeat: {conflicts!r}"))
+                    self._collect_failed(session, index, allow_retry=False)
+                    return
             self._store_repeated_result(session, index)
             session.repeat()
             self._rescheduled_sessions.append(session)
             self._report_progress(session, StepProgressState.PENDING)
             return
-
-        if session.result is None:
-            raise RuntimeError("finished session has no result")
 
         if session.placement_requests:
             self._registry.record_placement_requests(session.placement_requests)
@@ -645,14 +657,16 @@ class ExecutionContext:
         if self._tracker.is_done and self._context.is_running:
             self._finish_iteration()
 
-    def _collect_failed(self, session: ExecutionSession, index: int) -> None:
+    def _collect_failed(
+        self, session: ExecutionSession, index: int, *, allow_retry: bool = True,
+    ) -> None:
         failure = session.failure
         if failure is None:
             raise RuntimeError("failed session has no failure")
 
         retry_policy = self._settings.retry_policy
         if (
-            isinstance(failure, retry_policy.retry_on)
+            allow_retry and isinstance(failure, retry_policy.retry_on)
             and not self._context._history_budget.exhausted
             and session.attempt_count < retry_policy.max_attempts
         ):
@@ -864,8 +878,7 @@ class ExecutionContext:
         resource: BaseResource,
     ) -> ResourceKey:
         # Compiled bindings and sealed config value references are fixed for this
-        # context. Retain the values themselves: neither their hash/equality nor
-        # resource availability is cached. Graph ownership keeps these IDs live.
+        # context. Key by setup-visible values, including Data(None) vs omission.
         binding = (id(field), id(resource))
         cached = self._resolved_resource_keys.get(binding)
         if cached is not None:
@@ -877,7 +890,7 @@ class ExecutionContext:
                 raise RuntimeError("resource config field is not registered")
 
             config_data = self._config_context.get(config_field)
-            value = None if config_data is None else config_data.value
+            value = None if config_data is None else config_key(config_data.value)
             configuration.append((config_field.attribute_name, value))
 
         key = ResourceKey(

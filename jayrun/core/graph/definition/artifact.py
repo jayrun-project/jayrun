@@ -16,7 +16,7 @@ class ArtifactRole(Enum):
     UNUSED = "unused"
 
 
-@dataclass(slots=True, frozen=True, kw_only=True)
+@dataclass(slots=True, frozen=True, kw_only=True, eq=False)
 class ArtifactDefinition(DataDefinition):
     """Graph-local inspected artifact metadata."""
 

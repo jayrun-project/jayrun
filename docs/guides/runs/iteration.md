@@ -25,3 +25,11 @@ A feedback artifact is both consumed and regenerated. An invariant entry needed 
 `max_iterations=None` permits unbounded graph iteration under external or component control. `max_repeats=None` removes the context-level repeat cap; `0` permits no additional execution. An explicit `stop()` prevents a next iteration while draining accepted work. `abort()` has a different outcome and cancellation policy.
 
 A bound output published as `None` clears its earlier value. Downstream work is skipped if that connected input remains absent when it becomes ready. This remains true after an operator repeat; stale earlier values must not keep a conditional route active.
+
+Confirmation checks the first pass. Inspect `graph.validate().feedback_mismatches`
+for declared output contracts incompatible with the next pass's entry consumer.
+A single pass, or a stop before the next pass, remains valid. At the iteration
+boundary an incompatible present checkpoint fails the context before reuse.
+A requested operator repeat checks present regenerated values once the repeat
+budget permits it. A cleared slot supplies `Data(value=None)` to the continuing
+operator session. Unknown properties carry no static rejection.

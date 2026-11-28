@@ -74,6 +74,21 @@ class _ArtifactProducerRegistry:
         )
 
 
+def incompatible_feedback(
+    inputs: tuple[ArtifactField, ...],
+    outputs: tuple[ArtifactField, ...],
+) -> tuple[Artifact, ...]:
+    """Compare only regenerated slots which will feed the next invocation."""
+    sources = {field.artifact: field for field in outputs if field.artifact is not None}
+    validator = ArtifactValidator()
+    return tuple(
+        field.artifact for field in inputs
+        if field.artifact in sources and not validator.validate(
+            field.properties, sources[field.artifact].properties,
+        ).valid
+    )
+
+
 class GraphValidation:
     """Internal builder for artifact-contract validation records."""
 
@@ -98,7 +113,10 @@ class GraphValidation:
         self._add_operators(nodes, edges, producers)
         self._add_exits(nodes, edges, producers)
 
+        entries = tuple(edge.target_field for edge in edges if edge.edge_type is EdgeType.ENTRY)
+        exits = tuple(edge.source_field for edge in edges if edge.edge_type is EdgeType.EXIT)
         return GraphValidationReport(
+            feedback_mismatches=incompatible_feedback(entries, exits),
             nodes=tuple(nodes),
             edges=tuple(edges),
         )
@@ -139,23 +157,8 @@ class GraphValidation:
         edges: list[GraphEdge],
         producers: _ArtifactProducerRegistry,
     ) -> None:
-        row_count, column_count = self._graph._layout.shape
-
-        for column in range(column_count):
-            processed_operator_ids: set[int] = set()
-
-            for row in range(row_count):
-                operator = self._graph._layout.rows[row][column]
-
-                if operator is None:
-                    continue
-
-                operator_identity = id(operator)
-
-                if operator_identity in processed_operator_ids:
-                    continue
-
-                processed_operator_ids.add(operator_identity)
+        for column, occurrences in enumerate(self._graph._layout.columns):
+            for row, operator in occurrences:
                 consumed_inputs = self._consume_inputs(operator, producers)
                 node_id = len(nodes)
                 x_position = column + 1

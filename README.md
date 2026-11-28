@@ -10,7 +10,7 @@ Jayrun is a Python execution framework for pipelines, iterative experiments and 
 [![CI](https://github.com/jayrun-project/jayrun/actions/workflows/ci.yml/badge.svg)](https://github.com/jayrun-project/jayrun/actions/workflows/ci.yml)
 [![Apache 2.0 license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/jayrun-project/jayrun/blob/main/LICENSE)
 
-[Quick start](#quick-start) · [Documentation](https://jayrun.readthedocs.io/en/latest/) · [Tutorials](#tutorials) · [API reference](https://jayrun.readthedocs.io/en/latest/reference/imports.html) · [0.3.5 release notes](https://github.com/jayrun-project/jayrun/releases/tag/v0.3.5)
+[Quick start](#quick-start) · [Documentation](https://jayrun.readthedocs.io/en/latest/) · [Tutorials](#tutorials) · [API reference](https://jayrun.readthedocs.io/en/latest/reference/imports.html) · [0.4.0 release notes](https://github.com/jayrun-project/jayrun/releases/tag/v0.4.0)
 
 ## What Jayrun does
 
@@ -90,6 +90,8 @@ $ python first_graph.py
 ```
 
 Each submission returns a `ContextRun`. Once it finalizes, check its outcome before reading the result. The [first graph walkthrough](https://jayrun.readthedocs.io/en/latest/start/first-graph.html) explains field binding, reads the recorded value and visualizes the run.
+
+To reuse the same inputs, create a `Submission(graph, artifacts=inputs, configs=overrides)` before opening the Engine. Call `submission.inspect()` to see which configuration values came from defaults, then pass `**submission.arguments()` to each `engine.submit()` call. Each call gets fresh builders and shares the underlying artifact payloads. [Submission reference](https://jayrun.readthedocs.io/en/latest/reference/engine.html#jayrun.Submission)
 
 The core runtime requires `packaging`. Install `jayrun[yaml]` for YAML configuration. Individual applications can add libraries such as PyTorch.
 

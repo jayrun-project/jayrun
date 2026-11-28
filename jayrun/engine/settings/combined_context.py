@@ -101,33 +101,10 @@ class CombinedContextSettings:
         reference: int | Artifact | ArtifactDefinition,
         registry: ArtifactRegistry,
     ) -> Artifact:
-        if type(reference) is int:
-            for definition in registry.definitions:
-                if definition.artifact_id == reference:
-                    return registry.source_for(definition)
-
-            raise ValueError(
-                f"Retained artifact ID {reference!r} does not belong to the graph"
-            )
-
-        if isinstance(reference, ArtifactDefinition):
-            for definition in registry.definitions:
-                if definition is reference:
-                    return registry.source_for(definition)
-
-            raise ValueError("Retained ArtifactDefinition does not belong to the graph")
-
-        if isinstance(reference, Artifact):
-            for artifact in registry.sources:
-                if artifact is reference:
-                    return artifact
-
-            raise ValueError("Retained Artifact does not belong to the graph")
-
-        raise TypeError(
-            "retained_artifacts must contain only int, "
-            "Artifact, or ArtifactDefinition instances"
-        )
+        try:
+            return registry.resolve(reference)
+        except KeyError as error:
+            raise ValueError("Retained artifact reference does not belong to the graph") from error
 
     @staticmethod
     def _validate_retained_artifacts(

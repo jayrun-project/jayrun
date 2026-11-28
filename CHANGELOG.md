@@ -4,6 +4,25 @@ All notable changes to Jayrun are documented in this file.
 
 Release notes describe new capabilities, compatibility changes and fixes.
 
+## [0.4.0] - 2026-11-28
+
+### Added
+
+- `Submission(graph, artifacts=..., configs=..., settings=...)` resolves native inputs for a confirmed graph before an Engine starts. Use `inspect()` to see supplied entries, explicit and defaulted configs, omitted fields, resource and serializer selections, and conditional feedback diagnostics. Pass `engine_settings=` to preview a particular engine policy.
+- Each `submission.arguments()` call returns fresh native builders for one host or Controller submission. A submission can serve concurrent runs. The original builders remain available, and mutable artifact payloads are shared by reference.
+- Retrieve an authored row with `graph.flow(artifact)`. Use `attach` to extend a row or `attach_many` to connect related rows in one operation. Both attachment methods return a fresh graph for explicit confirmation.
+
+### Changed
+
+- Declaration JSON uses `jayrun.declaration/2`. Consumers of the 0.3.5 report should check the schema and read typed numeric defaults, recursive tuples and effective component requirements. Integer and floating-point tags preserve large integers and signed zero.
+- Artifact builders may supply entry artifacts only. Inspected definition handles must belong to the graph receiving them. When building another graph, resolve its own handles.
+
+### Fixed
+
+- Compilation orders a new publication after the previous slot's last reader. Graph construction rejects an unordered overwrite in either row order. A known feedback mismatch can still complete a one-pass run and is enforced when another iteration or operator repeat would reuse a conflicting value.
+- Resource reuse distinguishes exact nested config types, signed zero, omission and explicit null. Operators can read an unbound optional resource field as `None`.
+- Loading editable config YAML preserves omitted bindings and bounded large integers. Incoming committed snapshots verify the effective configuration captured for the original run.
+
 ## [0.3.5] - 2026-11-26
 
 ### Added

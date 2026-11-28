@@ -65,9 +65,11 @@ The diagram below is embedded in this page. Use **Fit** to center it and select 
 ```
 
 
-Confirmation completes preparation and seals the graph. Bind any resources, serializers and timing selections **before** `confirm()`. The graph can then be reused for multiple submissions. See [preparation order](../guides/graphs/construction.md#preparation-order).
+Confirmation seals the graph declaration. Bind resources, serializers and timing selections **before** `confirm()`. The same confirmed graph can accept different inputs on every run. [Graph preparation order](../guides/graphs/construction.md#preparation-order)
 
 ## 5. Supply values and submit
+
+For a single run, pass artifact and config builders directly. To inspect the effective bindings before opening an Engine or reuse them across runs, create a `Submission` from those same builders. [Inspect and reuse submission inputs](../guides/runs/engine.md#inspect-inputs-before-starting-an-engine)
 
 ```python
 from jayrun import ArtifactContext, ConfigContext, Engine

@@ -22,7 +22,7 @@ def safe(value, *, key='', depth=0, budget=None):
         return {'availability': 'redacted'}
     if depth > 6:
         return {'availability': 'omitted', 'reason': 'display depth limit'}
-    if type(value) is int and value.bit_length()>13000:
+    if type(value) is int and value.bit_length()>2048:
         return {'availability':'omitted','reason':'integer exceeds bounded decimal display'}
     if value is None or type(value) in (bool, int):
         return str(value) if type(value) is int and abs(value) > 2**53-1 else value

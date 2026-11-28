@@ -62,7 +62,7 @@ whitespace and Unicode; it does not invent purpose or infer algorithms from code
 Absent names/descriptions appear as null. Graph names/descriptions do not change
 structural `graph_id` values. Descriptions state intent, not verified behavior.
 
-The JSON schema identifier is `jayrun.declaration/1`. Consumers must check it and
+The JSON schema identifier is `jayrun.declaration/2`. Consumers must check it and
 reject unknown schemas rather than interpreting them as version 1. The document
 contains no execution logs, timings, credentials supplied at submission, result
 values or effective authority. It is a declaration, not a configured run or checkpoint.
@@ -88,7 +88,9 @@ references remain distinct even when metadata matches. An input/output with
 resource binding means no resource was selected. Artifact-free roots have a null
 flow artifact. Ordered flows preserve feedback and repeated operator occurrences.
 
-Ordinary JSON scalars retain their types. Tuples use `{"tuple": [...]}` recursively;
+Strings, booleans and nulls retain their JSON scalar form. Configuration numbers
+use `{"int": "0x1"}` or `{"float": "-0x0.0p+0"}`. Tuples use `{"tuple": [...]}` recursively.
+
 Python type contracts use `{"python_type": "module.QualifiedName"}`. Unsupported
 values use `{"unavailable_type": "module.QualifiedName"}` plus a limitation.
 Sensitive defaults identified by configuration field names use `{"redacted": true}`;
@@ -120,3 +122,9 @@ reuse is distinct from runtime cache reuse, which depends on class identity, eff
 configuration and concurrency requirements. This export does not certify model thread
 safety or execution outcomes. Registry reports retain their existing text interface;
 export each individual graph for declaration evidence.
+
+In declaration version 2 every configuration integer and finite float default
+uses a tagged hexadecimal string, including tuple members. Comparing detached
+records distinguishes booleans, integers, floats and the sign of zero, even in
+JSON readers with limited numeric precision. Version 1 exports remain viewable.
+Graph fingerprints continue to exclude defaults and execution bindings.

@@ -6,18 +6,20 @@
       "sha256": "bfd7b2440b066594b0dca328ef5c062cfe798bd231bba6f603c018dcd65d54f6"
     },
     "first-run.png": {
-      "provenance": "Chromium capture of the three fitted graph nodes and their connecting edges in the completed Scale example. Captured at 2x pixel density.",
+      "provenance": "Chromium capture of the three fitted graph nodes and their connecting edges in the completed Scale example. Captured at 2x pixel density. The picture retains the earlier execution. The refreshed example shows the same visible node labels and positions.",
       "sha256": "91c6a7c78ef978668ec6a4d5be820f01c871f55a7289e509406d88070d2cb157",
-      "source": "docs/_static/first_run.html"
+      "source": "docs/_static/first_run.html",
+      "captured_source_sha256": "68927f90ea49733f71f579bdb7f01ee70cb811f0b64cb34dff0ba4cfae4bc091"
     },
     "split-and-join.png": {
-      "provenance": "Captured with Chromium from the bundled declaration viewer.",
+      "provenance": "Captured with Chromium from the bundled declaration viewer. The refreshed example rendered the same graph pixels in the Chromium comparison.",
       "sha256": "fc567508384f9c706072ea5219bcc4524e7a2bcb9b3a8afec21b35721fc000b1",
-      "source": "docs/_static/split_join.html"
+      "source": "docs/_static/split_join.html",
+      "captured_source_sha256": "cc237653d434ba69b1e6c2260c59469eab9c804cf78341a233847f8679355656"
     }
   },
   "sources": {
-    "docs/_static/first_run.html": "68927f90ea49733f71f579bdb7f01ee70cb811f0b64cb34dff0ba4cfae4bc091",
-    "docs/_static/split_join.html": "cc237653d434ba69b1e6c2260c59469eab9c804cf78341a233847f8679355656"
+    "docs/_static/first_run.html": "34e86d0064c7f431e465f3719a166f9dc71a1dee2cedadd67ef8dedc77ccb49f",
+    "docs/_static/split_join.html": "33bd2306885674c5faf4cee9c80b8052fccefbb6e06f5cd50db5476a995263ed"
   }
 }

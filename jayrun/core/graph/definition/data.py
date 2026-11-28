@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 
-@dataclass(slots=True, frozen=True, kw_only=True)
+@dataclass(slots=True, frozen=True, kw_only=True, eq=False)
 class DataDefinition:
     """Immutable name and description captured during graph inspection."""
 

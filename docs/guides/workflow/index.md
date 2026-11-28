@@ -1,6 +1,6 @@
 # From declaration to execution
 
-A declaration describes reusable computation. A submission supplies values and creates one execution, represented by a ContextRun. This chapter follows that transition without treating a run as another graph definition.
+A `GraphDefinition` declares reusable computation. A `Submission` can bind and inspect its inputs before an Engine starts. Each call to `Engine.submit()` or a Controller's `runtime.submit()` admits one attempt and returns a `ContextRun` when registration succeeds.
 
 The [lifetime introduction](../../start/data-and-lifetimes.md) explains what changes with each run and what the runtime can reuse. If you have not run Jayrun yet, start with the [complete guided example](../../start/first-graph.md). Then use the two parts below to understand and extend it.
 
@@ -10,8 +10,8 @@ The [lifetime introduction](../../start/data-and-lifetimes.md) explains what cha
 | --- | --- | --- |
 | Declare data and computation | Artifact identities, operator fields and resource bindings | [Artifacts](../../model/identity.md), [operators](../graphs/operators.md), [resources](../graphs/resources.md) |
 | Connect the declaration | ArtifactFlow and GraphDefinition | [Artifact flow](../../model/flow.md), [construction](../graphs/construction.md) |
-| Validate and prepare | Resolve structural/property errors, bind resources and serializers, then confirm | [Validation](../graphs/validation.md), [graph resolutions](../graphs/resolutions.md) |
-| Supply values and policy | ArtifactContext, ConfigContext and execution settings | [Configuration](../graphs/configuration.md), [settings](../runs/settings.md) |
+| Validate and confirm the graph | Resolve structural and property errors, bind resources and serializers, then confirm | [Validation](../graphs/validation.md), [graph resolutions](../graphs/resolutions.md) |
+| Supply values and policy | Pass native builders directly, or bind them once with `Submission` and inspect the effective inputs | [Prepare submission inputs](../runs/engine.md#inspect-inputs-before-starting-an-engine), [configuration](../graphs/configuration.md), [settings](../runs/settings.md) |
 | Submit and manage work | Engine returns a ContextRun; wait or request lifecycle changes | [Engine](../runs/engine.md), [ContextRun](../runs/context-run.md) |
 | Read the execution result | Check outcome, retained artifacts and reports after finalization | [Results](../runs/context-run.md#results-and-retention), [visualization and reporting](../evidence/plots.md) |
 

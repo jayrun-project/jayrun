@@ -1,6 +1,7 @@
 """Closed, immutable configuration value contract (no application hooks)."""
 from __future__ import annotations
 
+from collections.abc import Hashable
 import math
 
 CONFIG_MAX_BYTES = 1024 * 1024
@@ -61,3 +62,12 @@ def yaml_config_value(value: object) -> object:
     result = convert(value, 0)
     validate_config_value(result)
     return result
+
+def config_key(value: object) -> Hashable:
+    """Type-exact process-local key for a validated configuration value."""
+    kind = type(value)
+    if kind is tuple:
+        return (tuple, tuple(config_key(item) for item in value))
+    if kind is float:
+        return (float, value.hex())
+    return (kind, value)

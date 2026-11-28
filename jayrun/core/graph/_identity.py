@@ -20,6 +20,8 @@ from ..artifact.properties import (
     TypeProperty,
 )
 
+from ..operator._binding import implementation
+
 if TYPE_CHECKING:
     from ..artifact.base import Artifact
     from ..artifact.field import ArtifactField
@@ -135,7 +137,7 @@ def declaration_tokens(
     for reference in operators:
         operator = reference.operator
         declarations.append((
-            _type_name(type(operator)),
+            _type_name(type(implementation(operator))),
             'event_loop' if inspect.iscoroutinefunction(operator.execute) else 'thread',
             tuple(port(field) for field in operator.declared_artifact_fields),
             tuple(port(field) for field in operator.outputs),

@@ -2,7 +2,7 @@ from ..operator.base import BaseOperator
 
 
 class GraphLayout:
-    __slots__ = ("_rows", "_frozen")
+    __slots__ = ("_rows", "_frozen", "_columns", "_counts")
 
     def __init__(self, num_rows: int) -> None:
         if type(num_rows) is not int:
@@ -12,6 +12,7 @@ class GraphLayout:
             raise ValueError("num_rows must be greater than zero")
 
         self._frozen = False
+        self._counts = [0] * num_rows
         self._rows: list[list[BaseOperator | None]] | tuple[tuple[BaseOperator | None, ...], ...] = [
             [] for _ in range(num_rows)
         ]
@@ -29,7 +30,28 @@ class GraphLayout:
     def _freeze(self) -> None:
         if not self._frozen:
             self._rows = self.rows
+            self._counts = tuple(self._counts)
+            self._columns = tuple(
+                self._unique_occurrences(column) for column in zip(*self._rows)
+            )
             self._frozen = True
+
+    @staticmethod
+    def _unique_occurrences(
+        column: tuple[BaseOperator | None, ...],
+    ) -> tuple[tuple[int, BaseOperator], ...]:
+        seen: set[int] = set()
+        occurrences = []
+        for row, operator in enumerate(column):
+            if operator is not None and id(operator) not in seen:
+                seen.add(id(operator))
+                occurrences.append((row, operator))
+        return tuple(occurrences)
+
+    @property
+    def columns(self) -> tuple[tuple[tuple[int, BaseOperator], ...], ...]:
+        """Aligned computational occurrences, once per operator in each column."""
+        return self._columns
 
     @property
     def num_rows(self) -> int:
@@ -46,8 +68,10 @@ class GraphLayout:
             raise IndexError(
                 f"the matrix has {len(self._rows)} rows, the column length is {len(column)}"
             )
-        for operator, row in zip(column, self._rows):
+        for index, (operator, row) in enumerate(zip(column, self._rows)):
             row.append(operator)
+            if operator is not None:
+                self._counts[index] += 1
 
     def row(self, number: int) -> tuple[BaseOperator | None, ...]:
         if not isinstance(number, int):
@@ -69,8 +93,7 @@ class GraphLayout:
 
     @property
     def row_counts(self) -> tuple[int, ...]:
-        boolean = [[bool(x) for x in row] for row in self._rows]
-        return tuple(sum(x) for x in boolean)
+        return tuple(self._counts)
 
     @property
     def rows(self) -> tuple[tuple[BaseOperator | None, ...], ...]:

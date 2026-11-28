@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from ..artifact.field import ArtifactField
 from ..config.field import ConfigField
 from ..declaration.field import DeclarativeField
+from ..operator._binding import implementation
 from ..operator.base import BaseOperator
 from ..resource.base import BaseResource
 from .artifact_flow import ArtifactFlow
@@ -17,7 +18,7 @@ from .artifact_flow import ArtifactFlow
 if TYPE_CHECKING:
     from .graph_definition import GraphDefinition
 
-SCHEMA = "jayrun.declaration/1"
+SCHEMA = "jayrun.declaration/2"
 MAX_BYTES = 32 * 1024 * 1024
 _SENSITIVE = re.compile(r"password|secret|credential|authorization|access.?token|api.?key|private.?key", re.I)
 
@@ -28,6 +29,17 @@ def _type_name(cls: type) -> str:
 
 def _metadata(item: object) -> dict[str, object]:
     return {"name": item.name, "description": item.description}
+
+
+def _config_value(item: object) -> object:
+    # Numeric tags survive both Python equality and JSON number conversion.
+    if type(item) is int:
+        return {"int": hex(item)}
+    if type(item) is float:
+        return {"float": item.hex()}
+    if type(item) is tuple:
+        return {"tuple": [_config_value(child) for child in item]}
+    return item
 
 
 def declaration_report(graph: GraphDefinition) -> dict[str, object]:
@@ -106,7 +118,7 @@ def declaration_report(graph: GraphDefinition) -> dict[str, object]:
         for name, parameter in parameters.items():
             if name not in allowed and parameter.kind not in (parameter.VAR_KEYWORD, parameter.VAR_POSITIONAL):
                 missing(f"{local_id}/constructor/{name}", "constructor argument not retained by declaration API")
-        ignored = {"_name", "_description"}
+        ignored = {"_name", "_description", "requirements"}
         if isinstance(instance, BaseOperator):
             ignored.update(("_operator_initialized", "outputs"))
         elif isinstance(instance, BaseResource):
@@ -114,7 +126,8 @@ def declaration_report(graph: GraphDefinition) -> dict[str, object]:
         for name, state in vars(instance).items():
             if name not in ignored and not isinstance(state, DeclarativeField):
                 missing(f"{local_id}/state/{name}", "extra instance state is outside the declaration contract")
-        return {"component": components[cls], **_metadata(instance)}
+        return {"component": components[cls], **_metadata(instance),
+                "effective_requirements": value(instance.requirements, f"{local_id}/requirements")}
 
     config_data = {}
     config_ids = {}
@@ -127,7 +140,7 @@ def declaration_report(graph: GraphDefinition) -> dict[str, object]:
             default = {"redacted": True}
             missing(path, "sensitive default; supply externally")
         else:
-            default = value(field.default, path)
+            default = _config_value(field.default)
         config_data[key] = {"config_id": definition.config_id, "owner": owners[field.owner],
                             "field": field.attribute_name, **_metadata(field), "required": field.required,
                             "value_type": _type_name(field.value_type), "default": default}
@@ -148,9 +161,9 @@ def declaration_report(graph: GraphDefinition) -> dict[str, object]:
 
     operator_data = {}
     for operator, key in operators.items():
-        item = declaration(operator, key, {"self", "name", "description", "outputs",
+        item = declaration(implementation(operator), key, {"self", "name", "description", "outputs",
                                           *(f.attribute_name for f in operator.declared_artifact_fields)})
-        item["execution"] = "async" if inspect.iscoroutinefunction(type(operator).execute) else "sync"
+        item["execution"] = "async" if inspect.iscoroutinefunction(operator.execute) else "sync"
         item["inputs"] = {field.attribute_name: artifact_field(field, f"operators/{key}/inputs/{field.attribute_name}")
                           for field in operator.declared_artifact_fields}
         item["outputs"] = [artifact_field(field, f"operators/{key}/outputs/{i}") for i, field in enumerate(operator.outputs)]

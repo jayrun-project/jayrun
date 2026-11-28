@@ -30,7 +30,7 @@ import asyncio
 import inspect
 import numpy as np
 import torch
-from jayrun import ArtifactContext, Engine
+from jayrun import ArtifactContext, Engine, Submission
 from jayrun.context import ContextState
 from tutorials import build_graph as lesson
 
@@ -57,27 +57,30 @@ print("Corrected graph confirmed:", graph.confirmed)
 
 ## 3. Supply values and inspect the outcome
 
-The table has 784 feature columns and one label column. ArtifactContext maps the two entry identities to a table and a classifier. Constructors declare fields; Jayrun binds artifact arguments to fields by name and output tuples by position. The Engine returns a ContextRun, whose final state must be checked before reading a result.
+The table has 784 feature columns and one label column. ArtifactContext maps the two entry identities to a table and a classifier. Constructors declare fields; Jayrun binds artifact arguments to fields by name and output tuples by position. Build a Submission before opening the Engine. Inspect the two entry IDs without reading the table or classifier. Each call to arguments() supplies fresh builders for a run and shares the original payloads.
 
 Jupyter owns an event loop, so the synchronous Engine block runs through asyncio.to_thread. This is orchestration code using the existing tutorial operators.
 
 <!-- notebook: 01_build_graph.ipynb#execute -->
 ```python
-def execute_corrected_graph():
+def execute_corrected_graph(candidate, exit_artifact):
     rng = np.random.default_rng(42)
     table = np.column_stack((rng.normal(size=(24, 784)), np.arange(24) % 10))
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(42)
         classifier = torch.nn.Linear(784, 10)
     inputs = ArtifactContext({dataset: table, model: classifier})
+    submission = Submission(candidate, artifacts=inputs)
+    entries = submission.inspect()["entries"]
+    assert len(entries) == 2 and all(entry["supplied"] for entry in entries)
     with Engine() as engine:
-        run = engine.submit(graph, inputs)
+        run = engine.submit(**submission.arguments())
         run.wait(timeout=30)
         if run.state is not ContextState.FINISHED:
             raise RuntimeError(str(run.report.data.failure))
-        return run.artifact(model).value
+        return run.artifact(exit_artifact).value
 
-result = await asyncio.to_thread(execute_corrected_graph)
+result = await asyncio.to_thread(execute_corrected_graph, graph, model)
 print("Result type:", type(result).__name__)
 assert isinstance(result, lesson.TemperatureScaledModel)
 ```
@@ -92,6 +95,31 @@ alternative, _, _ = lesson.build_graph(torch.float16)
 print("Alternative mismatches:", len(alternative.validate().mismatched_edges))
 ```
 
+## 5. Attach an independent measurement
+
+A model auditor wants the number of trained parameters. Declare that measurement against a separate artifact, then append its flow to the trained model. The extended run exposes the count as its exit. The confirmed training graph still exposes the trained model.
+
+```{literalinclude} ../../tutorials/build_graph.py
+:language: python
+:pyobject: CountParameters
+```
+
+<!-- notebook: 01_build_graph.ipynb#attach-measurement -->
+```python
+from jayrun import Artifact, ArtifactFlow
+
+trained, count = Artifact(name="trained"), Artifact(name="parameter count")
+measurement = ArtifactFlow(lesson.CountParameters(trained=trained, outputs=(count,)), artifact=trained)
+extended = graph.attach(measurement, model, position="end")
+assert len(graph.flow(model).operators) == 2
+assert len(extended.flow(model).operators) == 3
+extended.confirm()
+
+total = await asyncio.to_thread(execute_corrected_graph, extended, count)
+assert total == 7_850  # 784 weights and one bias for each of ten classes
+print(total)
+```
+
 You have separated declaration, validation, confirmation, submission, and result inspection. The complete CLI demonstration also returns mismatches_detected=1, corrected_valid=True, and result_type="TemperatureScaledModel". Continue to the image lesson for conditional routes and reusable resources.
 
 ## Read the canonical implementation
@@ -104,3 +132,12 @@ The complete [build_graph.py](https://github.com/jayrun-project/jayrun/blob/main
 ```
 
 Continue with [the tutorial collection](index.md) or [supported behavior and limitations](../reference/limits.md).
+
+## Extend a graph built by another author
+
+The [two-channel sensor example](../_examples/attach_flows.py) starts with a
+confirmed graph and adds two input calibration rows and two measurement rows.
+Run `python docs/_examples/attach_flows.py` with Jayrun installed. The final
+score is 42.0. Each multi-input operator executes once. The original graph
+can still accept the two calibrated inputs directly. The [construction guide](../guides/graphs/construction.md#retrieve-or-attach-an-authored-flow)
+also shows insertion before and after an existing reader.

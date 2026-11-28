@@ -21,3 +21,14 @@ An ordinary context finishing does not necessarily tear down a cached resource. 
 If setup allocates several application objects and then fails before returning `Data`, release those partial allocations in setup's own exception handling. Teardown cannot clean up an object that was never successfully returned. Keep teardown bounded and idempotent where appropriate; cleanup failures remain visible and should not replace the primary execution failure in your diagnosis.
 
 Resources can reserve placement during setup; a lease can outlive the operator session while the resource remains retained. Make placement calls before allocating application state because admission may restart setup. See [placement usage](../components/placement.md) and [failure handling](../runs/failures.md).
+
+The cache compares the actual resource class, consuming field's parallel-safety
+mode and the effective setup configuration. Comparison preserves nested numeric
+types and the sign of zero. An omitted defaultless optional field gives setup
+`None`. Supplying null gives it `Data(value=None)`. These use distinct cache
+entries. An explicit value equal in type and content to its effective default
+can reuse the same entry. Inspected field definitions address only their graph.
+
+An omitted optional `ResourceField` is present on the operator session as
+`None`. A selected field exposes the acquired resource data. Reading an omitted
+field allocates no resource and schedules no setup or teardown.

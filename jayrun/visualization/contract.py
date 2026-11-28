@@ -26,6 +26,8 @@ def summarize(value: object, *, _depth: int = 0, _seen: set[int] | None = None) 
     if type(value) is str:
         return value if len(value) <= 2048 else value[:2048] + " … [text omitted]"
     if type(value) is int:
+        if value.bit_length() > 2048:
+            return f"[integer with {value.bit_length()} bits; display omitted]"
         return value if abs(value) <= 9007199254740991 else str(value) + " [integer]"
     if type(value) is float:
         return value if math.isfinite(value) else "[non-finite number omitted]"
@@ -130,7 +132,7 @@ def _graph(graph: dict) -> dict:
     if "declaration_report_json" in graph:
         text = _text(graph["declaration_report_json"], "declaration_report_json", limit=MAX_EXPORT_BYTES)
         report = json.loads(text, parse_constant=_reject_json_constant)
-        if type(report) is not dict or report.get("schema") != "jayrun.declaration/1":
+        if type(report) is not dict or report.get("schema") not in ("jayrun.declaration/1", "jayrun.declaration/2"):
             raise ValueError("unsupported declaration report schema")
         identity = graph.get("identity", {}).get("Intrinsic graph ID")
         if type(report.get("graph")) is not dict:

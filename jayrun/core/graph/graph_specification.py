@@ -58,6 +58,7 @@ class GraphSpecification:
     def proceed(
         self,
         resources: Mapping[ResourceField, BaseResource],
+        timing_fields: tuple[ConfigField, ...] | None = None,
     ) -> None:
         if self._configs is not None:
             raise RuntimeError("The graph specification is already complete.")
@@ -94,6 +95,9 @@ class GraphSpecification:
             for resource in resources.values()
         }
         configs = self._extract_configs(resources)
+
+        if timing_fields is not None and any(not configs._contains_source(f) for f in timing_fields):
+            raise ValueError("A selected timing field is absent after resource binding. Select timing configs again.")
 
         self._resource_requirements = resource_requirements
         self._requirements = requirements
@@ -178,21 +182,12 @@ class GraphSpecification:
     def _extract_operators(
         layout: GraphLayout,
     ) -> tuple[tuple[OperatorReference, ...], tuple[int, ...]]:
-        row_count, column_count = layout.shape
         declaration_indices: dict[int, int] = {}
         references: list[OperatorReference] = []
         occurrences: list[int] = []
-        rows = layout.rows
-
-        for column in range(column_count):
-            column_operator_ids: set[int] = set()
-            for row in range(row_count):
-                operator = rows[row][column]
-                if operator is None or id(operator) in column_operator_ids:
-                    continue
-
+        for column, aligned in enumerate(layout.columns):
+            for row, operator in aligned:
                 operator_id = id(operator)
-                column_operator_ids.add(operator_id)
                 if operator_id not in declaration_indices:
                     declaration_indices[operator_id] = len(references)
                     references.append(
@@ -213,7 +208,9 @@ class GraphSpecification:
         for operator in self._operators:
             for field in operator.resource_fields:
                 if field in definitions:
-                    continue
+                    if any(existing is field for existing in definitions):
+                        continue
+                    raise ValueError("Distinct field declarations compare equal in this graph.")
 
                 definitions[field] = ResourceDefinition(
                     resource_id=len(definitions),
@@ -264,7 +261,9 @@ class GraphSpecification:
         for operator in self._operators:
             for field in operator.config_fields:
                 if field in definitions:
-                    continue
+                    if any(existing is field for existing in definitions):
+                        continue
+                    raise ValueError("Distinct field declarations compare equal in this graph.")
 
                 definitions[field] = self._create_config_definition(
                     config_id=len(definitions),
@@ -286,7 +285,9 @@ class GraphSpecification:
 
             for field in resource.config_fields:
                 if field in definitions:
-                    continue
+                    if any(existing is field for existing in definitions):
+                        continue
+                    raise ValueError("Distinct field declarations compare equal in this graph.")
 
                 definitions[field] = self._create_config_definition(
                     config_id=len(definitions),

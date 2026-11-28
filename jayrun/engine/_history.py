@@ -18,7 +18,6 @@ from typing import TYPE_CHECKING, TypeAlias
 import weakref
 
 from .. import __version__
-from ..core.graph.definition.artifact import ArtifactDefinition
 from ..core.graph.compiled_graph import CompiledOperatorStep, CompiledResourceStep
 from ..persistence import Database, PersistenceBackpressure, PersistenceError
 from ..persistence.errors import PersistenceTimeout, StorageContractError
@@ -41,7 +40,7 @@ from .registry.context_status import (StateTransition, StopRequested, IterationS
 from .registry.context_state import ContextState, ContextRequest
 from .resource.placement import Placement, PlacementGroup
 from .settings.context import ContextSettings
-from .settings.engine import RetryPolicy
+from ..reporting._submission import _qualified, _retry, _settings_report
 from ._capture_values import _encode_detached_facts, _encode_framework_value
 
 if TYPE_CHECKING:
@@ -69,12 +68,6 @@ def _capture_caller() -> None:
     )
 
 
-def _qualified(cls: type) -> str:
-    module = type.__getattribute__(cls, "__module__")
-    name = type.__getattribute__(cls, "__qualname__")
-    return f"{module}.{name}" if type(module) is str and type(name) is str else "unknown type"
-
-
 def _redactions(database: Database, namespace: str) -> tuple[ValuePath, ...]:
     # A root redaction applies to every diagnostic namespace, never to essential
     # structural identities or to strings that the application chose as labels.
@@ -89,41 +82,10 @@ def _encode(database: Database, namespace: str, value: object) -> ValueSnapshot:
                                   redact=_redactions(database, namespace))
 
 
-def _retry(policy: RetryPolicy) -> dict[str, object]:
-    return {"max_attempts": policy.max_attempts,
-            "retry_on": tuple(_qualified(cls) for cls in policy.retry_on)}
-
-
 def _context_settings(settings: ContextSettings | CombinedContextSettings | None, graph: GraphDefinition) -> object:
     if settings is None:
         return ValueMarker("missing", "No per-context settings override was supplied")
-    registry = graph._specification.artifacts
-    ids = []
-    for reference in settings.artifact_policy.retained_artifacts or ():
-        if type(reference) is int:
-            ids.append(reference)
-        elif isinstance(reference, ArtifactDefinition):
-            ids.append(reference.artifact_id)
-        else:
-            ids.append(registry.definition_for(reference).artifact_id)
-    record = settings.record_policy
-    result = {
-        "max_iterations": settings.max_iterations,
-        "max_repeats": settings.max_repeats,
-        "execution_history_limit": settings.execution_history_limit,
-        "record_policy": {
-            "history_per_key": record.history_per_key,
-            "max_keys": record.max_keys,
-            "max_value_bytes": record.max_value_bytes,
-            "max_total_bytes": record.max_total_bytes,
-        },
-    }
-    result["retry_policy"] = None if settings.retry_policy is None else _retry(settings.retry_policy)
-    result["artifact_policy"] = {"retained_artifacts": None if settings.artifact_policy.retained_artifacts is None else tuple(ids), "release_entry_artifacts": settings.artifact_policy.release_entry_artifacts}
-    if hasattr(settings, "recording_mode"):
-        result["recording_mode"] = settings.recording_mode.value
-        result["failure_mode"] = settings.failure_mode.value
-    return result
+    return _settings_report(settings, graph)
 
 
 def _engine_settings(settings: EngineSettings) -> dict[str, object]:
@@ -529,14 +491,14 @@ class _HistoryRecorder:
     def prepare_snapshot(self, snapshot: ContextSnapshot, graph_registry: GraphRegistry | None) -> _ContextCapture | None:
         from ..core.config.context import ConfigContext
         from .settings.combined_context import CombinedContextSettings
-        from .submission import _normalize_configs
+        from ..submission import _normalize_configs
         if graph_registry is None:
             raise StorageContractError("snapshot capture requires a registered graph")
         graph = graph_registry[(snapshot.graph_key, snapshot.graph_version)]
         by_id = {definition.config_id: graph._specification.configs.source_for(definition)
                  for definition in graph._specification.configs.definitions}
         supplied = ConfigContext({by_id[key]: data.value for key, data in snapshot.config_context})
-        resolved = _normalize_configs(supplied, graph._specification.configs)
+        _, resolved = _normalize_configs(supplied, graph._specification.configs)
         configs = ConfigContext._from_normalized(supplied, graph._specification.configs, resolved)
         # The receiver resolves its own supported effective execution settings;
         # the wire does not contain every originating engine setting.

@@ -2,6 +2,7 @@
   "generator": "docs/_scripts/render_visualizations.py",
   "sources": {
     "docs/_examples/async_execution.py": "c70f3419a7924f98f23c5d1aef4bf229b1c5d7016ce0bf2fb208f3921318c8b8",
+    "docs/_examples/attach_flows.py": "ac58dca24bb19925b71239d72699e0ba32c55d9230f0bd483fda4b29caf35cf8",
     "docs/_examples/conditional.py": "efab4f23d054b564f7a1b05b8df725cf94bafb304ee3ff6b3225ae35e488abeb",
     "docs/_examples/conditional_join.py": "2f125c813cf353017a4f08be4bbbac7b7f3937bc853585295f5446812fd62d0f",
     "docs/_examples/diagnostics.py": "206788a76d1ae12db824980ff8809b46cc27fcc42d1bcf3cf45b44633271e7cc",
@@ -41,22 +42,22 @@
     "jayrun/visualization/adapters/live.py": "acde7b7e85f274217a7b61963ccdaa46ac3d820091cb433ec965c424178b468c",
     "jayrun/visualization/adapters/registry.py": "80dbd73252e065b6ee0b5b96c602bb1381a8e94bb75f627500ba9d465edc90c0",
     "jayrun/visualization/colors.py": "7cb3bb384086b7a4ca4615aa3c4fee3a286056a7f5ef5bba34a3c936700d55d8",
-    "jayrun/visualization/contract.py": "6b79c94329e02a9145232466646f20668c383455305bdb2778457019a2390391",
+    "jayrun/visualization/contract.py": "a8d98ec26eda0dbeaa1746ccf54d97efa76745c175c81d4f176c1c59012f7553",
     "jayrun/visualization/layout.py": "bcbf2b9d56b8f099b2ecdadae90f5951b87225b0cbcb98b8acb1aa59d963d5d8",
     "jayrun/visualization/renderer.py": "c96622c87428b692b0ef017466afb418a56276b80cba67d3e136eb32c423e51f",
     "jayrun/visualization/viewer.css": "507313c7b0735918f8c71e49d0d68935c68c6189d590892e8ef2aa46ffe7445c",
-    "jayrun/visualization/viewer.js": "03d25068bb2d9aa47e0d96e914bb73f98a65732f7db648e2449384c84b90d18e"
+    "jayrun/visualization/viewer.js": "555240e8547e31c7f2f9e21d5051a00fde919487acea731bde486a5d5e785470"
   },
   "outputs": {
-    "split_join.html": "cc237653d434ba69b1e6c2260c59469eab9c804cf78341a233847f8679355656",
-    "conditional_routes.html": "b364bca68e9d8c5de6a741ac2663a617302daa819d0a257de6c0b529edf4a2b4",
-    "conditional_run.html": "9a77a3fc6b26705988fbdcdb55039bc257183e642b514266eea91f7eb06520e8",
-    "plot_property_mismatch.html": "efc70658c655b498f28c519c7e52284e7e3df0cab825370db7cb27d5f0792f2b",
-    "first_graph.html": "656c5a4a6d619cb3837b31519da212e2e683ba932fcc559660839c3ec83d3e75",
-    "first_run.html": "68927f90ea49733f71f579bdb7f01ee70cb811f0b64cb34dff0ba4cfae4bc091",
-    "lifetimes_graph.html": "8eaaff99cc96d7a28ab75350c412b1d2530aee32ab06a54f42dd06a258fe7e08",
-    "lifetimes_run.html": "d4a8c8f235a2ff16863864484dd50953c8166a4d0068c017755ce5ceb5ae41d3",
-    "registry.html": "7284510327e554cf78ac35994aef415c554781cb02b957604b197996ef80bdd3",
+    "split_join.html": "33bd2306885674c5faf4cee9c80b8052fccefbb6e06f5cd50db5476a995263ed",
+    "conditional_routes.html": "851ea0a79c9b4121ac407166d6810cff01ddfa836a623d828b22d07c08b8b3f7",
+    "conditional_run.html": "d79a07e7d597d6af0f39fd22ccb28e83809c74cc4aa5a7234920cecb3ed3c399",
+    "plot_property_mismatch.html": "2e2d219a48c8b02f661e0af1a52c53ddb4382a79ab2c626ac772bd0cb076cb54",
+    "first_graph.html": "1bbf4ba0bb8ab0447cf6be821106973ae1e927719f133ed7da7acd5fb831671f",
+    "first_run.html": "34e86d0064c7f431e465f3719a166f9dc71a1dee2cedadd67ef8dedc77ccb49f",
+    "lifetimes_graph.html": "f73c4d6c8acc2ac79652799a5502b8ab37331b10d196ae43fcce75adf29f1dc7",
+    "lifetimes_run.html": "ae21b8c9d2683c376f4775bcb00c12cdb3fde7976e3f29024ec85caf14b82e8d",
+    "registry.html": "d445a3bac49dc9f321f7b63cca90f432b28a1001381efdbc576bb459a83a6aab",
     "dashboard_preview.html": "1424556e32bea49961d99b52c29b335d3d161d08eaa1d9d489f54752dbe20403"
   }
 }

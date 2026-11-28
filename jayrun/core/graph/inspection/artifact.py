@@ -27,6 +27,16 @@ class ArtifactInspection:
     def __getitem__(self, index: int) -> ArtifactDefinition:
         return self._definitions[index]
 
+    def by_id(self, artifact_id: int) -> ArtifactDefinition:
+        """Resolve an exact, nonnegative graph-local artifact ID."""
+        if type(artifact_id) is not int:
+            raise TypeError("artifact_id must be an integer")
+        if 0 <= artifact_id < len(self._definitions):
+            definition = self._definitions[artifact_id]
+            if definition.artifact_id == artifact_id:
+                return definition
+        raise KeyError(f"Unknown artifact ID: {artifact_id!r}.")
+
     @property
     def entry(self) -> tuple[ArtifactDefinition, ...]:
         """Artifacts supplied by the application."""

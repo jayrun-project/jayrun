@@ -80,6 +80,9 @@ class ExecutionArtifactStore:
         actor = self._resolve_actor(actor=actor, step_index=step_index)
         current = self._artifact_data[artifact]
 
+        if actor is ArtifactActor.OPERATOR and artifact in self._feedback_artifacts:
+            self._entry_data[artifact] = data
+
         if current.value is None and data.value is None:
             return
 
@@ -104,9 +107,6 @@ class ExecutionArtifactStore:
 
         self._artifact_data[artifact] = data
 
-        if actor is ArtifactActor.OPERATOR and artifact in self._feedback_artifacts:
-            self._entry_data[artifact] = data
-
     def release_consumed(
         self,
         consumed_artifacts: tuple[Artifact, ...],
@@ -120,6 +120,10 @@ class ExecutionArtifactStore:
             self._clear(artifact)
             if not self._can_iterate_again:
                 self._entry_data.pop(artifact, None)
+            elif artifact in self._feedback_artifacts:
+                # The value was consumed. A skipped or absent later publication
+                # must not resurrect the previous iteration's seed.
+                self._entry_data[artifact] = self._artifact_data[artifact]
 
     def repeat(self) -> None:
         self._require_running()

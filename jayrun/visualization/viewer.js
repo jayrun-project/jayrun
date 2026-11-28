@@ -121,7 +121,7 @@
       // Validate the attachment, but export the original text without numeric
       // conversion: JavaScript numbers cannot represent every Python integer.
       const report = JSON.parse(text), identity = graph.identity?.["Intrinsic graph ID"];
-      if (report?.schema !== "jayrun.declaration/1" || !report.graph ||
+      if (!["jayrun.declaration/1", "jayrun.declaration/2"].includes(report?.schema) || !report.graph ||
           (identity && report.graph.graph_id !== identity)) throw new TypeError("Invalid declaration report or graph identity");
     }
   };

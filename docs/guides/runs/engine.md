@@ -26,6 +26,24 @@ This fragment assumes a running engine, confirmed graph and its builders. [Your 
 
 An Engine incarnation has a human name and a unique `engine_id`. Use the latter for ownership transfer. Starting an engine is a lifecycle operation, not a way to reset an old run's ownership or reuse a closed store arbitrarily.
 
+## Inspect inputs before starting an Engine
+
+```python
+from jayrun import Engine, Submission
+
+graph.confirm()
+submission = Submission(graph, artifacts=artifacts, configs=configs, settings=context_settings)
+report = submission.inspect()
+with Engine() as engine:
+    first = engine.submit(**submission.arguments())
+    second = engine.submit(**submission.arguments())
+    engine.wait((first, second))
+```
+
+Each call to `arguments()` returns separate mutable builders. Successful registration can clear that attempt's artifact bindings, including when registration returns a rejected run. The retained submission and the original builders remain available. Rebinding a source builder affects later preparations. In-place writes to a shared tensor or array can affect any run reading it. Release the submission and unused argument sets when their payloads are no longer needed.
+
+A live Controller can use `self.runtime.submit(**submission.arguments())` under its normal delegation policy. The [executable graph tutorial](../../tutorials/build-and-validate-graph.md) prepares and inspects two inputs before running the model.
+
 ## Application and component operations
 
 Application code can submit authority-bearing contexts with `authority=Supervisor(...)` or `Controller(...)`. Component code uses `self.runtime` and the scope granted to its context. The methods have related vocabulary but different capabilities. See the [Engine/runtime correspondence](../runtime/correspondence.md) and the separate [Engine reference](../../reference/engine.md).

@@ -9,7 +9,7 @@ Use public namespaces below. `jayrun.core` and `jayrun.engine` contain implement
 
 | Namespace | Purpose | Reference |
 | --- | --- | --- |
-| `jayrun` | Graphs, components, builders, Engine and authority | [Artifacts](artifacts.md), [components](components.md), [graphs](graphs.md), [Engine](engine.md) |
+| `jayrun` | Graphs, components, builders, Submission, Engine and authority | [Artifacts](artifacts.md), [components](components.md), [graphs](graphs.md), [Engine](engine.md) |
 | `jayrun.context` | Runs, states, records, reports, events and snapshots | [Runs](context-run.md), [evidence values](records.md) |
 | `jayrun.settings` | Engine/context policy and runtime devices | [Settings](settings.md) |
 | `jayrun.inspection`, `jayrun.registry` | Graph-local definitions and registry inspection | [Inspection](inspection.md), [graphs](graphs.md) |

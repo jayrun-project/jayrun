@@ -15,6 +15,7 @@ from ...authority import Controller, Supervisor
 from ...core.artifact.base import Artifact
 from ...core.artifact.context import ArtifactContext
 from ...core.config.context import ConfigContext
+from ...core.config.values import config_key
 from ...core.context.runtime_data import Data
 from ...core.graph.graph_definition import GraphDefinition
 from ...core.graph.inspection.registry import GraphIdentity
@@ -740,6 +741,15 @@ class RuntimeRegistry(RuntimeModule):
         if context.can_reiterate and context._history_budget.exhausted:
             self.fail_context(context_id, origin, context._history_budget.error())
             return False
+        conflicts = tuple(
+            artifact for artifact in context.graph.validate().feedback_mismatches
+            if artifact in checkpoint and checkpoint[artifact].value is not None
+        )
+        if conflicts and context.can_reiterate:
+            self.fail_context(context_id, origin, ValueError(
+                f"Incompatible feedback before the next graph iteration: {conflicts!r}"
+            ))
+            return False
         return context._reiterate(origin)
 
     def stop_context(self, context_id: int, origin: CommandOrigin) -> None:
@@ -1117,7 +1127,7 @@ class RuntimeRegistry(RuntimeModule):
         ):
             raise ValueError("a snapshot assigned to this engine must be queued")
 
-        graph, _, _, _ = self._decode_snapshot(snapshot)
+        graph, submission, _, _ = self._decode_snapshot(snapshot)
         if existing is None:
             if (
                 snapshot.engine_id == self._engine_runtime.engine_id
@@ -1128,7 +1138,7 @@ class RuntimeRegistry(RuntimeModule):
                     "a snapshot assigned to this engine must be queued"
                 )
         else:
-            self._validate_snapshot_against_context(snapshot, existing)
+            self._validate_snapshot_against_context(snapshot, existing, submission.configs)
         if graph.version != snapshot.graph_version:
             raise ValueError("snapshot graph version is inconsistent")
         return snapshot
@@ -1229,7 +1239,7 @@ class RuntimeRegistry(RuntimeModule):
                 records=context._record_repository,
             )
         else:
-            self._validate_snapshot_against_context(snapshot, context)
+            self._validate_snapshot_against_context(snapshot, context, submission.configs)
             service = self._get_context_service(snapshot.context_id)
 
         previous_engine_id = context.engine_id
@@ -1462,6 +1472,8 @@ class RuntimeRegistry(RuntimeModule):
             and not required_checkpoint_ids.issubset(checkpoint_ids)
         ):
             raise ValueError("snapshot is missing a safe entry checkpoint")
+        if not checkpoint_ids.issubset(required_checkpoint_ids):
+            raise ValueError("snapshot artifact_context may contain only entry artifacts")
         self._validate_snapshot_pairs(
             snapshot.artifacts,
             "artifacts",
@@ -1829,6 +1841,7 @@ class RuntimeRegistry(RuntimeModule):
         self,
         snapshot: ContextSnapshot,
         context: ContextInstance,
+        configs: ConfigContext,
     ) -> None:
         self._validate_snapshot_identity(snapshot, context)
         current = context.snapshot
@@ -1846,6 +1859,13 @@ class RuntimeRegistry(RuntimeModule):
             raise ValueError(
                 "a snapshot assigned to this engine must be queued"
             )
+        previous = context.config_context.instances
+        incoming = configs.instances
+        if previous.keys() != incoming.keys() or any(
+            config_key(data.value) != config_key(incoming[field].value)
+            for field, data in previous.items()
+        ):
+            raise ValueError("snapshot effective configuration does not match context")
         if context._portable_context_settings() != snapshot.context_settings:
             raise ValueError("snapshot context settings do not match context")
         if (

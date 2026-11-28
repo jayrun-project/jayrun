@@ -149,6 +149,9 @@ def current_public_docstrings(app, what, name, obj, options, lines):
 def readable_signatures(app, what, name, obj, options, signature, return_annotation):
     if signature is None:
         return None
+    if name == "jayrun.Submission.arguments":
+        # The private TypedDict describes the five native keyword arguments.
+        return_annotation = "dict"
     if name == "jayrun.settings.EngineSettings":
         # The current Sphinx renderer drops part of this nested union. The
         # parameter description states its single-device/tuple type explicitly.

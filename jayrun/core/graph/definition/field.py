@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from .data import DataDefinition
 
 
-@dataclass(slots=True, frozen=True, kw_only=True)
+@dataclass(slots=True, frozen=True, kw_only=True, eq=False)
 class FieldDefinition(DataDefinition):
     """Common inspected metadata for a declarative component field."""
 
@@ -13,7 +13,7 @@ class FieldDefinition(DataDefinition):
     attribute_name: str
 
 
-@dataclass(slots=True, frozen=True, kw_only=True)
+@dataclass(slots=True, frozen=True, kw_only=True, eq=False)
 class ConfigDefinition(FieldDefinition):
     """Graph-local inspected configuration-field metadata."""
 
@@ -22,7 +22,7 @@ class ConfigDefinition(FieldDefinition):
     default: object | None
 
 
-@dataclass(slots=True, frozen=True, kw_only=True)
+@dataclass(slots=True, frozen=True, kw_only=True, eq=False)
 class ResourceDefinition(FieldDefinition):
     """Graph-local inspected resource-field metadata."""
 

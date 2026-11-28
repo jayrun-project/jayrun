@@ -33,6 +33,8 @@ class CompiledOperatorStep(CompiledStep):
     bound_resources: tuple[tuple[ResourceField, BaseResource], ...]
     output_fields: tuple[ArtifactField, ...]
     operator_name: str
+    unbound_resources: tuple[ResourceField, ...] = ()
+    repeat_mismatches: tuple[Artifact, ...] = ()
 
 
 @dataclass(slots=True, frozen=True, kw_only=True)

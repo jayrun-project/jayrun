@@ -1148,30 +1148,7 @@ class ContextInstance:
         self,
         reference: int | ArtifactDefinition | Artifact,
     ) -> Artifact:
-        registry = self.graph._specification.artifacts
-
-        if type(reference) is int:
-            for definition in registry.definitions:
-                if definition.artifact_id == reference:
-                    return registry.source_for(definition)
-            raise KeyError(f"unknown artifact ID: {reference!r}")
-
-        if isinstance(reference, ArtifactDefinition):
-            for definition in registry.definitions:
-                if definition is reference:
-                    return registry.source_for(definition)
-            raise KeyError(
-                "ArtifactDefinition does not belong to the context graph"
-            )
-
-        if isinstance(reference, Artifact):
-            if reference not in registry.sources:
-                raise KeyError("Artifact does not belong to the context graph")
-            return reference
-
-        raise TypeError(
-            "artifact reference must be int, ArtifactDefinition, or Artifact"
-        )
+        return self.graph._specification.artifacts.resolve(reference)
 
     def _encode_artifact_context(
         self,

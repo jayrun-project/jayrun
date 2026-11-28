@@ -23,14 +23,15 @@ if TYPE_CHECKING:
     from .engine.api import Engine
     from .engine.engine_state import EngineState, RuntimeActivity
     from .registry import GraphRegistry
+    from .submission import Submission
 
-__version__ = "0.3.5"
+__version__ = "0.4.0"
 
 __all__ = (
     "__version__", "Artifact", "ArtifactContext", "ArtifactField", "ArtifactFlow",
     "BaseOperator", "BaseResource", "BaseSerializer", "ConfigContext", "ConfigField",
     "Controller", "Data", "Engine", "EngineState", "RuntimeActivity", "GraphDefinition", "GraphRegistry",
-    "ResourceField", "Supervisor",
+    "ResourceField", "Submission", "Supervisor",
 )
 
 _EXPORTS = {
@@ -42,7 +43,7 @@ _EXPORTS = {
     "Data": ".core.context.runtime_data", "Engine": ".engine.api",
     "EngineState": ".engine.engine_state", "RuntimeActivity": ".engine.engine_state",
     "GraphDefinition": ".core.graph.graph_definition", "GraphRegistry": ".registry",
-    "ResourceField": ".core.resource.field", "Supervisor": ".authority",
+    "ResourceField": ".core.resource.field", "Submission": ".submission", "Supervisor": ".authority",
 }
 
 

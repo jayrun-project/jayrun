@@ -25,3 +25,9 @@ Missing metadata is not a proven mismatch, nor proof that a payload will work. S
 For a constructed graph, save a view with `graph.plot.save("graph.html")`. A declaration view shows topology and contracts. A run view shows captured execution evidence; it is not interchangeable with validation. See [visualization and reporting](../evidence/plots.md).
 
 The [inspection reference](../../reference/inspection.md) documents returned views and validation statuses. For construction failures before a graph exists, start with [graph resolutions](resolutions.md).
+
+Two independent operators in one layout column cannot read a live slot and
+overwrite it. The publisher must consume that slot itself or follow its reader
+in an ordered stage. Compilation adds both producer-to-reader and
+last-reader-to-next-publisher dependencies. Unrelated ready branches may run
+concurrently. Only entry artifacts can receive submission values.

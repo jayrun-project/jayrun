@@ -210,6 +210,7 @@ class GraphValidationReport:
 
     nodes: tuple[GraphNode, ...]
     edges: tuple[GraphEdge, ...]
+    feedback_mismatches: tuple[Artifact, ...] = ()
 
     @property
     def valid(self) -> bool:

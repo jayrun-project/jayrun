@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from .requirement import RequirementDefinition
 
 
-@dataclass(slots=True, frozen=True, kw_only=True)
+@dataclass(slots=True, frozen=True, kw_only=True, eq=False)
 class SerializerDefinition:
     """Inspected serializer binding for one graph boundary artifact."""
 

@@ -741,7 +741,7 @@ async (button, text, signal) =&gt; {
       // Validate the attachment, but export the original text without numeric
       // conversion: JavaScript numbers cannot represent every Python integer.
       const report = JSON.parse(text), identity = graph.identity?.[&quot;Intrinsic graph ID&quot;];
-      if (report?.schema !== &quot;jayrun.declaration/1&quot; || !report.graph ||
+      if (![&quot;jayrun.declaration/1&quot;, &quot;jayrun.declaration/2&quot;].includes(report?.schema) || !report.graph ||
           (identity &amp;&amp; report.graph.graph_id !== identity)) throw new TypeError(&quot;Invalid declaration report or graph identity&quot;);
     }
   };

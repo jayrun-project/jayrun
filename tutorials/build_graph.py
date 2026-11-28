@@ -149,6 +149,20 @@ class ScaleModel(BaseOperator):
     def execute(self) -> nn.Module:
         return TemperatureScaledModel(self.model.value, temperature=1.5)
 
+class CountParameters(BaseOperator):
+    """Count trainable and frozen parameters in a trained model."""
+
+    requirements = ("torch",)
+
+    def __init__(self, *, trained: Artifact, outputs: tuple[Artifact | None, ...]) -> None:
+        super().__init__()
+        self.trained = ArtifactField(properties=(TypeProperty(torch.nn.Module),))
+        self.outputs = (ArtifactField(properties=(TypeProperty(int),)),)
+
+    def execute(self) -> int:
+        return sum(parameter.numel() for parameter in self.trained.value.parameters())
+
+
 def build_graph(dtype: torch.dtype = torch.float32):
     dataset = Artifact(name="dataset")
     model = Artifact(name="model")
